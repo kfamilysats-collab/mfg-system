@@ -2281,5 +2281,5 @@ load();
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 renderDashboard();
 </script>
-</body>
+<script>(function(){var _o=window.showProductDetail;if(!_o)return;window.showProductDetail=function(id){_o(id);setTimeout(function(){var m=document.getElementById('product-detail-modal');if(!m)return;[...m.querySelectorAll('div')].filter(function(d){return d.children.length===2&&d.children[0].children.length===0&&d.children[1].children.length===0&&d.children[1].textContent.trim()!=='';}).forEach(function(pair){var v=pair.children[1],t=v.textContent.trim();if(!t||t==='—'||v.getAttribute('data-copy'))return;v.setAttribute('data-copy','1');v.style.cssText+='cursor:pointer;padding:3px 8px;border-radius:4px;transition:background 0.15s';v.title='クリックでコピー';v.onmouseenter=function(){v.style.background='#eff6ff';};v.onmouseleave=function(){v.style.background='';};v.onclick=function(){navigator.clipboard.writeText(t).then(function(){var o=v.textContent;v.textContent='✅コピー！';v.style.background='#dcfce7';setTimeout(function(){v.textContent=o;v.style.background='';},1200);});};});},80);};})();</script></body>
 </html>
