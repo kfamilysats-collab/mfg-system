@@ -8,20 +8,20 @@
 <script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
 <style>
   :root {
-    --bg: #0f1117;
-    --bg2: #1a1d27;
-    --bg3: #22263a;
-    --border: #2e3250;
-    --accent: #3d7fff;
-    --accent2: #00d4aa;
-    --accent3: #ff6b6b;
-    --accent4: #ffd166;
-    --text: #e8eaf6;
-    --text2: #8892b0;
-    --text3: #4a5280;
-    --success: #00d4aa;
-    --warning: #ffd166;
-    --danger: #ff6b6b;
+    --bg: #f5f7fa;
+    --bg2: #ffffff;
+    --bg3: #f0f2f8;
+    --border: #d0d5e8;
+    --accent: #2563eb;
+    --accent2: #059669;
+    --accent3: #dc2626;
+    --accent4: #d97706;
+    --text: #111827;
+    --text2: #374151;
+    --text3: #6b7280;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
     --card-radius: 12px;
     --shadow: 0 4px 24px rgba(0,0,0,0.4);
   }
@@ -30,17 +30,17 @@
 
   /* Layout */
   .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 220px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; transition: transform 0.3s; }
+  .sidebar { width: 220px; background: #1e293b; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; transition: transform 0.3s; }
   .main { margin-left: 220px; flex: 1; padding: 24px; min-height: 100vh; }
   .logo { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
-  .logo h1 { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: 1px; text-transform: uppercase; }
-  .logo p { font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .logo h1 { font-size: 13px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; }
+  .logo p { font-size: 10px; color: #94a3b8; margin-top: 2px; }
   nav { padding: 12px 8px; flex: 1; overflow-y: auto; }
   .nav-group { margin-bottom: 16px; }
-  .nav-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; padding: 4px 8px; margin-bottom: 4px; }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; color: var(--text2); font-size: 13px; transition: all 0.15s; margin-bottom: 2px; }
-  .nav-item:hover { background: var(--bg3); color: var(--text); }
-  .nav-item.active { background: rgba(61,127,255,0.15); color: var(--accent); font-weight: 600; }
+  .nav-label { font-size: 10px; color: #64748b; letter-spacing: 1px; text-transform: uppercase; padding: 4px 8px; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; color: #cbd5e1; font-size: 13px; transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+  .nav-item.active { background: rgba(96,165,250,0.2); color: #60a5fa; font-weight: 600; }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
 
   /* Page header */
@@ -76,7 +76,7 @@
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-primary:hover { background: #5a8fff; }
-  .btn-success { background: var(--accent2); color: #0f1117; }
+  .btn-success { background: var(--accent2); color: #fff; }
   .btn-success:hover { background: #00e8bc; }
   .btn-danger { background: var(--accent3); color: #fff; }
   .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
@@ -93,7 +93,7 @@
   input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; font-family: inherit; width: 100%; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 70px; }
-  select option { background: var(--bg3); }
+  select option { background: #ffffff; color: #111827; }
 
   /* Badges */
   .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
@@ -113,7 +113,7 @@
   .search-input input { width: 100%; }
 
   /* Modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
@@ -302,16 +302,16 @@
       </div>
       <div class="card">
         <div class="search-row">
-          <div class="search-input"><input type="text" placeholder="🔍 図番・品名・発注先で検索..." oninput="filterProducts(this.value)" id="product-search"></div>
+          <div class="search-input"><input type="text" placeholder="🔍 図番・品名・受注先で検索..." oninput="filterProducts(this.value)" id="product-search"></div>
           <select id="filter-supplier" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
-            <option value="">全発注先</option>
+            <option value="">全受注先</option>
           </select>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>図番</th><th>品名</th><th>発注先</th>
+                <th>図番</th><th>品名</th><th>受注先</th>
                 <th class="hide-mobile">材料</th>
                 <th>単価</th>
                 <th class="hide-mobile">クレーム</th>
@@ -329,7 +329,7 @@
       <div class="page-header">
         <div>
           <div class="page-title" id="pform-title">製品登録</div>
-          <div class="page-subtitle">図番・品名・発注先・材料情報を入力</div>
+          <div class="page-subtitle">図番・品名・受注先・材料情報を入力</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="showSection('products')">← 一覧へ</button>
       </div>
@@ -345,7 +345,7 @@
             <input type="text" id="pf-name" placeholder="例：シャフトA">
           </div>
           <div class="form-group">
-            <label>発注先</label>
+            <label>受注先</label>
             <input type="text" id="pf-client" list="client-list" placeholder="取引先を選択or入力">
             <datalist id="client-list"></datalist>
           </div>
@@ -404,37 +404,81 @@
           </div>
         </div>
 
+        <datalist id="outsource-list"></datalist>
         <hr class="divider">
         <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">外注先</div>
-        <div id="outsource-list">
-          <div class="form-grid outsource-row" data-idx="0">
-            <div class="form-group">
-              <label>外注先1</label>
-              <input type="text" class="os-name" placeholder="外注会社名">
+        <div id="outsource-rows">
+          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="0">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先1</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
             </div>
-            <div class="form-group">
-              <label>外注金額1（円）</label>
-              <input type="number" class="os-price" placeholder="0">
+          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="1">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先2</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
             </div>
-          </div>
-          <div class="form-grid outsource-row" data-idx="1">
-            <div class="form-group">
-              <label>外注先2</label>
-              <input type="text" class="os-name" placeholder="外注会社名">
-            </div>
-            <div class="form-group">
-              <label>外注金額2（円）</label>
-              <input type="number" class="os-price" placeholder="0">
-            </div>
-          </div>
-          <div class="form-grid outsource-row" data-idx="2">
-            <div class="form-group">
-              <label>外注先3</label>
-              <input type="text" class="os-name" placeholder="外注会社名">
-            </div>
-            <div class="form-group">
-              <label>外注金額3（円）</label>
-              <input type="number" class="os-price" placeholder="0">
+          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="2">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先3</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
             </div>
           </div>
         </div>
@@ -554,8 +598,12 @@
         <hr class="divider">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div style="font-size:13px;font-weight:700;color:var(--accent);">工程時間（最大10工程）</div>
-          <button class="btn btn-ghost btn-sm" onclick="addProcessStep()">＋ 工程追加</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="copy-last-steps-btn" onclick="copyLastSteps()" style="display:none;">📋 前回の工程をコピー</button>
+            <button class="btn btn-ghost btn-sm" onclick="addProcessStep()">＋ 工程追加</button>
+          </div>
         </div>
+        <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-bottom:10px;display:none;"></div>
         <div id="process-steps-form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
 
         <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
@@ -650,7 +698,7 @@
       </div>
       <div class="tabs" id="supplier-tabs">
         <div class="tab active" onclick="switchSupTab('all')">全社</div>
-        <div class="tab" onclick="switchSupTab('client')">発注先</div>
+        <div class="tab" onclick="switchSupTab('client')">受注先</div>
         <div class="tab" onclick="switchSupTab('material')">材料発注先</div>
         <div class="tab" onclick="switchSupTab('other')">その他</div>
       </div>
@@ -735,7 +783,7 @@
         </div>
         <div class="card">
           <div class="card-title">📊 Excelインポート（製品）</div>
-          <p style="font-size:13px;color:var(--text2);margin-bottom:8px;">列順：図番, 品名, 発注先, 製品単価, 材料発注先, 材料名, 寸法, 材料単価</p>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:8px;">列順：図番, 品名, 受注先, 製品単価, 材料発注先, 材料名, 寸法, 材料単価</p>
           <input type="file" id="import-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importExcel(this)">
           <button class="btn btn-ghost" onclick="document.getElementById('import-excel-file').click()">📂 Excelを選択してインポート</button>
         </div>
@@ -850,7 +898,7 @@
         <label>種別（複数選択可）</label>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
           <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;font-size:13px;">
-            <input type="checkbox" id="sup-type-client" value="client"> 発注先・外注先
+            <input type="checkbox" id="sup-type-client" value="client"> 受注先・外注先
           </label>
           <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;font-size:13px;">
             <input type="checkbox" id="sup-type-material" value="material"> 材料発注先
@@ -1130,7 +1178,7 @@ function renderProducts() {
   const clients = [...new Set(DB.products.map(p=>p.client).filter(Boolean))];
   const sel = document.getElementById('filter-supplier');
   const prev = sel.value;
-  sel.innerHTML = '<option value="">全発注先</option>' + clients.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
+  sel.innerHTML = '<option value="">全受注先</option>' + clients.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
 
   filterProducts(document.getElementById('product-search').value);
 }
@@ -1162,13 +1210,13 @@ function showProductDetail(id) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">図番</div><div>${p.fignum}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">品名</div><div>${p.name}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">発注先</div><div>${p.client||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">受注先</div><div>${p.client||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">製品単価</div><div>¥${fmt(p.price)}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料発注先</div><div>${p.matSupplier||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料名</div><div>${p.matName||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">寸法</div><div>${p.matSize||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料単価</div><div>¥${fmt(p.matPrice)}</div></div>
-      ${p.outsource&&p.outsource.length?p.outsource.filter(o=>o.name).map((o,i)=>`<div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">外注先${i+1}</div><div>${o.name} ¥${fmt(o.price)}</div></div>`).join(''):''}
+      ${p.outsource&&p.outsource.length?p.outsource.filter(o=>o.name).map((o,i)=>`<div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">外注先${i+1}</div><div>${o.name}${o.materialType?' ['+o.materialType+']':''}${o.note?' ('+o.note+')':''} ¥${fmt(o.price)}</div></div>`).join(''):''}
     </div>
     ${p.pdf?`<div style="margin-top:12px;"><span class="pdf-link">📄 ${p.pdf}</span></div>`:''}
     ${p.priceTable&&p.priceTable.length?`
@@ -1460,6 +1508,47 @@ function autoFillProduct() {
     priceHint.style.display = 'none';
     matHint.style.display = 'none';
   }
+
+  // 前回工程コピーボタンの表示制御
+  const copyBtn = document.getElementById('copy-last-steps-btn');
+  const lastHint = document.getElementById('last-steps-hint');
+  if (copyBtn && fignum) {
+    // この図番の直近実績を探す
+    const lastProd = DB.productions
+      .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (lastProd) {
+      copyBtn.style.display = 'inline-flex';
+      lastHint.style.display = 'block';
+      const dateStr = lastProd.date.replace(/-/g, '/');
+      lastHint.textContent = `📅 前回実績: ${dateStr}  工程${lastProd.steps.length}個 (${lastProd.steps.join(' / ')})`;
+    } else {
+      copyBtn.style.display = 'none';
+      lastHint.style.display = 'none';
+    }
+  } else if (copyBtn) {
+    copyBtn.style.display = 'none';
+    lastHint.style.display = 'none';
+  }
+}
+
+function copyLastSteps() {
+  const fignum = document.getElementById('rf-fignum').value.trim();
+  if (!fignum) return;
+  const lastProd = DB.productions
+    .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!lastProd) return;
+
+  // 工程ステップをリセットしてコピー
+  processStepCount = 0;
+  document.getElementById('process-steps-form').innerHTML = '';
+  lastProd.steps.forEach(stepVal => {
+    addProcessStep();
+    const el = document.getElementById('step-' + processStepCount);
+    if (el) el.value = stepVal;
+  });
+  showToast(`工程${lastProd.steps.length}個をコピーしました`, 'success');
 }
 
 function clearProductionForm() {
@@ -1472,6 +1561,10 @@ function clearProductionForm() {
   document.getElementById('rf-worker').value = '';
   document.getElementById('rf-price-hint').style.display = 'none';
   document.getElementById('rf-mat-price-hint').style.display = 'none';
+  const copyBtn = document.getElementById('copy-last-steps-btn');
+  const lastHint = document.getElementById('last-steps-hint');
+  if (copyBtn) copyBtn.style.display = 'none';
+  if (lastHint) lastHint.style.display = 'none';
   renderProcessSteps(1);
 }
 
@@ -1634,7 +1727,7 @@ function copyText(cell, text) {
 
 // ===== SUPPLIERS =====
 let supCurrentTab = 'all';
-const TYPE_LABELS = { client:'発注先', material:'材料発注先', other:'その他' };
+const TYPE_LABELS = { client:'受注先', material:'材料発注先', other:'その他' };
 const TYPE_BADGE  = { client:'badge-blue', material:'badge-green', other:'badge-yellow' };
 
 function switchSupTab(tab) {
@@ -1851,7 +1944,7 @@ function deleteWorker(idx) {
 }
 
 function updateDataLists() {
-  // 発注先（client）タグ付きの会社のみ
+  // 受注先（client）タグ付きの会社のみ
   const clientNames = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>c.name);
   // 材料発注先（material）タグ付きの会社のみ
   const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
@@ -1864,6 +1957,8 @@ function updateDataLists() {
   if (fl) fl.innerHTML = DB.products.map(p=>`<option value="${p.fignum}">`).join('');
   const mc = document.getElementById('machine-list');
   if (mc) mc.innerHTML = [...new Set([...DB.machines,...DB.machineInfo.map(m=>m.name),...DB.productions.map(p=>p.machine).filter(Boolean)])].map(m=>`<option value="${m}">`).join('');
+  const ol = document.getElementById('outsource-list');
+  if (ol) ol.innerHTML = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>`<option value="${c.name}">`).join('');
   const wk = document.getElementById('rf-worker');
   if (wk) {
     const prev = wk.value;
@@ -1938,7 +2033,7 @@ function exportMaterialExcel() {
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet([
     ['材料発注リスト'],['作成日：'+today],[''],
-    ['図番','品名','発注先','材料名','寸法','材料発注先','材料単価（円）'],
+    ['図番','品名','受注先','材料名','寸法','材料発注先','材料単価（円）'],
     ...selected.map(p=>[p.fignum,p.name,p.client||'',p.matName||'',p.matSize||'',p.matSupplier||'',p.matPrice||0])
   ]);
   XLSX.utils.book_append_sheet(wb,ws,'材料発注リスト');
