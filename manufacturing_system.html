@@ -627,7 +627,16 @@
 
       <div class="stats-grid" id="sales-stats"></div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="tabs" id="sales-master-tabs" style="margin-top:8px;">
+        <div class="tab active" data-stab="monthly"  onclick="setSalesTab('monthly')">月別</div>
+        <div class="tab"        data-stab="client"   onclick="setSalesTab('client')">受注先別</div>
+        <div class="tab"        data-stab="product"  onclick="setSalesTab('product')">製品別</div>
+        <div class="tab"        data-stab="machine"  onclick="setSalesTab('machine')">機械別</div>
+        <div class="tab"        data-stab="material" onclick="setSalesTab('material')">材料発注先別</div>
+      </div>
+
+      <!-- 月別 -->
+      <div class="sales-pane" data-pane="monthly">
         <div class="card">
           <div class="card-title">月別売上</div>
           <div class="table-wrap">
@@ -638,71 +647,109 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <!-- 受注先別 -->
+      <div class="sales-pane" data-pane="client" style="display:none;">
         <div class="card">
-          <div class="card-title">機械別売上</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">受注先別売上</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="tabs">
+                <div class="tab active" data-mode="year" onclick="setSalesSubMode('client','year')">年間</div>
+                <div class="tab" data-mode="month" onclick="setSalesSubMode('client','month')">月別</div>
+              </div>
+              <select id="client-month-sel" onchange="setSalesSubMonth('client',this.value)" style="width:96px;display:none;"></select>
+            </div>
+          </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>機械</th><th>金額</th><th>件数</th></tr></thead>
-              <tbody id="machine-sales-tbody"></tbody>
+              <thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead>
+              <tbody id="client-sales-tbody"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <div class="card-title" style="margin:0;">受注先別売上</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="tabs">
-              <div class="tab active" data-mode="year" onclick="setSalesSubMode('client','year')">年間</div>
-              <div class="tab" data-mode="month" onclick="setSalesSubMode('client','month')">月別</div>
+      <!-- 製品別 -->
+      <div class="sales-pane" data-pane="product" style="display:none;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">製品別売上</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="tabs">
+                <div class="tab active" data-mode="year" onclick="setSalesSubMode('product','year')">年間</div>
+                <div class="tab" data-mode="month" onclick="setSalesSubMode('product','month')">月別</div>
+              </div>
+              <select id="product-month-sel" onchange="setSalesSubMonth('product',this.value)" style="width:96px;display:none;"></select>
             </div>
-            <select id="client-month-sel" onchange="setSalesSubMonth('client',this.value)" style="width:96px;display:none;"></select>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead>
-            <tbody id="client-sales-tbody"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>図番</th><th>品名</th><th>受注先</th><th>件数</th>
+                <th>売上合計</th><th>材料費合計</th><th>外注費合計</th>
+                <th>粗利</th><th>粗利率</th><th>合計工程時間</th>
+              </tr></thead>
+              <tbody id="product-sales-tbody"></tbody>
+              <tfoot id="product-sales-tfoot"></tfoot>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <div class="card-title" style="margin:0;">材料発注先別支払い</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="tabs">
-              <div class="tab active" data-mode="year" onclick="setSalesSubMode('mat','year')">年間</div>
-              <div class="tab" data-mode="month" onclick="setSalesSubMode('mat','month')">月別</div>
+      <!-- 機械別 -->
+      <div class="sales-pane" data-pane="machine" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card">
+            <div class="card-title">機械別売上</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>機械</th><th>金額</th><th>件数</th></tr></thead>
+                <tbody id="machine-sales-tbody"></tbody>
+              </table>
             </div>
-            <select id="mat-month-sel" onchange="setSalesSubMonth('mat',this.value)" style="width:96px;display:none;"></select>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead>
-            <tbody id="mat-sales-tbody"></tbody>
-          </table>
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+              <div class="card-title" style="margin:0;">機械別稼働時間</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <div class="tabs">
+                  <div class="tab active" data-mode="year" onclick="setSalesSubMode('machine','year')">年間</div>
+                  <div class="tab" data-mode="month" onclick="setSalesSubMode('machine','month')">月別</div>
+                </div>
+                <select id="machine-month-sel" onchange="setSalesSubMonth('machine',this.value)" style="width:96px;display:none;"></select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>機械</th><th>稼働時間</th><th>件数</th></tr></thead>
+                <tbody id="machine-time-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <div class="card-title" style="margin:0;">機械別稼働時間</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <div class="tabs">
-              <div class="tab active" data-mode="year" onclick="setSalesSubMode('machine','year')">年間</div>
-              <div class="tab" data-mode="month" onclick="setSalesSubMode('machine','month')">月別</div>
+      <!-- 材料発注先別 -->
+      <div class="sales-pane" data-pane="material" style="display:none;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">材料発注先別支払い</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="tabs">
+                <div class="tab active" data-mode="year" onclick="setSalesSubMode('mat','year')">年間</div>
+                <div class="tab" data-mode="month" onclick="setSalesSubMode('mat','month')">月別</div>
+              </div>
+              <select id="mat-month-sel" onchange="setSalesSubMonth('mat',this.value)" style="width:96px;display:none;"></select>
             </div>
-            <select id="machine-month-sel" onchange="setSalesSubMonth('machine',this.value)" style="width:96px;display:none;"></select>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>機械</th><th>稼働時間</th><th>件数</th></tr></thead>
-            <tbody id="machine-time-tbody"></tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead>
+              <tbody id="mat-sales-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>
@@ -1739,8 +1786,20 @@ function getProdMeta(fignum) {
 
 // 各テーブルの月別/年間モード状態
 const _curMonth = new Date().getMonth()+1;
-let salesSubMode = { client:'year', mat:'year', machine:'year' };
-let salesSubMonth = { client:_curMonth, mat:_curMonth, machine:_curMonth };
+let salesSubMode = { client:'year', mat:'year', machine:'year', product:'year' };
+let salesSubMonth = { client:_curMonth, mat:_curMonth, machine:_curMonth, product:_curMonth };
+let salesActiveTab = 'monthly';
+
+function setSalesTab(name) {
+  salesActiveTab = name;
+  document.querySelectorAll('#sales-master-tabs .tab').forEach(function(t){
+    if (t.dataset.stab===name) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+  document.querySelectorAll('.sales-pane').forEach(function(p){
+    p.style.display = (p.dataset.pane===name) ? '' : 'none';
+  });
+}
 
 function setSalesSubMode(key, mode) {
   salesSubMode[key] = mode;
@@ -1868,6 +1927,71 @@ function renderSales() {
   document.getElementById('machine-time-tbody').innerHTML = Object.entries(machineTime).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){
     return '<tr><td>'+e[0]+'</td><td>'+fmtDuration(e[1].sec)+'</td><td>'+e[1].count+'件</td></tr>';
   }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  // 製品別売上（fignumごと）
+  _populateMonthSelect('product-month-sel','product');
+  const prodCard = document.getElementById('product-sales-tbody').closest('.card');
+  if (prodCard) _syncSubTabs(prodCard, salesSubMode.product);
+  const prodAgg = {};
+  yProds.filter(periodFilter('product')).forEach(function(p){
+    const k = p.fignum || '(未設定)';
+    if (!prodAgg[k]) prodAgg[k] = {fignum:k,name:p.name||'',count:0,qty:0,sales:0,mat:0,sec:0};
+    prodAgg[k].count++;
+    prodAgg[k].qty   += (p.qty||0);
+    prodAgg[k].sales += (p.price||0)*(p.qty||0);
+    prodAgg[k].mat   += (p.matPrice||0)*(p.qty||0);
+    prodAgg[k].sec   += stepsToSeconds(p.steps)*(p.qty||1);
+    if (!prodAgg[k].name && p.name) prodAgg[k].name = p.name;
+  });
+  const prodList = Object.values(prodAgg).map(function(pa){
+    const master = (DB.products||[]).find(function(x){return x.fignum===pa.fignum;});
+    const osPerUnit = master && master.outsource ? master.outsource.reduce(function(a,o){return a+(o.price||0);},0) : 0;
+    const os = osPerUnit * pa.qty;
+    const gross = pa.sales - pa.mat - os;
+    const rate = pa.sales>0 ? gross/pa.sales*100 : 0;
+    return {
+      fignum:pa.fignum,
+      name: pa.name || (master&&master.name) || '',
+      client: getClient(pa.fignum),
+      count: pa.count, sales: pa.sales, mat: pa.mat, os: os,
+      gross: gross, rate: rate, sec: pa.sec
+    };
+  }).sort(function(a,b){return b.sales-a.sales;});
+
+  document.getElementById('product-sales-tbody').innerHTML = prodList.length ? prodList.map(function(r){
+    return '<tr>'+
+      '<td><span class="badge badge-blue">'+r.fignum+'</span></td>'+
+      '<td>'+r.name+'</td>'+
+      '<td>'+r.client+'</td>'+
+      '<td>'+r.count+'件</td>'+
+      '<td>¥'+fmt(r.sales)+'</td>'+
+      '<td>¥'+fmt(r.mat)+'</td>'+
+      '<td>¥'+fmt(r.os)+'</td>'+
+      '<td>¥'+fmt(r.gross)+'</td>'+
+      '<td>'+r.rate.toFixed(1)+'%</td>'+
+      '<td>'+fmtDuration(r.sec)+'</td>'+
+    '</tr>';
+  }).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  if (prodList.length) {
+    const tot = prodList.reduce(function(a,r){
+      a.count+=r.count; a.sales+=r.sales; a.mat+=r.mat; a.os+=r.os; a.gross+=r.gross; a.sec+=r.sec; return a;
+    },{count:0,sales:0,mat:0,os:0,gross:0,sec:0});
+    const totRate = tot.sales>0 ? tot.gross/tot.sales*100 : 0;
+    document.getElementById('product-sales-tfoot').innerHTML =
+      '<tr style="font-weight:700;border-top:2px solid var(--border);">'+
+      '<td colspan="3">合計</td>'+
+      '<td>'+tot.count+'件</td>'+
+      '<td>¥'+fmt(tot.sales)+'</td>'+
+      '<td>¥'+fmt(tot.mat)+'</td>'+
+      '<td>¥'+fmt(tot.os)+'</td>'+
+      '<td>¥'+fmt(tot.gross)+'</td>'+
+      '<td>'+totRate.toFixed(1)+'%</td>'+
+      '<td>'+fmtDuration(tot.sec)+'</td>'+
+      '</tr>';
+  } else {
+    document.getElementById('product-sales-tfoot').innerHTML = '';
+  }
 }
 
 function setSalesYear(y) { salesYear = y; renderSales(); }
@@ -2445,6 +2569,41 @@ function exportSalesExcel() {
     colWidths:[18,10,16,18], currencyCols:[2], totalRow:mcTotal
   });
   XLSX.utils.book_append_sheet(wb,wsMc,'機械別稼働');
+
+  // --- シート5: 製品別 ---
+  const pAgg = {};
+  yProds.forEach(function(p){
+    const k = p.fignum||'(未設定)';
+    if (!pAgg[k]) pAgg[k]={fignum:k,name:p.name||'',count:0,qty:0,sales:0,mat:0,sec:0};
+    pAgg[k].count++;
+    pAgg[k].qty   += (p.qty||0);
+    pAgg[k].sales += (p.price||0)*(p.qty||0);
+    pAgg[k].mat   += (p.matPrice||0)*(p.qty||0);
+    pAgg[k].sec   += stepsToSeconds(p.steps)*(p.qty||1);
+    if (!pAgg[k].name && p.name) pAgg[k].name = p.name;
+  });
+  const pList = Object.values(pAgg).map(function(pa){
+    const master = (DB.products||[]).find(function(x){return x.fignum===pa.fignum;});
+    const osPerUnit = master && master.outsource ? master.outsource.reduce(function(a,o){return a+(o.price||0);},0) : 0;
+    const os = osPerUnit * pa.qty;
+    const gross = pa.sales - pa.mat - os;
+    const rate = pa.sales>0 ? gross/pa.sales : 0;
+    return [pa.fignum, pa.name||(master&&master.name)||'', getClient(pa.fignum), pa.count, pa.sales, pa.mat, os, gross, rate, secondsToHM(pa.sec)];
+  }).sort(function(a,b){return b[4]-a[4];});
+  const pTotSales = pList.reduce(function(a,r){return a+r[4];},0);
+  const pTotMat   = pList.reduce(function(a,r){return a+r[5];},0);
+  const pTotOs    = pList.reduce(function(a,r){return a+r[6];},0);
+  const pTotGross = pList.reduce(function(a,r){return a+r[7];},0);
+  const pTotCount = pList.reduce(function(a,r){return a+r[3];},0);
+  const pTotSec   = Object.values(pAgg).reduce(function(a,v){return a+v.sec;},0);
+  const pTotal = ['合計','','',pTotCount,pTotSales,pTotMat,pTotOs,pTotGross, pTotSales>0?pTotGross/pTotSales:0, secondsToHM(pTotSec)];
+  const wsP = _buildStyledSheet({
+    title:'製品別売上 - '+year+'年',
+    headers:['図番','品名','受注先','件数','売上合計','材料費','外注費','粗利','粗利率','合計工程時間'],
+    rows:pList, colWidths:[14,22,18,10,16,16,16,16,12,16],
+    currencyCols:[4,5,6,7], percentCols:[8], totalRow:pTotal
+  });
+  XLSX.utils.book_append_sheet(wb,wsP,'製品別');
 
   XLSX.writeFile(wb,'売上集計_'+year+'.xlsx');
   showToast('Excelをダウンロードしました');
