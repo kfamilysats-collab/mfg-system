@@ -1718,7 +1718,8 @@ function toggleSelectAll() {
 }
 function copyText(cell, text) {
   if (!text || text === '—') return;
-  (function(){var _t=document.createElement('textarea');_t.value=text;_t.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_t);_t.focus();_t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_t);})();
+  navigator.clipboard.writeText(text).then(()=>{
+    cell.style.background='rgba(0,212,170,0.2)';
     setTimeout(()=>cell.style.background='',600);
     showToast('コピーしました: ' + text);
   });
@@ -1755,7 +1756,8 @@ function _copyBtn(text) {
   return `<button onclick="quickCopy('${escaped}',this)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;color:var(--text2);cursor:pointer;margin-left:4px;" title="コピー">📋</button>`;
 }
 function quickCopy(text, btn) {
-  (function(){var _t=document.createElement('textarea');_t.value=text;_t.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_t);_t.focus();_t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_t);})(); setTimeout(()=>btn.textContent='📋',1500);
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent='✅'; setTimeout(()=>btn.textContent='📋',1500);
     showToast('コピー: '+text);
   });
 }
@@ -2280,96 +2282,24 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
 renderDashboard();
 </script>
 <script>
-/* 文字サイズ拡大 */
 document.documentElement.style.setProperty('font-size','17px');
 (function(){
-  /* ① 製品詳細クリックコピー */
+  /* 製品詳細クリックコピー */
   var _o=window.showProductDetail;
   if(_o) window.showProductDetail=function(id){
     _o(id);
     setTimeout(function(){
       var m=document.getElementById('product-detail-modal');
       if(!m)return;
-      [...m.querySelectorAll('div')].filter(function(d){
-        return d.children.length===2&&d.children[0].children.length===0&&d.children[1].children.length===0&&d.children[1].textContent.trim()!=='';
-      }).forEach(function(pair){
-        var v=pair.children[1],t=v.textContent.trim();
-        if(!t||t==='—'||v.getAttribute('data-copy'))return;
-        v.setAttribute('data-copy','1');
-        v.style.cssText+='cursor:pointer;padding:3px 8px;border-radius:4px;transition:background 0.15s';
-        v.title='クリックでコピー';
-        v.onmouseenter=function(){v.style.background='#eff6ff';};
-        v.onmouseleave=function(){v.style.background='';};
-        v.onclick=function(){(function(){var _t=document.createElement('textarea');_t.value=t;_t.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_t);_t.focus();_t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_t);})();v.textContent='✅コピー！';v.style.background='#dcfce7';setTimeout(function(){v.textContent=o;v.style.background='';},1200);});};
-      });
-    },80);
-  };
-
-  /* ② 取引先名変更時に製品データも連動更新 */
-  var _s=window.saveSupplier;
-  if(_s) window.saveSupplier=function(){
-    // 変更前の名前を記憶
-    var editingId=window._editingSupId||null;
-    var oldName='';
-    if(editingId){
-      var old=DB.companies.find(function(c){return c.id===editingId;});
-      if(old) oldName=old.name;
-    }
-    _s();
-    // 変更後の名前
-    if(editingId&&oldName){
-      var updated=DB.companies.find(function(c){return c.id===editingId;});
-      if(updated&&updated.name&&updated.name!==oldName){
-        var newName=updated.name;
-        var changed=0;
-        DB.products.forEach(function(p){
-          if(p.client===oldName){p.client=newName;changed++;}
-          if(p.supplier===oldName){p.supplier=newName;changed++;}
-          if(p.matSupplier===oldName){p.matSupplier=newName;changed++;}
-          if(p.outsource)p.outsource.forEach(function(o){if(o.name===oldName){o.name=newName;changed++;}});
-        });
-        DB.suppliers.clients.forEach(function(c){if(c.name===oldName)c.name=newName;});
-        DB.suppliers.materials.forEach(function(c){if(c.name===oldName)c.name=newName;});
-        if(changed>0)console.log('連動更新: '+oldName+' → '+newName+' ('+changed+'件)');
-      }
-    }
-  };
-
-  /* editSupplierが呼ばれたときにIDを記憶 */
-  var _e=window.editSupplier;
-  if(_e) window.editSupplier=function(id){
-    window._editingSupId=id;
-    _e(id);
-  };
-  var _op=window.openSupplierModal;
-  if(_op) window.openSupplierModal=function(){
-    window._editingSupId=null;
-    _op();
-  };
-})();
-</script><script>
-/* フォントサイズ */
-document.documentElement.style.setProperty('font-size','17px');
-/* 製品詳細クリックコピー */
-(function(){
-  var orig=window.showProductDetail;
-  if(!orig)return;
-  window.showProductDetail=function(id){
-    orig(id);
-    setTimeout(function(){
-      var m=document.getElementById('product-detail-modal');
-      if(!m)return;
-      var list=m.querySelectorAll('div');
-      for(var i=0;i<list.length;i++){
-        var d=list[i];
-        /* 必ずDIVが2つで両方子なし */
+      var divs=m.querySelectorAll('div');
+      for(var i=0;i<divs.length;i++){
+        var d=divs[i];
         if(d.children.length!==2)continue;
-        var c0=d.children[0],c1=d.children[1];
-        if(c0.tagName!=='DIV'||c1.tagName!=='DIV')continue;
-        if(c0.children.length>0||c1.children.length>0)continue;
-        var txt=c1.textContent.trim();
+        if(d.children[0].tagName!=='DIV'||d.children[1].tagName!=='DIV')continue;
+        if(d.children[0].children.length!==0||d.children[1].children.length!==0)continue;
+        var txt=d.children[1].textContent.trim();
         if(!txt||txt==='—'||txt==='-')continue;
-        if(c1.getAttribute('data-copy'))continue;
+        if(d.children[1].getAttribute('data-copy'))continue;
         (function(el,t){
           el.setAttribute('data-copy','1');
           el.style.cursor='pointer';
@@ -2382,21 +2312,40 @@ document.documentElement.style.setProperty('font-size','17px');
           el.addEventListener('click',function(ev){
             ev.stopPropagation();
             var ta=document.createElement('textarea');
-            ta.value=t;
-            ta.style.cssText='position:fixed;top:-9999px;left:-9999px';
-            document.body.appendChild(ta);
-            ta.focus();ta.select();
-            try{
-              document.execCommand('copy');
-              el.textContent='✅コピー！';
-              el.style.background='#dcfce7';
-              setTimeout(function(){el.textContent=t;el.style.background='';},1200);
-            }catch(e){}
+            ta.value=t;ta.style.cssText='position:fixed;top:-9999px;left:-9999px';
+            document.body.appendChild(ta);ta.focus();ta.select();
+            try{document.execCommand('copy');el.textContent='✅コピー！';el.style.background='#dcfce7';setTimeout(function(){el.textContent=t;el.style.background='';},1200);}catch(ex){}
             document.body.removeChild(ta);
           });
-        })(c1,txt);
+        })(d.children[1],txt);
       }
     },100);
+  };
+  /* 取引先名変更の連動更新 */
+  var _e=window.editSupplier;
+  if(_e) window.editSupplier=function(id){window._editingSupId=id;_e(id);};
+  var _op=window.openSupplierModal;
+  if(_op) window.openSupplierModal=function(){window._editingSupId=null;_op();};
+  var _s=window.saveSupplier;
+  if(_s) window.saveSupplier=function(){
+    var eid=window._editingSupId||null,oldName='';
+    if(eid){var oc=DB.companies.find(function(c){return c.id===eid;});if(oc)oldName=oc.name;}
+    _s();
+    if(eid&&oldName){
+      var uc=DB.companies.find(function(c){return c.id===eid;});
+      if(uc&&uc.name&&uc.name!==oldName){
+        var nn=uc.name;
+        DB.products.forEach(function(p){
+          if(p.client===oldName)p.client=nn;
+          if(p.matSupplier===oldName)p.matSupplier=nn;
+          if(p.outsource)p.outsource.forEach(function(o){if(o.name===oldName)o.name=nn;});
+        });
+        if(DB.suppliers){
+          if(DB.suppliers.clients)DB.suppliers.clients.forEach(function(c){if(c.name===oldName)c.name=nn;});
+          if(DB.suppliers.materials)DB.suppliers.materials.forEach(function(c){if(c.name===oldName)c.name=nn;});
+        }
+      }
+    }
   };
 })();
 </script></body>
