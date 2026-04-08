@@ -1,0 +1,2430 @@
+<script>
+document.documentElement.style.setProperty('font-size','17px');
+(function(){
+  /* 製品詳細クリックコピー */
+  var _origDetail = window.showProductDetail;
+  if (_origDetail) {
+    window.showProductDetail = function(id) {
+      _origDetail(id);
+      setTimeout(function() {
+        var modal = document.getElementById('product-detail-modal');
+        if (!modal) return;
+        var allDivs = modal.querySelectorAll('div');
+        for (var i = 0; i < allDivs.length; i++) {
+          var d = allDivs[i];
+          if (d.children.length !== 2) continue;
+          if (d.children[0].tagName !== 'DIV') continue;
+          if (d.children[1].tagName !== 'DIV') continue;
+          if (d.children[0].children.length !== 0) continue;
+          if (d.children[1].children.length !== 0) continue;
+          var val = d.children[1].textContent.trim();
+          if (!val || val === '—' || val === '-') continue;
+          if (d.children[1].getAttribute('data-copy')) continue;
+          (function(v, t) {
+            v.setAttribute('data-copy', '1');
+            v.style.cursor = 'pointer';
+            v.style.padding = '3px 8px';
+            v.style.borderRadius = '4px';
+            v.style.transition = 'background 0.15s';
+            v.title = 'クリックでコピー';
+            v.addEventListener('mouseenter', function() { v.style.background = '#eff6ff'; });
+            v.addEventListener('mouseleave', function() { v.style.background = ''; });
+            v.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var ta = document.createElement('textarea');
+              ta.value = t;
+              ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+              document.body.appendChild(ta);
+              ta.focus();
+              ta.select();
+              try {
+                document.execCommand('copy');
+                v.textContent = '✅コピー！';
+                v.style.background = '#dcfce7';
+                setTimeout(function() { v.textContent = t; v.style.background = ''; }, 1200);
+              } catch(e2) {}
+              document.body.removeChild(ta);
+            });
+          })(d.children[1], val);
+        }
+      }, 80);
+    };
+  }
+  /* 取引先名変更の連動更新 */
+  var _origEdit = window.editSupplier;
+  if (_origEdit) window.editSupplier = function(id) { window._editingSupId = id; _origEdit(id); };
+  var _origOpen = window.openSupplierModal;
+  if (_origOpen) window.openSupplierModal = function() { window._editingSupId = null; _origOpen(); };
+  var _origSave = window.saveSupplier;
+  if (_origSave) {
+    window.saveSupplier = function() {
+      var eid = window._editingSupId || null;
+      var oldName = '';
+      if (eid) {
+        var oc = DB.companies.find(function(c) { return c.id === eid; });
+        if (oc) oldName = oc.name;
+      }
+      _origSave();
+      if (eid && oldName) {
+        var uc = DB.companies.find(function(c) { return c.id === eid; });
+        if (uc && uc.name && uc.name !== oldName) {
+          var nn = uc.name;
+          DB.products.forEach(function(p) {
+            if (p.client === oldName) p.client = nn;
+            if (p.matSupplier === oldName) p.matSupplier = nn;
+            if (p.outsource) p.outsource.forEach(function(o) { if (o.name === oldName) o.name = nn; });
+          });
+          if (DB.suppliers) {
+            if (DB.suppliers.clients) DB.suppliers.clients.forEach(function(c) { if (c.name === oldName) c.name = nn; });
+            if (DB.suppliers.materials) DB.suppliers.materials.forEach(function(c) { if (c.name === oldName) c.name = nn; });
+          }
+        }
+      }
+    };
+  }
+})();
+</script>
+<script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --bg2: #ffffff;
+    --bg3: #f0f2f8;
+    --border: #d0d5e8;
+    --accent: #2563eb;
+    --accent2: #059669;
+    --accent3: #dc2626;
+    --accent4: #d97706;
+    --text: #111827;
+    --text2: #374151;
+    --text3: #6b7280;
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
+    --card-radius: 12px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', 'Hiragino Kaku Gothic ProN', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 220px; background: #1e293b; border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; z-index: 100; transition: transform 0.3s; }
+  .main { margin-left: 220px; flex: 1; padding: 24px; min-height: 100vh; }
+  .logo { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
+  .logo h1 { font-size: 13px; font-weight: 700; color: #60a5fa; letter-spacing: 1px; text-transform: uppercase; }
+  .logo p { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  nav { padding: 12px 8px; flex: 1; overflow-y: auto; }
+  .nav-group { margin-bottom: 16px; }
+  .nav-label { font-size: 10px; color: #64748b; letter-spacing: 1px; text-transform: uppercase; padding: 4px 8px; margin-bottom: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; cursor: pointer; color: #cbd5e1; font-size: 13px; transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+  .nav-item.active { background: rgba(96,165,250,0.2); color: #60a5fa; font-weight: 600; }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* Page header */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .page-title { font-size: 22px; font-weight: 700; }
+  .page-subtitle { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  /* Cards */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 20px; }
+  .card-title { font-size: 13px; color: var(--text2); margin-bottom: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* Stats */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--card-radius); padding: 18px 20px; position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .stat-card.blue::before { background: var(--accent); }
+  .stat-card.green::before { background: var(--accent2); }
+  .stat-card.red::before { background: var(--accent3); }
+  .stat-card.yellow::before { background: var(--accent4); }
+  .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 26px; font-weight: 700; margin: 6px 0 4px; }
+  .stat-sub { font-size: 12px; color: var(--text3); }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,0.5); vertical-align: middle; }
+  tr:hover td { background: rgba(61,127,255,0.04); }
+  tr:last-child td { border-bottom: none; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; text-decoration: none; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #5a8fff; }
+  .btn-success { background: var(--accent2); color: #fff; }
+  .btn-success:hover { background: #00e8bc; }
+  .btn-danger { background: var(--accent3); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg3); color: var(--text); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-xs { padding: 3px 8px; font-size: 11px; border-radius: 5px; }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: var(--text2); font-weight: 600; }
+  input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; font-family: inherit; width: 100%; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+  select option { background: #ffffff; color: #111827; }
+
+  /* Badges */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: rgba(61,127,255,0.2); color: var(--accent); }
+  .badge-green { background: rgba(0,212,170,0.2); color: var(--accent2); }
+  .badge-red { background: rgba(255,107,107,0.2); color: var(--accent3); }
+  .badge-yellow { background: rgba(255,209,102,0.2); color: var(--accent4); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg3); padding: 4px; border-radius: 10px; width: fit-content; }
+  .tab { padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text2); transition: all 0.15s; }
+  .tab.active { background: var(--bg2); color: var(--text); box-shadow: var(--shadow); }
+
+  /* Search */
+  .search-row { display: flex; gap: 10px; margin-bottom: 16px; align-items: center; flex-wrap: wrap; }
+  .search-input { flex: 1; min-width: 200px; }
+  .search-input input { width: 100%; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .modal-title { font-size: 18px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; font-size: 13px; box-shadow: var(--shadow); z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s; max-width: 320px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.error { border-left: 3px solid var(--danger); }
+
+  /* Charts */
+  .chart-container { position: relative; height: 200px; display: flex; align-items: flex-end; gap: 8px; padding-top: 20px; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 100%; flex: 1; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.4s ease; cursor: pointer; }
+  .bar:hover { opacity: 0.8; }
+  .bar-label { font-size: 10px; color: var(--text3); }
+  .bar-value { font-size: 10px; color: var(--text2); }
+
+  /* Section */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Mobile */
+  .menu-btn { display: none; background: none; border: none; color: var(--text); font-size: 22px; cursor: pointer; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 16px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-grid-2 { grid-template-columns: 1fr; }
+    .menu-btn { display: block; }
+    .page-header { gap: 10px; flex-wrap: wrap; }
+    .mobile-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  }
+  .mobile-header { display: none; }
+  @media (max-width: 768px) { .mobile-header { display: flex; } }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text2); }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-text { font-size: 14px; }
+
+  /* Process steps */
+  .process-steps { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .step-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 11px; }
+  .step-time { color: var(--accent2); font-weight: 600; }
+
+  /* PDF link */
+  .pdf-link { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 12px; text-decoration: none; }
+  .pdf-link:hover { text-decoration: underline; }
+
+  /* Year tabs */
+  .year-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .year-tab { padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--bg3); color: var(--text2); border: 1px solid var(--border); transition: all 0.15s; }
+  .year-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Responsive table */
+  @media (max-width: 600px) {
+    .hide-mobile { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">
+      <h1>⚙ 製造管理</h1>
+      <p>Manufacturing System</p>
+    </div>
+    <nav>
+      <div class="nav-group">
+        <div class="nav-label">メイン</div>
+        <div class="nav-item active" onclick="showSection('dashboard')">
+          <span class="nav-icon">📊</span>ダッシュボード
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">製品管理</div>
+        <div class="nav-item" onclick="showSection('products')">
+          <span class="nav-icon">📋</span>製品一覧
+        </div>
+        <div class="nav-item" onclick="showSection('product-form')">
+          <span class="nav-icon">➕</span>製品登録
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">生産管理</div>
+        <div class="nav-item" onclick="showSection('production')">
+          <span class="nav-icon">🔧</span>作業実績
+        </div>
+        <div class="nav-item" onclick="showSection('production-form')">
+          <span class="nav-icon">📝</span>実績登録
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">分析・集計</div>
+        <div class="nav-item" onclick="showSection('sales')">
+          <span class="nav-icon">💰</span>売上集計
+        </div>
+        <div class="nav-item" onclick="showSection('profit')">
+          <span class="nav-icon">📈</span>利益レポート
+        </div>
+        <div class="nav-item" onclick="showSection('material-order')">
+          <span class="nav-icon">📦</span>材料発注
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">マスタ</div>
+        <div class="nav-item" onclick="showSection('suppliers')">
+          <span class="nav-icon">🏢</span>取引先管理
+        </div>
+        <div class="nav-item" onclick="showSection('machine-info')">
+          <span class="nav-icon">⚙️</span>機械情報
+        </div>
+        <div class="nav-item" onclick="showSection('workers')">
+          <span class="nav-icon">👷</span>作業員
+        </div>
+        <div class="nav-item" onclick="showSection('backup')">
+          <span class="nav-icon">💾</span>バックアップ
+        </div>
+        <div class="nav-item" onclick="showSection('onedrive')">
+          <span class="nav-icon">☁️</span>OneDrive連携
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="mobile-header">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <span style="font-weight:700;">⚙ 製造管理</span>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <section class="section active" id="sec-dashboard">
+      <div class="page-header">
+        <div>
+          <div class="page-title">ダッシュボード</div>
+          <div class="page-subtitle" id="today-date"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showSection('production-form')">＋ 実績登録</button>
+      </div>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;" class="dash-charts">
+        <div class="card">
+          <div class="card-title">月別売上（今年）</div>
+          <div class="chart-container" id="monthly-chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">機械別稼働（今月）</div>
+          <div class="chart-container" id="machine-chart"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">最近の作業実績</div>
+        <div class="table-wrap">
+          <table id="recent-table">
+            <thead><tr><th>日付</th><th>機械</th><th>図番</th><th>品名</th><th>数量</th><th>金額</th></tr></thead>
+            <tbody id="recent-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTS ===== -->
+    <section class="section" id="sec-products">
+      <div class="page-header">
+        <div>
+          <div class="page-title">製品一覧</div>
+          <div class="page-subtitle" id="product-count-label"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="showSection('product-form')">＋ 製品登録</button>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <div class="search-input"><input type="text" placeholder="🔍 図番・品名・受注先で検索..." oninput="filterProducts(this.value)" id="product-search"></div>
+          <select id="filter-supplier" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
+            <option value="">全受注先</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>図番</th><th>品名</th><th>受注先</th>
+                <th class="hide-mobile">材料</th>
+                <th>単価</th>
+                <th class="hide-mobile">クレーム</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="product-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCT FORM ===== -->
+    <section class="section" id="sec-product-form">
+      <div class="page-header">
+        <div>
+          <div class="page-title" id="pform-title">製品登録</div>
+          <div class="page-subtitle">図番・品名・受注先・材料情報を入力</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="showSection('products')">← 一覧へ</button>
+      </div>
+      <div class="card">
+        <div style="margin-bottom:20px;font-size:13px;font-weight:700;color:var(--accent);">基本情報</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>図番 *</label>
+            <input type="text" id="pf-fignum" placeholder="例：DWG-001">
+          </div>
+          <div class="form-group">
+            <label>品名 *</label>
+            <input type="text" id="pf-name" placeholder="例：シャフトA">
+          </div>
+          <div class="form-group">
+            <label>受注先</label>
+            <input type="text" id="pf-client" list="client-list" placeholder="取引先を選択or入力">
+            <datalist id="client-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label>製品単価（基本・円）</label>
+            <input type="number" id="pf-price" placeholder="数量別テーブルがない場合の単価">
+          </div>
+          <div class="form-group">
+            <label>PDF図面ファイル名</label>
+            <input type="text" id="pf-pdf" placeholder="例：DWG-001.pdf">
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">📊 数量別単価テーブル</div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addPriceRow()">＋ 行追加</button>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">※ 数量（個〜）の昇順で入力してください。実績登録時に数量に応じて自動適用されます。</div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:13px;" id="price-table">
+            <thead>
+              <tr>
+                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">数量（個〜）</th>
+                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">製品単価（円）</th>
+                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料単価（円）</th>
+                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;width:50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="price-rows">
+              <!-- 動的に追加 -->
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">※ テーブルが空の場合は上記の基本単価が使われます</div>
+
+        <hr class="divider">
+        <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">材料情報</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>材料発注先</label>
+            <input type="text" id="pf-mat-supplier" list="mat-supplier-list" placeholder="材料の仕入先">
+            <datalist id="mat-supplier-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label>材料名</label>
+            <input type="text" id="pf-mat-name" placeholder="例：S45C丸棒">
+          </div>
+          <div class="form-group">
+            <label>寸法</label>
+            <input type="text" id="pf-mat-size" placeholder="例：φ50×100">
+          </div>
+          <div class="form-group">
+            <label>材料単価・基本（円）</label>
+            <input type="number" id="pf-mat-price" placeholder="数量別テーブルがない場合">
+          </div>
+        </div>
+
+        <datalist id="outsource-list"></datalist>
+        <hr class="divider">
+        <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">外注先</div>
+        <div id="outsource-rows">
+          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="0">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先1</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
+            </div>
+          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="1">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先2</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
+            </div>
+          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="2">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先3</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>外注先名</label>
+                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+              </div>
+              <div class="form-group">
+                <label>材料</label>
+                <select class="os-material-type">
+                  <option value="">選択してください</option>
+                  <option value="材料支給">材料支給</option>
+                  <option value="材込み">材込み</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>加工内容（備考）</label>
+                <input type="text" class="os-note" placeholder="加工内容を入力">
+              </div>
+              <div class="form-group">
+                <label>金額（円）</label>
+                <input type="number" class="os-price" placeholder="0">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">その他</div>
+        <div class="form-grid">
+          <div class="form-group full">
+            <label>注意書き</label>
+            <textarea id="pf-note" placeholder="加工上の注意点など"></textarea>
+          </div>
+          <div class="form-group">
+            <label>クレームPDFファイル名</label>
+            <input type="text" id="pf-claim-pdf" placeholder="例：CLM-001.pdf（ある場合のみ）">
+          </div>
+          <div class="form-group">
+            <label>クレーム概要</label>
+            <input type="text" id="pf-claim-note" placeholder="クレームの内容（あれば）">
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
+          <button class="btn btn-ghost" onclick="clearProductForm()">クリア</button>
+          <button class="btn btn-primary" onclick="saveProduct()">💾 保存</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTION ===== -->
+    <section class="section" id="sec-production">
+      <div class="page-header">
+        <div>
+          <div class="page-title">作業実績一覧</div>
+          <div class="page-subtitle" id="prod-count-label"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="exportProductionExcel()">📊 Excel出力</button>
+          <button class="btn btn-primary btn-sm" onclick="showSection('production-form')">＋ 実績登録</button>
+        </div>
+      </div>
+
+      <div class="year-tabs" id="prod-year-tabs"></div>
+
+      <div class="card">
+        <div class="search-row">
+          <div class="search-input"><input type="text" placeholder="🔍 機械名・図番・品名で検索..." oninput="filterProduction(this.value)" id="prod-search"></div>
+          <select id="prod-machine-filter" onchange="filterProduction(document.getElementById('prod-search').value)" style="width:160px;">
+            <option value="">全機械</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>日付</th><th>機械</th><th>図番</th><th>品名</th>
+                <th>数量</th><th class="hide-mobile">工程数</th>
+                <th>金額</th><th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="prod-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRODUCTION FORM ===== -->
+    <section class="section" id="sec-production-form">
+      <div class="page-header">
+        <div>
+          <div class="page-title">実績登録</div>
+          <div class="page-subtitle">加工日・機械・図番・数量・工程時間を入力</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="showSection('production')">← 一覧へ</button>
+      </div>
+      <div class="card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>加工日 *</label>
+            <input type="date" id="rf-date">
+          </div>
+          <div class="form-group">
+            <label>機械名 *</label>
+            <input type="text" id="rf-machine" list="machine-list" placeholder="例：機械A">
+            <datalist id="machine-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label>図番 *</label>
+            <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()">
+            <datalist id="fignum-list"></datalist>
+          </div>
+          <div class="form-group">
+            <label>品名（自動入力）</label>
+            <input type="text" id="rf-name" placeholder="図番から自動入力">
+          </div>
+          <div class="form-group">
+            <label>作業員</label>
+            <select id="rf-worker">
+              <option value="">選択してください</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>数量</label>
+            <input type="number" id="rf-qty" value="1" min="1" oninput="autoFillProduct()">
+          </div>
+          <div class="form-group">
+            <label>製品単価（円）</label>
+            <input type="number" id="rf-price" placeholder="0">
+            <div id="rf-price-hint" style="font-size:11px;color:var(--accent2);margin-top:3px;display:none;"></div>
+          </div>
+          <div class="form-group">
+            <label>材料単価（円）</label>
+            <input type="number" id="rf-mat-price" placeholder="0">
+            <div id="rf-mat-price-hint" style="font-size:11px;color:var(--accent2);margin-top:3px;display:none;"></div>
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">工程時間（最大10工程）</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" id="copy-last-steps-btn" onclick="copyLastSteps()" style="display:none;">📋 前回の工程をコピー</button>
+            <button class="btn btn-ghost btn-sm" onclick="addProcessStep()">＋ 工程追加</button>
+          </div>
+        </div>
+        <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-bottom:10px;display:none;"></div>
+        <div id="process-steps-form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
+
+        <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
+          <button class="btn btn-ghost" onclick="clearProductionForm()">クリア</button>
+          <button class="btn btn-primary" onclick="saveProduction()">💾 保存</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== SALES ===== -->
+    <section class="section" id="sec-sales">
+      <div class="page-header">
+        <div>
+          <div class="page-title">売上集計</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="exportSalesExcel()">📊 Excel出力</button>
+      </div>
+
+      <div class="year-tabs" id="sales-year-tabs"></div>
+
+      <div class="stats-grid" id="sales-stats"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-title">月別売上</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>月</th><th>金額</th><th>件数</th></tr></thead>
+              <tbody id="monthly-sales-tbody"></tbody>
+              <tfoot id="monthly-sales-tfoot"></tfoot>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">機械別売上</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>機械</th><th>金額</th><th>件数</th></tr></thead>
+              <tbody id="machine-sales-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PROFIT REPORT ===== -->
+    <section class="section" id="sec-profit">
+      <div class="page-header">
+        <div><div class="page-title">利益レポート</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="exportProfitExcel()">📊 Excel出力</button>
+      </div>
+      <div class="year-tabs" id="profit-year-tabs"></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">製品別利益</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>図番</th><th>品名</th><th>売上単価</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead>
+            <tbody id="profit-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MATERIAL ORDER ===== -->
+    <section class="section" id="sec-material-order">
+      <div class="page-header">
+        <div><div class="page-title">材料発注リスト</div><div class="page-subtitle">製品を選択してExcelに出力</div></div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="mat-select-all-btn" onclick="toggleSelectAll()">全選択</button>
+          <button class="btn btn-success btn-sm" onclick="exportMaterialExcel()" id="mat-export-btn" disabled>📊 Excel出力</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <div class="search-input"><input type="text" placeholder="🔍 検索..." oninput="filterMaterial(this.value)"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input type="checkbox" id="all-check" onchange="selectAllMat(this.checked)"></th><th>図番</th><th>品名</th><th>材料名</th><th class="hide-mobile">寸法</th><th class="hide-mobile">材料発注先</th><th>材料単価</th></tr></thead>
+            <tbody id="material-tbody"></tbody>
+          </table>
+        </div>
+        <div id="mat-status" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(0,212,170,0.1);border-radius:8px;color:var(--accent2);font-size:13px;"></div>
+      </div>
+    </section>
+
+    <!-- ===== SUPPLIERS ===== -->
+    <section class="section" id="sec-suppliers">
+      <div class="page-header">
+        <div><div class="page-title">取引先管理</div><div class="page-subtitle" id="sup-count-label"></div></div>
+        <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">＋ 追加</button>
+      </div>
+      <div class="tabs" id="supplier-tabs">
+        <div class="tab active" onclick="switchSupTab('all')">全社</div>
+        <div class="tab" onclick="switchSupTab('client')">受注先</div>
+        <div class="tab" onclick="switchSupTab('material')">材料発注先</div>
+        <div class="tab" onclick="switchSupTab('other')">その他</div>
+      </div>
+      <div class="card">
+        <div class="search-row">
+          <div class="search-input"><input type="text" id="sup-search" placeholder="🔍 会社名・フリガナ・担当者で検索..." oninput="renderSuppliers()"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>会社名</th>
+                <th class="hide-mobile">種別</th>
+                <th class="hide-mobile">担当者</th>
+                <th class="hide-mobile">電話</th>
+                <th class="hide-mobile">メール</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="company-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MACHINE INFO ===== -->
+    <section class="section" id="sec-machine-info">
+      <div class="page-header">
+        <div><div class="page-title">機械情報</div><div class="page-subtitle">導入機械の記録</div></div>
+        <button class="btn btn-primary btn-sm" onclick="openMachineModal()">＋ 追加</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>機械名</th>
+                <th>導入時期</th>
+                <th class="hide-mobile">購入金額</th>
+                <th class="hide-mobile">備考</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="machine-info-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WORKERS ===== -->
+    <section class="section" id="sec-workers">
+      <div class="page-header">
+        <div><div class="page-title">作業員</div><div class="page-subtitle">実績登録時に選択できます</div></div>
+        <button class="btn btn-primary btn-sm" onclick="openWorkerModal()">＋ 追加</button>
+      </div>
+      <div class="card" style="max-width:480px;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>名前</th><th>操作</th></tr></thead>
+            <tbody id="worker-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== BACKUP ===== -->
+    <section class="section" id="sec-backup">
+      <div class="page-header">
+        <div><div class="page-title">バックアップ・データ管理</div><div class="page-subtitle">定期的にバックアップを取ってください</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-title">📤 バックアップ</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">全データをJSONファイルとしてダウンロードします。OneDriveに保存してください。</p>
+          <button class="btn btn-primary" onclick="exportBackup()">💾 バックアップをダウンロード</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📥 データ復元</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">バックアップJSONファイルを読み込みます。現在のデータは上書きされます。</p>
+          <input type="file" id="restore-file" accept=".json" style="display:none;" onchange="importBackup(this)">
+          <button class="btn btn-ghost" onclick="document.getElementById('restore-file').click()">📂 ファイルを選択して復元</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 Excelインポート（製品）</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:8px;">列順：図番, 品名, 受注先, 製品単価, 材料発注先, 材料名, 寸法, 材料単価</p>
+          <input type="file" id="import-excel-file" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importExcel(this)">
+          <button class="btn btn-ghost" onclick="document.getElementById('import-excel-file').click()">📂 Excelを選択してインポート</button>
+        </div>
+        <div class="card">
+          <div class="card-title">🗑 データクリア</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">全データを削除します。必ずバックアップを取ってから実行してください。</p>
+          <button class="btn btn-danger btn-sm" onclick="clearAllData()">全データを削除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ONEDRIVE ===== -->
+    <section class="section" id="sec-onedrive">
+      <div class="page-header">
+        <div><div class="page-title">☁️ OneDrive連携</div><div class="page-subtitle">社長と同じデータを共有できます</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div id="od-status-icon" style="font-size:28px;">☁️</div>
+          <div style="flex:1;">
+            <div id="od-status-text" style="font-weight:700;font-size:15px;">未接続</div>
+            <div id="od-status-sub" style="font-size:12px;color:var(--text2);margin-top:2px;">下のIDを入力してログインしてください</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="od-login-btn" onclick="odLogin()">🔑 Microsoftでログイン</button>
+            <button class="btn btn-ghost btn-sm" id="od-logout-btn" onclick="odLogout()" style="display:none;">ログアウト</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">🔧 接続設定（初回のみ）</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Azure Portal で取得したIDを入力してください。入力後は保存されます。</div>
+        <div class="form-grid-2">
+          <div class="form-group full">
+            <label>クライアントID（アプリケーションID）</label>
+            <input type="text" id="od-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </div>
+          <div class="form-group full">
+            <label>テナントID（ディレクトリID）</label>
+            <input type="text" id="od-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn btn-primary btn-sm" onclick="odSaveConfig()">💾 IDを保存</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-title">📤 OneDriveに保存</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">現在のデータをOneDriveに保存します。社長が「読み込み」すると同じデータが見られます。</p>
+          <button class="btn btn-primary" onclick="odSave()" id="od-save-btn" disabled>☁️ OneDriveに保存</button>
+          <div id="od-save-status" style="font-size:12px;color:var(--text2);margin-top:8px;"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📥 OneDriveから読み込み</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">OneDriveの最新データを読み込みます。社長が保存したデータも取得できます。</p>
+          <button class="btn btn-ghost" onclick="odLoad()" id="od-load-btn" disabled>☁️ OneDriveから読み込み</button>
+          <div id="od-load-status" style="font-size:12px;color:var(--text2);margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;background:rgba(61,127,255,0.05);border-color:rgba(61,127,255,0.3);">
+        <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+          💡 <strong style="color:var(--text);">使い方のコツ</strong><br>
+          ① 社長のパソコンでも同じIDを入力してログイン<br>
+          ② あなたが入力したら「OneDriveに保存」<br>
+          ③ 社長が「OneDriveから読み込み」で最新データが見られます<br>
+          ④ 同時に入力するときは、入力前に必ず「読み込み」してください
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="product-detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="detail-title">製品詳細</div>
+      <button class="modal-close" onclick="closeModal('product-detail-modal')">✕</button>
+    </div>
+    <div id="product-detail-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="prod-detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">実績詳細</div>
+      <button class="modal-close" onclick="closeModal('prod-detail-modal')">✕</button>
+    </div>
+    <div id="prod-detail-body"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="supplier-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="sup-modal-title">取引先追加</div>
+      <button class="modal-close" onclick="closeModal('supplier-modal')">✕</button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group full">
+        <label>会社名 *</label>
+        <input type="text" id="sup-name" placeholder="例：株式会社〇〇製作所">
+      </div>
+      <div class="form-group full">
+        <label>フリガナ（検索用）</label>
+        <input type="text" id="sup-kana" placeholder="例：カブシキガイシャマルマルセイサクショ">
+      </div>
+      <div class="form-group full">
+        <label>種別（複数選択可）</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="sup-type-client" value="client"> 受注先・外注先
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="sup-type-material" value="material"> 材料発注先
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;font-size:13px;">
+            <input type="checkbox" id="sup-type-other" value="other"> その他
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>担当者名</label>
+        <input type="text" id="sup-contact" placeholder="例：田中 一郎">
+      </div>
+      <div class="form-group">
+        <label>電話番号</label>
+        <input type="text" id="sup-tel" placeholder="例：06-1234-5678">
+      </div>
+      <div class="form-group full">
+        <label>メールアドレス</label>
+        <input type="email" id="sup-email" placeholder="例：tanaka@example.com">
+      </div>
+      <div class="form-group">
+        <label>郵便番号</label>
+        <input type="text" id="sup-zip" placeholder="例：123-4567" maxlength="8" oninput="autoFillAddress(this)">
+      </div>
+      <div class="form-group full">
+        <label>住所</label>
+        <input type="text" id="sup-address" placeholder="例：大阪府大阪市〇〇区〇〇1-2-3">
+      </div>
+      <div class="form-group full">
+        <label>備考</label>
+        <textarea id="sup-memo" placeholder="取引条件・注意事項など" style="min-height:60px;"></textarea>
+      </div>
+    </div>
+    <input type="hidden" id="sup-edit-id">
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('supplier-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSupplier()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 機械情報モーダル -->
+<div class="modal-overlay" id="machine-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <div class="modal-title" id="machine-modal-title">機械情報 追加</div>
+      <button class="modal-close" onclick="closeModal('machine-modal')">✕</button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group full">
+        <label>機械名 *</label>
+        <input type="text" id="mi-name" placeholder="例：機械A、フライス盤B">
+      </div>
+      <div class="form-group">
+        <label>導入時期</label>
+        <input type="month" id="mi-date">
+      </div>
+      <div class="form-group">
+        <label>購入金額（円）</label>
+        <input type="number" id="mi-price" placeholder="0">
+      </div>
+      <div class="form-group full">
+        <label>備考</label>
+        <textarea id="mi-note" placeholder="メーカー・型番・特記事項など" style="min-height:70px;"></textarea>
+      </div>
+    </div>
+    <input type="hidden" id="mi-edit-id">
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('machine-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveMachineInfo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 作業員モーダル -->
+<div class="modal-overlay" id="worker-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">作業員追加</div>
+      <button class="modal-close" onclick="closeModal('worker-modal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>名前 *</label>
+      <input type="text" id="worker-name" placeholder="例：田中 太郎">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('worker-modal')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveWorker()">追加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== DATA STORE =====
+const DB = {
+  products: [],
+  productions: [],
+  suppliers: { clients: [], materials: [] }, // 旧データ互換用（移行後は companies を使う）
+  companies: [], // 統合取引先マスタ
+  machines: [],
+  machineInfo: [],
+  workers: []
+};
+
+function save() {
+  localStorage.setItem('mfg_db', JSON.stringify(DB));
+}
+function load() {
+  const d = localStorage.getItem('mfg_db');
+  if (d) {
+    const parsed = JSON.parse(d);
+    Object.assign(DB, parsed);
+    if (!DB.companies) DB.companies = [];
+    // 旧suppliersデータをcompaniesに移行
+    if (DB.suppliers && (DB.suppliers.clients||[]).length && DB.companies.length === 0) {
+      (DB.suppliers.clients||[]).forEach(s=>{
+        const name = typeof s==='string'?s:(s.name||'');
+        if (name && !DB.companies.find(c=>c.name===name)) {
+          DB.companies.push({ id:genId(), name, kana:'', types:['client'],
+            contact: typeof s==='object'?(s.contact||''):'',
+            tel: typeof s==='object'?(s.tel||''):'',
+            email: typeof s==='object'?(s.email||''):'',
+            zip:'', address:'',
+            memo: typeof s==='object'?(s.memo||''):'' });
+        }
+      });
+      (DB.suppliers.materials||[]).forEach(s=>{
+        const name = typeof s==='string'?s:(s.name||'');
+        if (!name) return;
+        const existing = DB.companies.find(c=>c.name===name);
+        if (existing) { if(!existing.types.includes('material')) existing.types.push('material'); }
+        else DB.companies.push({ id:genId(), name, kana:'', types:['material'],
+          contact:'', tel:'', email:'', zip:'', address:'', memo:'' });
+      });
+    }
+    if (!DB.machineInfo) DB.machineInfo = [];
+    if (!DB.workers) DB.workers = [];
+  }
+}
+
+// ===== TOAST =====
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ===== NAVIGATION =====
+let currentSection = 'dashboard';
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'"+name+"'")) n.classList.add('active');
+  });
+  currentSection = name;
+  closeSidebar();
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'products') renderProducts();
+  if (name === 'production') renderProduction();
+  if (name === 'sales') renderSales();
+  if (name === 'profit') renderProfit();
+  if (name === 'material-order') renderMaterial();
+  if (name === 'suppliers') renderSuppliers();
+  if (name === 'machine-info') renderMachineInfo();
+  if (name === 'workers') renderWorkers();
+  if (name === 'onedrive') initOneDriveSection();
+  if (name === 'production-form') initProductionForm();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+}
+
+// ===== HELPERS =====
+function fmt(n) { return Number(n||0).toLocaleString('ja-JP'); }
+function fmtDate(d) { return d ? d.replace(/-/g,'/') : ''; }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+function getYears() {
+  const ys = new Set(DB.productions.map(p => p.date.slice(0,4)));
+  const cur = new Date().getFullYear().toString();
+  ys.add(cur);
+  return [...ys].sort().reverse();
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+  
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0,7);
+  const thisYear = now.getFullYear().toString();
+
+  const monthProds = DB.productions.filter(p => p.date.startsWith(thisMonth));
+  const yearProds = DB.productions.filter(p => p.date.startsWith(thisYear));
+  const monthSales = monthProds.reduce((a,p)=>(a + (p.price||0)*(p.qty||0)),0);
+  const yearSales = yearProds.reduce((a,p)=>(a + (p.price||0)*(p.qty||0)),0);
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card blue"><div class="stat-label">今月売上</div><div class="stat-value">¥${fmt(monthSales)}</div><div class="stat-sub">${monthProds.length}件</div></div>
+    <div class="stat-card green"><div class="stat-label">年間売上（${thisYear}）</div><div class="stat-value">¥${fmt(yearSales)}</div><div class="stat-sub">${yearProds.length}件</div></div>
+    <div class="stat-card yellow"><div class="stat-label">登録製品数</div><div class="stat-value">${DB.products.length}</div><div class="stat-sub">品番数</div></div>
+    <div class="stat-card red"><div class="stat-label">取引先数</div><div class="stat-value">${DB.suppliers.clients.length + DB.suppliers.materials.length}</div><div class="stat-sub">社</div></div>
+  `;
+
+  // Monthly chart
+  const monthly = Array(12).fill(0);
+  yearProds.forEach(p => {
+    const m = parseInt(p.date.slice(5,7)) - 1;
+    monthly[m] += (p.price||0)*(p.qty||0);
+  });
+  const maxVal = Math.max(...monthly, 1);
+  document.getElementById('monthly-chart').innerHTML = `
+    <div class="bar-chart">
+      ${monthly.map((v,i)=>`
+        <div class="bar-col">
+          <div class="bar-value">${v>0?'¥'+fmt(v):''}</div>
+          <div class="bar" style="height:${Math.max((v/maxVal)*160,v>0?4:2)}px;background:${v>0?'var(--accent)':'var(--bg3)'};" title="${MONTHS[i]}: ¥${fmt(v)}"></div>
+          <div class="bar-label">${MONTHS[i].replace('月','')}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // Machine chart
+  const machines = {};
+  monthProds.forEach(p => {
+    if (!machines[p.machine]) machines[p.machine] = 0;
+    machines[p.machine] += (p.price||0)*(p.qty||0);
+  });
+  const mEntries = Object.entries(machines);
+  const maxM = Math.max(...mEntries.map(e=>e[1]), 1);
+  document.getElementById('machine-chart').innerHTML = mEntries.length ? `
+    <div class="bar-chart">
+      ${mEntries.map(([m,v])=>`
+        <div class="bar-col">
+          <div class="bar-value">¥${fmt(v)}</div>
+          <div class="bar" style="height:${(v/maxM)*160}px;background:var(--accent2);"></div>
+          <div class="bar-label">${m}</div>
+        </div>
+      `).join('')}
+    </div>
+  ` : '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">今月の実績なし</div></div>';
+
+  // Recent
+  const recent = [...DB.productions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  document.getElementById('recent-tbody').innerHTML = recent.length ? recent.map(p=>`
+    <tr>
+      <td>${fmtDate(p.date)}</td>
+      <td>${p.machine}</td>
+      <td><span class="badge badge-blue">${p.fignum}</span></td>
+      <td>${p.name||''}</td>
+      <td>${fmt(p.qty)}個</td>
+      <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">実績なし</div></div></td></tr>';
+}
+
+// ===== PRODUCTS =====
+let filteredProducts = [];
+function renderProducts() {
+  filteredProducts = [...DB.products];
+  document.getElementById('product-count-label').textContent = `${DB.products.length}件の製品`;
+
+  // Supplier filter
+  const clients = [...new Set(DB.products.map(p=>p.client).filter(Boolean))];
+  const sel = document.getElementById('filter-supplier');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">全受注先</option>' + clients.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
+
+  filterProducts(document.getElementById('product-search').value);
+}
+function filterProducts(q) {
+  const supplier = document.getElementById('filter-supplier').value;
+  q = (q||'').toLowerCase();
+  filteredProducts = DB.products.filter(p =>
+    (!q || p.fignum.toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.client||'').toLowerCase().includes(q)) &&
+    (!supplier || p.client === supplier)
+  );
+  document.getElementById('product-tbody').innerHTML = filteredProducts.length ? filteredProducts.map(p=>`
+    <tr>
+      <td><span class="badge badge-blue">${p.fignum}</span></td>
+      <td>${p.name}</td>
+      <td>${p.client||'—'}</td>
+      <td class="hide-mobile">${p.matName||'—'}</td>
+      <td>¥${fmt(p.price)}</td>
+      <td class="hide-mobile">${p.claimPdf?`<span class="badge badge-red">あり</span>`:'—'}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">編集</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">製品なし</div></div></td></tr>';
+}
+
+function showProductDetail(id) {
+  const p = DB.products.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('detail-title').textContent = `${p.fignum} / ${p.name}`;
+  document.getElementById('product-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">図番</div><div>${p.fignum}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">品名</div><div>${p.name}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">受注先</div><div>${p.client||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">製品単価</div><div>¥${fmt(p.price)}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料発注先</div><div>${p.matSupplier||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料名</div><div>${p.matName||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">寸法</div><div>${p.matSize||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料単価</div><div>¥${fmt(p.matPrice)}</div></div>
+      ${p.outsource&&p.outsource.length?p.outsource.filter(o=>o.name).map((o,i)=>`<div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">外注先${i+1}</div><div>${o.name}${o.materialType?' ['+o.materialType+']':''}${o.note?' ('+o.note+')':''} ¥${fmt(o.price)}</div></div>`).join(''):''}
+    </div>
+    ${p.pdf?`<div style="margin-top:12px;"><span class="pdf-link">📄 ${p.pdf}</span></div>`:''}
+    ${p.priceTable&&p.priceTable.length?`
+      <div style="margin-top:14px;">
+        <div style="color:var(--text2);font-size:11px;margin-bottom:6px;">📊 数量別単価テーブル</div>
+        <table style="width:100%;font-size:12px;border-collapse:collapse;">
+          <thead><tr>
+            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">数量（個〜）</th>
+            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">製品単価</th>
+            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">材料単価</th>
+          </tr></thead>
+          <tbody>${p.priceTable.sort((a,b)=>a.qty-b.qty).map(r=>`
+            <tr>
+              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">${r.qty}個〜</td>
+              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.price)}</td>
+              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.matPrice)}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`:''}
+    ${p.note?`<div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:12px;font-size:13px;"><div style="color:var(--text2);font-size:11px;margin-bottom:6px;">⚠ 注意書き</div>${p.note}</div>`:''}
+    ${p.claimPdf?`<div style="margin-top:12px;background:rgba(255,107,107,0.1);border-radius:8px;padding:12px;font-size:13px;"><div style="color:var(--accent3);font-size:11px;margin-bottom:6px;">🚨 クレーム</div><div>📄 ${p.claimPdf}</div>${p.claimNote?`<div style="margin-top:4px;">${p.claimNote}</div>`:''}</div>`:''}
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}');closeModal('product-detail-modal')">編集</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">削除</button>
+    </div>
+  `;
+  openModal('product-detail-modal');
+}
+
+function editProduct(id) {
+  const p = DB.products.find(x=>x.id===id);
+  if (!p) return;
+  showSection('product-form');
+  document.getElementById('pform-title').textContent = '製品編集';
+  document.getElementById('pf-fignum').value = p.fignum;
+  document.getElementById('pf-fignum').dataset.editId = id;
+  document.getElementById('pf-name').value = p.name;
+  document.getElementById('pf-client').value = p.client||'';
+  document.getElementById('pf-price').value = p.price||'';
+  document.getElementById('pf-pdf').value = p.pdf||'';
+  document.getElementById('pf-mat-supplier').value = p.matSupplier||'';
+  document.getElementById('pf-mat-name').value = p.matName||'';
+  document.getElementById('pf-mat-size').value = p.matSize||'';
+  document.getElementById('pf-mat-price').value = p.matPrice||'';
+  document.getElementById('pf-note').value = p.note||'';
+  document.getElementById('pf-claim-pdf').value = p.claimPdf||'';
+  document.getElementById('pf-claim-note').value = p.claimNote||'';
+  const osRows = document.querySelectorAll('.outsource-row');
+  if (p.outsource) p.outsource.forEach((o,i)=>{
+    if (osRows[i]) {
+      osRows[i].querySelector('.os-name').value = o.name||'';
+      osRows[i].querySelector('.os-price').value = o.price||'';
+    }
+  });
+  renderPriceRows(p.priceTable||[]);
+}
+
+function deleteProduct(id) {
+  if (!confirm('この製品を削除しますか？')) return;
+  DB.products = DB.products.filter(p=>p.id!==id);
+  save(); showToast('削除しました'); closeModal('product-detail-modal'); renderProducts();
+}
+
+// ===== PRICE TABLE =====
+function renderPriceRows(rows) {
+  const tbody = document.getElementById('price-rows');
+  tbody.innerHTML = '';
+  (rows||[]).forEach((r,i) => addPriceRow(r));
+  if (!rows || rows.length === 0) addPriceRow();
+}
+
+function addPriceRow(data) {
+  const tbody = document.getElementById('price-rows');
+  const tr = document.createElement('tr');
+  const idx = tbody.children.length;
+  tr.innerHTML = `
+    <td style="padding:6px 4px;"><input type="number" class="pt-qty" min="1" value="${data?data.qty:''}" placeholder="例：1" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px;width:100%;outline:none;"></td>
+    <td style="padding:6px 4px;"><input type="number" class="pt-price" min="0" value="${data?data.price:''}" placeholder="0" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px;width:100%;outline:none;"></td>
+    <td style="padding:6px 4px;"><input type="number" class="pt-mat-price" min="0" value="${data?data.matPrice:''}" placeholder="0" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:13px;width:100%;outline:none;"></td>
+    <td style="padding:6px 4px;text-align:center;"><button type="button" onclick="this.closest('tr').remove()" style="background:none;border:none;color:var(--accent3);font-size:16px;cursor:pointer;padding:2px 6px;">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+}
+
+function getPriceRows() {
+  return [...document.querySelectorAll('#price-rows tr')].map(tr=>({
+    qty: parseInt(tr.querySelector('.pt-qty').value)||0,
+    price: parseFloat(tr.querySelector('.pt-price').value)||0,
+    matPrice: parseFloat(tr.querySelector('.pt-mat-price').value)||0
+  })).filter(r=>r.qty>0);
+}
+
+// 数量から最適単価を返す
+function lookupPrice(priceTable, qty, basePrice, baseMatPrice) {
+  if (!priceTable || priceTable.length === 0) return { price: basePrice, matPrice: baseMatPrice, row: null };
+  const sorted = [...priceTable].sort((a,b)=>a.qty-b.qty);
+  let matched = null;
+  for (const row of sorted) {
+    if (qty >= row.qty) matched = row;
+  }
+  if (!matched) return { price: basePrice, matPrice: baseMatPrice, row: null };
+  return { price: matched.price, matPrice: matched.matPrice, row: matched };
+}
+
+function initProductForm() {
+  document.getElementById('pform-title').textContent = '製品登録';
+  updateDataLists();
+  renderPriceRows([]);
+}
+
+function clearProductForm() {
+  ['pf-fignum','pf-name','pf-client','pf-price','pf-pdf','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-claim-pdf','pf-claim-note'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) { el.value=''; delete el.dataset.editId; }
+  });
+  document.querySelectorAll('.os-name,.os-price').forEach(el=>el.value='');
+  document.getElementById('pform-title').textContent = '製品登録';
+  renderPriceRows([]);
+}
+
+function saveProduct() {
+  const fignum = document.getElementById('pf-fignum').value.trim();
+  const name = document.getElementById('pf-name').value.trim();
+  if (!fignum || !name) { showToast('図番と品名は必須です', 'error'); return; }
+
+  const editId = document.getElementById('pf-fignum').dataset.editId;
+  const os = [...document.querySelectorAll('.outsource-row')].map(r=>({
+    name: r.querySelector('.os-name').value.trim(),
+    price: parseFloat(r.querySelector('.os-price').value)||0
+  })).filter(o=>o.name);
+
+  const priceTable = getPriceRows().sort((a,b)=>a.qty-b.qty);
+
+  const prod = {
+    id: editId || genId(),
+    fignum, name,
+    client: document.getElementById('pf-client').value.trim(),
+    price: parseFloat(document.getElementById('pf-price').value)||0,
+    pdf: document.getElementById('pf-pdf').value.trim(),
+    matSupplier: document.getElementById('pf-mat-supplier').value.trim(),
+    matName: document.getElementById('pf-mat-name').value.trim(),
+    matSize: document.getElementById('pf-mat-size').value.trim(),
+    matPrice: parseFloat(document.getElementById('pf-mat-price').value)||0,
+    priceTable,
+    note: document.getElementById('pf-note').value.trim(),
+    claimPdf: document.getElementById('pf-claim-pdf').value.trim(),
+    claimNote: document.getElementById('pf-claim-note').value.trim(),
+    outsource: os
+  };
+
+  if (editId) {
+    const idx = DB.products.findIndex(p=>p.id===editId);
+    DB.products[idx] = prod;
+    showToast('更新しました');
+  } else {
+    if (DB.products.find(p=>p.fignum===fignum)) { showToast('この図番はすでに存在します', 'error'); return; }
+    DB.products.push(prod);
+    showToast('登録しました');
+  }
+
+  if (prod.client && !DB.suppliers.clients.includes(prod.client)) DB.suppliers.clients.push(prod.client);
+  if (prod.matSupplier && !DB.suppliers.materials.includes(prod.matSupplier)) DB.suppliers.materials.push(prod.matSupplier);
+  prod.outsource.forEach(o=>{ if(o.name && !DB.suppliers.clients.includes(o.name)) DB.suppliers.clients.push(o.name); });
+
+  save(); clearProductForm(); showSection('products');
+}
+
+// ===== PRODUCTION =====
+let prodCurrentYear = new Date().getFullYear().toString();
+function renderProduction() {
+  const years = getYears();
+  document.getElementById('prod-year-tabs').innerHTML = years.map(y=>`
+    <div class="year-tab ${y===prodCurrentYear?'active':''}" onclick="setProdYear('${y}')">${y}年</div>
+  `).join('');
+
+  const yProds = DB.productions.filter(p=>p.date.startsWith(prodCurrentYear));
+  document.getElementById('prod-count-label').textContent = `${yProds.length}件（${prodCurrentYear}年）`;
+
+  const machines = [...new Set(DB.productions.map(p=>p.machine).filter(Boolean))];
+  const mSel = document.getElementById('prod-machine-filter');
+  const prev = mSel.value;
+  mSel.innerHTML = '<option value="">全機械</option>' + machines.map(m=>`<option value="${m}" ${m===prev?'selected':''}>${m}</option>`).join('');
+
+  filterProduction(document.getElementById('prod-search').value);
+}
+
+function setProdYear(y) {
+  prodCurrentYear = y;
+  renderProduction();
+}
+
+function filterProduction(q) {
+  q = (q||'').toLowerCase();
+  const machine = document.getElementById('prod-machine-filter').value;
+  const prods = DB.productions.filter(p=>p.date.startsWith(prodCurrentYear))
+    .filter(p=>(!q || p.machine.toLowerCase().includes(q) || p.fignum.toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q)) && (!machine || p.machine===machine))
+    .sort((a,b)=>b.date.localeCompare(a.date));
+
+  document.getElementById('prod-tbody').innerHTML = prods.length ? prods.map(p=>`
+    <tr>
+      <td>${fmtDate(p.date)}</td>
+      <td>${p.machine}</td>
+      <td><span class="badge badge-blue">${p.fignum}</span></td>
+      <td>${p.name||''}</td>
+      <td>${fmt(p.qty)}個</td>
+      <td class="hide-mobile">${p.steps?p.steps.length:0}工程</td>
+      <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+}
+
+function showProdDetail(id) {
+  const p = DB.productions.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('prod-detail-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px;">
+      <div><div style="color:var(--text2);font-size:11px;">日付</div><div>${fmtDate(p.date)}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">機械</div><div>${p.machine}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">図番</div><div>${p.fignum}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">品名</div><div>${p.name||''}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">作業員</div><div>${p.worker||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">数量</div><div>${fmt(p.qty)}個</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">金額</div><div>¥${fmt((p.price||0)*(p.qty||0))}</div></div>
+    </div>
+    ${p.steps&&p.steps.length?`
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">工程時間</div>
+      <div class="process-steps">${p.steps.map((s,i)=>`<div class="step-badge">工程${i+1}: <span class="step-time">${s}</span></div>`).join('')}</div>
+    `:''}
+  `;
+  openModal('prod-detail-modal');
+}
+
+function deleteProd(id) {
+  if (!confirm('削除しますか？')) return;
+  DB.productions = DB.productions.filter(p=>p.id!==id);
+  save(); showToast('削除しました'); renderProduction();
+}
+
+let processStepCount = 1;
+function initProductionForm() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('rf-date').value = today;
+  updateDataLists();
+  renderProcessSteps(1);
+}
+
+function renderProcessSteps(n) {
+  processStepCount = n;
+  const container = document.getElementById('process-steps-form');
+  container.innerHTML = '';
+  for (let i = 1; i <= n; i++) {
+    const div = document.createElement('div');
+    div.className = 'form-group';
+    div.innerHTML = `<label>工程${i}（時:分:秒）</label><input type="text" id="step-${i}" placeholder="例：0:05:30" pattern="\\d+:\\d{2}:\\d{2}">`;
+    container.appendChild(div);
+  }
+}
+
+function addProcessStep() {
+  if (processStepCount >= 10) { showToast('最大10工程です', 'error'); return; }
+  renderProcessSteps(processStepCount + 1);
+}
+
+function autoFillProduct() {
+  const fignum = document.getElementById('rf-fignum').value.trim();
+  const qty = parseInt(document.getElementById('rf-qty').value)||1;
+  const prod = DB.products.find(p=>p.fignum===fignum);
+  const priceHint = document.getElementById('rf-price-hint');
+  const matHint = document.getElementById('rf-mat-price-hint');
+
+  if (prod) {
+    document.getElementById('rf-name').value = prod.name;
+    const looked = lookupPrice(prod.priceTable, qty, prod.price, prod.matPrice);
+    document.getElementById('rf-price').value = looked.price||'';
+    document.getElementById('rf-mat-price').value = looked.matPrice||'';
+
+    if (looked.row && prod.priceTable && prod.priceTable.length > 0) {
+      priceHint.style.display = 'block';
+      priceHint.textContent = `✅ ${qty}個 → ${looked.row.qty}個〜の単価を適用`;
+      matHint.style.display = 'block';
+      matHint.textContent = `✅ 材料単価: ${looked.row.qty}個〜の単価を適用`;
+    } else {
+      priceHint.style.display = 'none';
+      matHint.style.display = 'none';
+    }
+  } else {
+    priceHint.style.display = 'none';
+    matHint.style.display = 'none';
+  }
+
+  // 前回工程コピーボタンの表示制御
+  const copyBtn = document.getElementById('copy-last-steps-btn');
+  const lastHint = document.getElementById('last-steps-hint');
+  if (copyBtn && fignum) {
+    // この図番の直近実績を探す
+    const lastProd = DB.productions
+      .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (lastProd) {
+      copyBtn.style.display = 'inline-flex';
+      lastHint.style.display = 'block';
+      const dateStr = lastProd.date.replace(/-/g, '/');
+      lastHint.textContent = `📅 前回実績: ${dateStr}  工程${lastProd.steps.length}個 (${lastProd.steps.join(' / ')})`;
+    } else {
+      copyBtn.style.display = 'none';
+      lastHint.style.display = 'none';
+    }
+  } else if (copyBtn) {
+    copyBtn.style.display = 'none';
+    lastHint.style.display = 'none';
+  }
+}
+
+function copyLastSteps() {
+  const fignum = document.getElementById('rf-fignum').value.trim();
+  if (!fignum) return;
+  const lastProd = DB.productions
+    .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0];
+  if (!lastProd) return;
+
+  // 工程ステップをリセットしてコピー
+  processStepCount = 0;
+  document.getElementById('process-steps-form').innerHTML = '';
+  lastProd.steps.forEach(stepVal => {
+    addProcessStep();
+    const el = document.getElementById('step-' + processStepCount);
+    if (el) el.value = stepVal;
+  });
+  showToast(`工程${lastProd.steps.length}個をコピーしました`, 'success');
+}
+
+function clearProductionForm() {
+  document.getElementById('rf-fignum').value = '';
+  document.getElementById('rf-name').value = '';
+  document.getElementById('rf-qty').value = 1;
+  document.getElementById('rf-price').value = '';
+  document.getElementById('rf-mat-price').value = '';
+  document.getElementById('rf-machine').value = '';
+  document.getElementById('rf-worker').value = '';
+  document.getElementById('rf-price-hint').style.display = 'none';
+  document.getElementById('rf-mat-price-hint').style.display = 'none';
+  const copyBtn = document.getElementById('copy-last-steps-btn');
+  const lastHint = document.getElementById('last-steps-hint');
+  if (copyBtn) copyBtn.style.display = 'none';
+  if (lastHint) lastHint.style.display = 'none';
+  renderProcessSteps(1);
+}
+
+function saveProduction() {
+  const date = document.getElementById('rf-date').value;
+  const machine = document.getElementById('rf-machine').value.trim();
+  const fignum = document.getElementById('rf-fignum').value.trim();
+  if (!date || !machine || !fignum) { showToast('日付・機械・図番は必須です', 'error'); return; }
+
+  const steps = [];
+  for (let i = 1; i <= processStepCount; i++) {
+    const v = document.getElementById('step-'+i).value.trim();
+    if (v) steps.push(v);
+  }
+
+  const p = {
+    id: genId(),
+    date, machine, fignum,
+    name: document.getElementById('rf-name').value.trim(),
+    worker: document.getElementById('rf-worker').value,
+    qty: parseInt(document.getElementById('rf-qty').value)||1,
+    price: parseFloat(document.getElementById('rf-price').value)||0,
+    matPrice: parseFloat(document.getElementById('rf-mat-price').value)||0,
+    steps
+  };
+
+  DB.productions.push(p);
+  if (!DB.machines.includes(machine)) DB.machines.push(machine);
+  save();
+  showToast('登録しました');
+  clearProductionForm();
+  showSection('production');
+}
+
+// ===== SALES =====
+let salesYear = new Date().getFullYear().toString();
+function renderSales() {
+  const years = getYears();
+  document.getElementById('sales-year-tabs').innerHTML = years.map(y=>`
+    <div class="year-tab ${y===salesYear?'active':''}" onclick="setSalesYear('${y}')">${y}年</div>
+  `).join('');
+
+  const yProds = DB.productions.filter(p=>p.date.startsWith(salesYear));
+  const total = yProds.reduce((a,p)=>a+(p.price||0)*(p.qty||0),0);
+  const count = yProds.length;
+  const avgMonth = total / 12;
+
+  document.getElementById('sales-stats').innerHTML = `
+    <div class="stat-card blue"><div class="stat-label">年間売上（${salesYear}）</div><div class="stat-value">¥${fmt(total)}</div><div class="stat-sub">${count}件</div></div>
+    <div class="stat-card green"><div class="stat-label">月平均売上</div><div class="stat-value">¥${fmt(Math.round(avgMonth))}</div></div>
+    <div class="stat-card yellow"><div class="stat-label">加工件数</div><div class="stat-value">${count}</div><div class="stat-sub">件</div></div>
+    <div class="stat-card red"><div class="stat-label">稼働機械数</div><div class="stat-value">${new Set(yProds.map(p=>p.machine)).size}</div><div class="stat-sub">台</div></div>
+  `;
+
+  // Monthly
+  const monthly = Array(12).fill(null).map(()=>({total:0,count:0}));
+  yProds.forEach(p=>{
+    const m = parseInt(p.date.slice(5,7))-1;
+    monthly[m].total += (p.price||0)*(p.qty||0);
+    monthly[m].count++;
+  });
+  document.getElementById('monthly-sales-tbody').innerHTML = monthly.map((m,i)=>`
+    <tr><td>${MONTHS[i]}</td><td>¥${fmt(m.total)}</td><td>${m.count}件</td></tr>
+  `).join('');
+  document.getElementById('monthly-sales-tfoot').innerHTML = `<tr style="font-weight:700;border-top:2px solid var(--border);"><td>合計</td><td>¥${fmt(total)}</td><td>${count}件</td></tr>`;
+
+  // Machine
+  const machines = {};
+  yProds.forEach(p=>{
+    if (!machines[p.machine]) machines[p.machine]={total:0,count:0};
+    machines[p.machine].total += (p.price||0)*(p.qty||0);
+    machines[p.machine].count++;
+  });
+  document.getElementById('machine-sales-tbody').innerHTML = Object.entries(machines).sort((a,b)=>b[1].total-a[1].total).map(([m,v])=>`
+    <tr><td>${m}</td><td>¥${fmt(v.total)}</td><td>${v.count}件</td></tr>
+  `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+}
+
+function setSalesYear(y) { salesYear = y; renderSales(); }
+
+// ===== PROFIT =====
+let profitYear = new Date().getFullYear().toString();
+function renderProfit() {
+  const years = getYears();
+  document.getElementById('profit-year-tabs').innerHTML = years.map(y=>`
+    <div class="year-tab ${y===profitYear?'active':''}" onclick="setProfitYear('${y}')">${y}年</div>
+  `).join('');
+
+  const yProds = DB.productions.filter(p=>p.date.startsWith(profitYear));
+  const productMap = {};
+  yProds.forEach(p=>{
+    if (!productMap[p.fignum]) productMap[p.fignum] = {fignum:p.fignum,name:p.name||'',sales:0,qty:0};
+    productMap[p.fignum].sales += (p.price||0)*(p.qty||0);
+    productMap[p.fignum].qty += (p.qty||0);
+  });
+
+  document.getElementById('profit-tbody').innerHTML = Object.values(productMap).length ?
+    Object.values(productMap).sort((a,b)=>b.sales-a.sales).map(pm=>{
+      const prod = DB.products.find(x=>x.fignum===pm.fignum);
+      const matCost = prod ? (prod.matPrice||0) * pm.qty : 0;
+      const osCost = prod && prod.outsource ? prod.outsource.reduce((a,o)=>a+(o.price||0),0) * pm.qty : 0;
+      const gross = pm.sales - matCost - osCost;
+      const rate = pm.sales > 0 ? Math.round(gross/pm.sales*100) : 0;
+      return `<tr>
+        <td><span class="badge badge-blue">${pm.fignum}</span></td>
+        <td>${pm.name}</td>
+        <td>¥${fmt(pm.sales)}</td>
+        <td>¥${fmt(matCost)}</td>
+        <td>¥${fmt(osCost)}</td>
+        <td style="color:${gross>=0?'var(--accent2)':'var(--accent3)'};">¥${fmt(gross)}</td>
+        <td><span class="badge ${rate>=30?'badge-green':rate>=10?'badge-yellow':'badge-red'}">${rate}%</span></td>
+      </tr>`;
+    }).join('') :
+    '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">データなし</div></div></td></tr>';
+}
+
+function setProfitYear(y) { profitYear = y; renderProfit(); }
+
+// ===== MATERIAL ORDER =====
+let matChecked = new Set();
+let matFiltered = [];
+function renderMaterial() {
+  matFiltered = [...DB.products];
+  matChecked.clear();
+  renderMatTable();
+}
+function filterMaterial(q) {
+  q=(q||'').toLowerCase();
+  matFiltered = DB.products.filter(p=>!q||p.fignum.toLowerCase().includes(q)||(p.name||'').toLowerCase().includes(q));
+  renderMatTable();
+}
+function renderMatTable() {
+  document.getElementById('material-tbody').innerHTML = matFiltered.map(p=>`
+    <tr>
+      <td><input type="checkbox" ${matChecked.has(p.id)?'checked':''} onchange="toggleMatCheck('${p.id}',this.checked)"></td>
+      <td><span class="badge badge-blue">${p.fignum}</span></td>
+      <td>${p.name}</td>
+      <td onclick="copyText(this,'${(p.matName||'').replace(/'/g,"\'")}')" style="cursor:pointer;" title="クリックでコピー">${p.matName||'—'}</td>
+      <td class="hide-mobile" onclick="copyText(this,'${(p.matSize||'').replace(/'/g,"\'")}')" style="cursor:pointer;">${p.matSize||'—'}</td>
+      <td class="hide-mobile" onclick="copyText(this,'${(p.matSupplier||'').replace(/'/g,"\'")}')" style="cursor:pointer;">${p.matSupplier||'—'}</td>
+      <td>¥${fmt(p.matPrice)}</td>
+    </tr>
+  `).join('');
+  document.getElementById('mat-export-btn').disabled = matChecked.size === 0;
+}
+function toggleMatCheck(id, v) { v ? matChecked.add(id) : matChecked.delete(id); renderMatTable(); }
+function selectAllMat(v) { matFiltered.forEach(p=> v ? matChecked.add(p.id) : matChecked.delete(p.id)); renderMatTable(); }
+function toggleSelectAll() {
+  if (matChecked.size === matFiltered.length) { matChecked.clear(); } else { matFiltered.forEach(p=>matChecked.add(p.id)); }
+  renderMatTable();
+}
+function copyText(cell, text) {
+  if (!text || text === '—') return;
+  (function(){var _ta=document.createElement('textarea');_ta.value=text;_ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_ta);_ta.focus();_ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_ta);})();
+    setTimeout(()=>cell.style.background='',600);
+    showToast('コピーしました: ' + text);
+  });
+}
+
+// ===== SUPPLIERS =====
+let supCurrentTab = 'all';
+const TYPE_LABELS = { client:'受注先', material:'材料発注先', other:'その他' };
+const TYPE_BADGE  = { client:'badge-blue', material:'badge-green', other:'badge-yellow' };
+
+function switchSupTab(tab) {
+  supCurrentTab = tab;
+  document.querySelectorAll('#supplier-tabs .tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['all','client','material','other'][i]===tab);
+  });
+  renderSuppliers();
+}
+
+function autoFillAddress(input) {
+  const zip = input.value.replace(/-/g,'');
+  if (zip.length !== 7) return;
+  fetch(`https://zipcloud.ibsnet.co.jp/api/search?zipcode=${zip}`)
+    .then(r=>r.json()).then(data=>{
+      if (data.results) {
+        const r = data.results[0];
+        document.getElementById('sup-address').value = r.address1 + r.address2 + r.address3;
+      }
+    }).catch(()=>{});
+}
+
+function _copyBtn(text) {
+  if (!text) return '';
+  const escaped = text.replace(/'/g,"\\'");
+  return `<button onclick="quickCopy('${escaped}',this)" style="background:none;border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;color:var(--text2);cursor:pointer;margin-left:4px;" title="コピー">📋</button>`;
+}
+function quickCopy(text, btn) {
+  (function(){var _ta=document.createElement('textarea');_ta.value=text;_ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_ta);_ta.focus();_ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_ta);})(); setTimeout(()=>btn.textContent='📋',1500);
+    showToast('コピー: '+text);
+  });
+}
+
+function renderSuppliers() {
+  const q = (document.getElementById('sup-search')||{value:''}).value.toLowerCase();
+  let list = DB.companies.filter(c=>{
+    const matchTab = supCurrentTab==='all' || (c.types||[]).includes(supCurrentTab);
+    const matchQ = !q || c.name.toLowerCase().includes(q) || (c.kana||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
+    return matchTab && matchQ;
+  });
+  document.getElementById('sup-count-label').textContent = `${DB.companies.length}社登録済み`;
+  document.getElementById('company-tbody').innerHTML = list.length ? list.map(c=>`
+    <tr>
+      <td>
+        <div style="font-weight:600;">${c.name}${_copyBtn(c.name)}</div>
+        ${c.kana?`<div style="font-size:11px;color:var(--text3);">${c.kana}</div>`:''}
+        ${c.address?`<div style="font-size:11px;color:var(--text2);margin-top:2px;">📍 ${c.zip?c.zip+' ':''}${c.address}${_copyBtn((c.zip?c.zip+' ':'')+c.address)}</div>`:''}
+        ${c.memo?`<div style="font-size:11px;color:var(--text3);margin-top:2px;">📝 ${c.memo}</div>`:''}
+      </td>
+      <td class="hide-mobile">${(c.types||[]).map(t=>`<span class="badge ${TYPE_BADGE[t]||'badge-yellow'}" style="margin-right:3px;">${TYPE_LABELS[t]||t}</span>`).join('')}</td>
+      <td class="hide-mobile">${c.contact||'—'}</td>
+      <td class="hide-mobile">${c.tel?`${c.tel}${_copyBtn(c.tel)}`:'—'}</td>
+      <td class="hide-mobile">${c.email?`<a href="mailto:${c.email}" style="color:var(--accent);font-size:12px;">${c.email}</a>${_copyBtn(c.email)}`:'—'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="editSupplier('${c.id}')">編集</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteSupplier('${c.id}')">削除</button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🏢</div><div class="empty-text">取引先なし</div></div></td></tr>';
+}
+
+function deleteSupplier(id) {
+  if (!confirm('削除しますか？')) return;
+  DB.companies = DB.companies.filter(c=>c.id!==id);
+  save(); renderSuppliers(); showToast('削除しました');
+}
+
+function openSupplierModal() {
+  document.getElementById('sup-modal-title').textContent = '取引先追加';
+  ['sup-name','sup-kana','sup-contact','sup-tel','sup-email','sup-zip','sup-address','sup-memo'].forEach(id=>document.getElementById(id).value='');
+  ['sup-type-client','sup-type-material','sup-type-other'].forEach(id=>document.getElementById(id).checked=false);
+  document.getElementById('sup-edit-id').value='';
+  openModal('supplier-modal');
+}
+
+function editSupplier(id) {
+  const c = DB.companies.find(x=>x.id===id);
+  if (!c) return;
+  document.getElementById('sup-modal-title').textContent = '取引先編集';
+  document.getElementById('sup-name').value = c.name||'';
+  document.getElementById('sup-kana').value = c.kana||'';
+  document.getElementById('sup-contact').value = c.contact||'';
+  document.getElementById('sup-tel').value = c.tel||'';
+  document.getElementById('sup-email').value = c.email||'';
+  document.getElementById('sup-zip').value = c.zip||'';
+  document.getElementById('sup-address').value = c.address||'';
+  document.getElementById('sup-memo').value = c.memo||'';
+  document.getElementById('sup-type-client').checked = (c.types||[]).includes('client');
+  document.getElementById('sup-type-material').checked = (c.types||[]).includes('material');
+  document.getElementById('sup-type-other').checked = (c.types||[]).includes('other');
+  document.getElementById('sup-edit-id').value = id;
+  openModal('supplier-modal');
+}
+
+function saveSupplier() {
+  const name = document.getElementById('sup-name').value.trim();
+  if (!name) { showToast('会社名を入力してください','error'); return; }
+  const types = ['client','material','other'].filter(t=>document.getElementById('sup-type-'+t).checked);
+  const obj = {
+    id: document.getElementById('sup-edit-id').value || genId(),
+    name,
+    kana: document.getElementById('sup-kana').value.trim(),
+    types,
+    contact: document.getElementById('sup-contact').value.trim(),
+    tel: document.getElementById('sup-tel').value.trim(),
+    email: document.getElementById('sup-email').value.trim(),
+    zip: document.getElementById('sup-zip').value.trim(),
+    address: document.getElementById('sup-address').value.trim(),
+    memo: document.getElementById('sup-memo').value.trim()
+  };
+  const editId = document.getElementById('sup-edit-id').value;
+  if (editId) {
+    const idx = DB.companies.findIndex(c=>c.id===editId);
+    DB.companies[idx] = obj;
+    showToast('更新しました');
+  } else {
+    if (DB.companies.find(c=>c.name===name)) { showToast('すでに登録されています','error'); return; }
+    DB.companies.push(obj);
+    showToast('追加しました');
+  }
+  save(); closeModal('supplier-modal'); renderSuppliers(); updateDataLists();
+}
+
+// ===== MACHINE INFO =====
+function renderMachineInfo() {
+  document.getElementById('machine-info-tbody').innerHTML = DB.machineInfo.length ?
+    DB.machineInfo.map((m,i)=>`<tr>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.date||'—'}</td>
+      <td class="hide-mobile">${m.price?'¥'+fmt(m.price):'—'}</td>
+      <td class="hide-mobile" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.note||'—'}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="editMachineInfo(${i})">編集</button> <button class="btn btn-danger btn-xs" onclick="deleteMachineInfo(${i})">削除</button></td>
+    </tr>`).join('') :
+    '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">⚙️</div><div class="empty-text">機械情報なし</div></div></td></tr>';
+}
+
+function openMachineModal() {
+  document.getElementById('machine-modal-title').textContent = '機械情報 追加';
+  document.getElementById('mi-name').value='';
+  document.getElementById('mi-date').value='';
+  document.getElementById('mi-price').value='';
+  document.getElementById('mi-note').value='';
+  document.getElementById('mi-edit-id').value='';
+  openModal('machine-modal');
+}
+
+function editMachineInfo(idx) {
+  const m = DB.machineInfo[idx];
+  document.getElementById('machine-modal-title').textContent = '機械情報 編集';
+  document.getElementById('mi-name').value = m.name||'';
+  document.getElementById('mi-date').value = m.date||'';
+  document.getElementById('mi-price').value = m.price||'';
+  document.getElementById('mi-note').value = m.note||'';
+  document.getElementById('mi-edit-id').value = idx;
+  openModal('machine-modal');
+}
+
+function saveMachineInfo() {
+  const name = document.getElementById('mi-name').value.trim();
+  if (!name) { showToast('機械名を入力してください','error'); return; }
+  const obj = {
+    name,
+    date: document.getElementById('mi-date').value,
+    price: parseFloat(document.getElementById('mi-price').value)||0,
+    note: document.getElementById('mi-note').value.trim()
+  };
+  const editId = document.getElementById('mi-edit-id').value;
+  if (editId !== '') {
+    DB.machineInfo[parseInt(editId)] = obj;
+    showToast('更新しました');
+  } else {
+    DB.machineInfo.push(obj);
+    // 機械名をmachinesリストにも追加
+    if (!DB.machines.includes(name)) DB.machines.push(name);
+    showToast('追加しました');
+  }
+  save(); closeModal('machine-modal'); renderMachineInfo(); updateDataLists();
+}
+
+function deleteMachineInfo(idx) {
+  if (!confirm('削除しますか？')) return;
+  DB.machineInfo.splice(idx,1);
+  save(); renderMachineInfo(); showToast('削除しました');
+}
+
+// ===== WORKERS =====
+function renderWorkers() {
+  document.getElementById('worker-tbody').innerHTML = DB.workers.length ?
+    DB.workers.map((w,i)=>`<tr>
+      <td>${w}</td>
+      <td><button class="btn btn-danger btn-xs" onclick="deleteWorker(${i})">削除</button></td>
+    </tr>`).join('') :
+    '<tr><td colspan="2"><div class="empty-state"><div class="empty-icon">👷</div><div class="empty-text">作業員なし</div></div></td></tr>';
+}
+
+function openWorkerModal() {
+  document.getElementById('worker-name').value='';
+  openModal('worker-modal');
+}
+
+function saveWorker() {
+  const name = document.getElementById('worker-name').value.trim();
+  if (!name) { showToast('名前を入力してください','error'); return; }
+  if (DB.workers.includes(name)) { showToast('すでに登録されています','error'); return; }
+  DB.workers.push(name);
+  save(); closeModal('worker-modal'); renderWorkers(); updateDataLists(); showToast('追加しました');
+}
+
+function deleteWorker(idx) {
+  if (!confirm('削除しますか？')) return;
+  DB.workers.splice(idx,1);
+  save(); renderWorkers(); showToast('削除しました');
+}
+
+function updateDataLists() {
+  // 受注先（client）タグ付きの会社のみ
+  const clientNames = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>c.name);
+  // 材料発注先（material）タグ付きの会社のみ
+  const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
+
+  const cl = document.getElementById('client-list');
+  if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
+  const ml = document.getElementById('mat-supplier-list');
+  if (ml) ml.innerHTML = materialNames.map(n=>`<option value="${n}">`).join('');
+  const fl = document.getElementById('fignum-list');
+  if (fl) fl.innerHTML = DB.products.map(p=>`<option value="${p.fignum}">`).join('');
+  const mc = document.getElementById('machine-list');
+  if (mc) mc.innerHTML = [...new Set([...DB.machines,...DB.machineInfo.map(m=>m.name),...DB.productions.map(p=>p.machine).filter(Boolean)])].map(m=>`<option value="${m}">`).join('');
+  const ol = document.getElementById('outsource-list');
+  if (ol) ol.innerHTML = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>`<option value="${c.name}">`).join('');
+  const wk = document.getElementById('rf-worker');
+  if (wk) {
+    const prev = wk.value;
+    wk.innerHTML = '<option value="">選択（任意）</option>' + DB.workers.map(w=>`<option value="${w}" ${w===prev?'selected':''}>${w}</option>`).join('');
+  }
+}
+
+// ===== EXCEL EXPORTS =====
+function exportProductionExcel() {
+  const yProds = DB.productions.filter(p=>p.date.startsWith(prodCurrentYear)).sort((a,b)=>b.date.localeCompare(a.date));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['加工実績一覧 - '+prodCurrentYear+'年'],[''],
+    ['日付','機械','図番','品名','数量','単価','金額','工程数'],
+    ...yProds.map(p=>[p.date,p.machine,p.fignum,p.name||'',p.qty||0,p.price||0,(p.price||0)*(p.qty||0),p.steps?p.steps.length:0])
+  ]);
+  XLSX.utils.book_append_sheet(wb,ws,'加工実績');
+  XLSX.writeFile(wb, `加工実績_${prodCurrentYear}.xlsx`);
+  showToast('Excelをダウンロードしました');
+}
+
+function exportSalesExcel() {
+  const yProds = DB.productions.filter(p=>p.date.startsWith(salesYear));
+  const monthly = Array(12).fill(null).map(()=>({total:0,count:0}));
+  yProds.forEach(p=>{
+    const m = parseInt(p.date.slice(5,7))-1;
+    monthly[m].total += (p.price||0)*(p.qty||0);
+    monthly[m].count++;
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['売上集計 - '+salesYear+'年'],[''],
+    ['月','売上金額','件数'],
+    ...monthly.map((m,i)=>[MONTHS[i],m.total,m.count]),
+    ['','',''],
+    ['合計',monthly.reduce((a,m)=>a+m.total,0),monthly.reduce((a,m)=>a+m.count,0)]
+  ]);
+  XLSX.utils.book_append_sheet(wb,ws,'月別売上');
+  XLSX.writeFile(wb, `売上集計_${salesYear}.xlsx`);
+  showToast('Excelをダウンロードしました');
+}
+
+function exportProfitExcel() {
+  const yProds = DB.productions.filter(p=>p.date.startsWith(profitYear));
+  const productMap = {};
+  yProds.forEach(p=>{
+    if (!productMap[p.fignum]) productMap[p.fignum]={fignum:p.fignum,name:p.name||'',sales:0,qty:0};
+    productMap[p.fignum].sales += (p.price||0)*(p.qty||0);
+    productMap[p.fignum].qty += (p.qty||0);
+  });
+  const rows = Object.values(productMap).map(pm=>{
+    const prod = DB.products.find(x=>x.fignum===pm.fignum);
+    const matCost = prod?(prod.matPrice||0)*pm.qty:0;
+    const osCost = prod&&prod.outsource?prod.outsource.reduce((a,o)=>a+(o.price||0),0)*pm.qty:0;
+    const gross = pm.sales-matCost-osCost;
+    return [pm.fignum,pm.name,pm.sales,matCost,osCost,gross,pm.sales>0?Math.round(gross/pm.sales*100)+'%':''];
+  });
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['利益レポート - '+profitYear+'年'],[''],
+    ['図番','品名','売上','材料費','外注費','粗利','粗利率'],
+    ...rows
+  ]);
+  XLSX.utils.book_append_sheet(wb,ws,'利益レポート');
+  XLSX.writeFile(wb,`利益レポート_${profitYear}.xlsx`);
+  showToast('Excelをダウンロードしました');
+}
+
+function exportMaterialExcel() {
+  const selected = DB.products.filter(p=>matChecked.has(p.id));
+  const today = new Date().toLocaleDateString('ja-JP');
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['材料発注リスト'],['作成日：'+today],[''],
+    ['図番','品名','受注先','材料名','寸法','材料発注先','材料単価（円）'],
+    ...selected.map(p=>[p.fignum,p.name,p.client||'',p.matName||'',p.matSize||'',p.matSupplier||'',p.matPrice||0])
+  ]);
+  XLSX.utils.book_append_sheet(wb,ws,'材料発注リスト');
+  XLSX.writeFile(wb,'材料発注リスト_'+today.replace(/\//g,'')+'.xlsx');
+  document.getElementById('mat-status').style.display='block';
+  document.getElementById('mat-status').textContent='✅ ダウンロード完了！';
+  showToast('材料発注リストをダウンロードしました');
+}
+
+// ===== BACKUP =====
+function exportBackup() {
+  const json = JSON.stringify(DB, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `製造管理バックアップ_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('バックアップをダウンロードしました');
+}
+
+function importBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!confirm('現在のデータを上書きします。よろしいですか？')) return;
+      Object.assign(DB, data);
+      save(); showToast('データを復元しました'); renderDashboard();
+    } catch { showToast('ファイルの読み込みに失敗しました', 'error'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function importExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+      let added = 0;
+      rows.forEach((row,i)=>{
+        if (i===0) return;
+        const fignum = String(row[0]||'').trim();
+        const name = String(row[1]||'').trim();
+        if (!fignum || !name) return;
+        if (DB.products.find(p=>p.fignum===fignum)) return;
+        DB.products.push({ id:genId(), fignum, name,
+          client:String(row[2]||''), price:parseFloat(row[3])||0,
+          matSupplier:String(row[4]||''), matName:String(row[5]||''),
+          matSize:String(row[6]||''), matPrice:parseFloat(row[7])||0,
+          pdf:'', note:'', claimPdf:'', claimNote:'', outsource:[]
+        });
+        added++;
+      });
+      save(); showToast(`${added}件インポートしました`);
+    } catch { showToast('Excelの読み込みに失敗しました', 'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('全データを削除します。この操作は取り消せません。先にバックアップを取ってください。')) return;
+  DB.products=[];DB.productions=[];DB.suppliers={clients:[],materials:[]};DB.machines=[];DB.machineInfo=[];DB.workers=[];
+  save(); showToast('全データを削除しました'); renderDashboard();
+}
+
+// ===== ONEDRIVE =====
+const OD_FILE_NAME = '製造管理データ.json';
+let msalInstance = null;
+let odAccount = null;
+
+function odGetConfig() {
+  return {
+    clientId: localStorage.getItem('od_client_id')||'',
+    tenantId: localStorage.getItem('od_tenant_id')||''
+  };
+}
+
+function odSaveConfig() {
+  const cid = document.getElementById('od-client-id').value.trim();
+  const tid = document.getElementById('od-tenant-id').value.trim();
+  if (!cid || !tid) { showToast('両方のIDを入力してください','error'); return; }
+  localStorage.setItem('od_client_id', cid);
+  localStorage.setItem('od_tenant_id', tid);
+  msalInstance = null; // リセット
+  showToast('IDを保存しました。ログインボタンを押してください');
+}
+
+function odInitMsal() {
+  const cfg = odGetConfig();
+  if (!cfg.clientId || !cfg.tenantId) return null;
+  if (msalInstance) return msalInstance;
+  try {
+    msalInstance = new msal.PublicClientApplication({
+      auth: {
+        clientId: cfg.clientId,
+        authority: `https://login.microsoftonline.com/${cfg.tenantId}`,
+        redirectUri: window.location.href.split('?')[0]
+      },
+      cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
+    });
+    return msalInstance;
+  } catch(e) { showToast('MSAL初期化エラー: '+e.message,'error'); return null; }
+}
+
+async function odLogin() {
+  const msal = odInitMsal();
+  if (!msal) { showToast('先にIDを保存してください','error'); return; }
+  try {
+    const resp = await msal.loginPopup({ scopes: ['Files.ReadWrite', 'User.Read'] });
+    odAccount = resp.account;
+    odUpdateStatus(true, odAccount.username);
+    showToast('ログインしました: ' + odAccount.username);
+  } catch(e) {
+    if (e.errorCode !== 'user_cancelled') showToast('ログイン失敗: '+e.message,'error');
+  }
+}
+
+function odLogout() {
+  if (!msalInstance) return;
+  msalInstance.logoutPopup();
+  odAccount = null;
+  odUpdateStatus(false);
+  showToast('ログアウトしました');
+}
+
+function odUpdateStatus(loggedIn, username) {
+  document.getElementById('od-status-icon').textContent = loggedIn ? '✅' : '☁️';
+  document.getElementById('od-status-text').textContent = loggedIn ? 'Microsoftアカウントで接続中' : '未接続';
+  document.getElementById('od-status-sub').textContent = loggedIn ? username : '下のIDを入力してログインしてください';
+  document.getElementById('od-login-btn').style.display = loggedIn ? 'none' : '';
+  document.getElementById('od-logout-btn').style.display = loggedIn ? '' : 'none';
+  document.getElementById('od-save-btn').disabled = !loggedIn;
+  document.getElementById('od-load-btn').disabled = !loggedIn;
+}
+
+async function odGetToken() {
+  if (!msalInstance || !odAccount) { showToast('先にログインしてください','error'); return null; }
+  try {
+    const resp = await msalInstance.acquireTokenSilent({
+      scopes: ['Files.ReadWrite'],
+      account: odAccount
+    });
+    return resp.accessToken;
+  } catch {
+    try {
+      const resp = await msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite'] });
+      return resp.accessToken;
+    } catch(e) { showToast('トークン取得失敗: '+e.message,'error'); return null; }
+  }
+}
+
+async function odSave() {
+  const token = await odGetToken();
+  if (!token) return;
+  const btn = document.getElementById('od-save-btn');
+  const status = document.getElementById('od-save-status');
+  btn.disabled = true; btn.textContent = '保存中...';
+  status.textContent = '';
+  try {
+    const json = JSON.stringify(DB);
+    const resp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
+      { method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: json }
+    );
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const now = new Date().toLocaleString('ja-JP');
+    status.textContent = `✅ 保存完了: ${now}`;
+    status.style.color = 'var(--accent2)';
+    showToast('OneDriveに保存しました');
+  } catch(e) {
+    status.textContent = '❌ 保存失敗: '+e.message;
+    status.style.color = 'var(--accent3)';
+    showToast('保存に失敗しました','error');
+  } finally {
+    btn.disabled = false; btn.textContent = '☁️ OneDriveに保存';
+  }
+}
+
+async function odLoad() {
+  const token = await odGetToken();
+  if (!token) return;
+  const btn = document.getElementById('od-load-btn');
+  const status = document.getElementById('od-load-status');
+  btn.disabled = true; btn.textContent = '読み込み中...';
+  status.textContent = '';
+  try {
+    const resp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (resp.status === 404) { status.textContent = '⚠️ OneDriveにデータがまだありません'; status.style.color='var(--accent4)'; return; }
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    if (!confirm('OneDriveのデータを読み込みます。現在のデータは上書きされます。よろしいですか？')) return;
+    Object.assign(DB, data);
+    save();
+    const now = new Date().toLocaleString('ja-JP');
+    status.textContent = `✅ 読み込み完了: ${now}`;
+    status.style.color = 'var(--accent2)';
+    showToast('OneDriveから読み込みました');
+    renderDashboard();
+  } catch(e) {
+    status.textContent = '❌ 読み込み失敗: '+e.message;
+    status.style.color = 'var(--accent3)';
+    showToast('読み込みに失敗しました','error');
+  } finally {
+    btn.disabled = false; btn.textContent = '☁️ OneDriveから読み込み';
+  }
+}
+
+function initOneDriveSection() {
+  const cfg = odGetConfig();
+  if (cfg.clientId) document.getElementById('od-client-id').value = cfg.clientId;
+  if (cfg.tenantId) document.getElementById('od-tenant-id').value = cfg.tenantId;
+  // 既存のログイン状態を確認
+  if (!msalInstance && cfg.clientId && cfg.tenantId) {
+    const m = odInitMsal();
+    if (m) {
+      const accounts = m.getAllAccounts();
+      if (accounts.length > 0) {
+        odAccount = accounts[0];
+        odUpdateStatus(true, odAccount.username);
+      }
+    }
+  } else if (odAccount) {
+    odUpdateStatus(true, odAccount.username);
+  }
+}
+
+// ===== MODAL =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
+
+// ===== INIT =====
+load();
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
+renderDashboard();
+</script>
+<script>
+/* 文字サイズ拡大 */
+document.documentElement.style.setProperty('font-size','17px');
+(function(){
+  /* ① 製品詳細クリックコピー */
+  var _o=window.showProductDetail;
+  if(_o) window.showProductDetail=function(id){
+    _o(id);
+    setTimeout(function(){
+      var m=document.getElementById('product-detail-modal');
+      if(!m)return;
+      [...m.querySelectorAll('div')].filter(function(d){
+        return d.children.length===2&&d.children[0].children.length===0&&d.children[1].children.length===0&&d.children[1].textContent.trim()!=='';
+      }).forEach(function(pair){
+        var v=pair.children[1],t=v.textContent.trim();
+        if(!t||t==='—'||v.getAttribute('data-copy'))return;
+        v.setAttribute('data-copy','1');
+        v.style.cssText+='cursor:pointer;padding:3px 8px;border-radius:4px;transition:background 0.15s';
+        v.title='クリックでコピー';
+        v.onmouseenter=function(){v.style.background='#eff6ff';};
+        v.onmouseleave=function(){v.style.background='';};
+        v.onclick=function(){(function(){var _ta=document.createElement('textarea');_ta.value=t;_ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(_ta);_ta.focus();_ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(_ta);})();v.textContent='✅コピー！';v.style.background='#dcfce7';setTimeout(function(){v.textContent=o;v.style.background='';},1200);});};
+      });
+    },80);
+  };
+
+  /* ② 取引先名変更時に製品データも連動更新 */
+  var _s=window.saveSupplier;
+  if(_s) window.saveSupplier=function(){
+    // 変更前の名前を記憶
+    var editingId=window._editingSupId||null;
+    var oldName='';
+    if(editingId){
+      var old=DB.companies.find(function(c){return c.id===editingId;});
+      if(old) oldName=old.name;
+    }
+    _s();
+    // 変更後の名前
+    if(editingId&&oldName){
+      var updated=DB.companies.find(function(c){return c.id===editingId;});
+      if(updated&&updated.name&&updated.name!==oldName){
+        var newName=updated.name;
+        var changed=0;
+        DB.products.forEach(function(p){
+          if(p.client===oldName){p.client=newName;changed++;}
+          if(p.supplier===oldName){p.supplier=newName;changed++;}
+          if(p.matSupplier===oldName){p.matSupplier=newName;changed++;}
+          if(p.outsource)p.outsource.forEach(function(o){if(o.name===oldName){o.name=newName;changed++;}});
+        });
+        DB.suppliers.clients.forEach(function(c){if(c.name===oldName)c.name=newName;});
+        DB.suppliers.materials.forEach(function(c){if(c.name===oldName)c.name=newName;});
+        if(changed>0)console.log('連動更新: '+oldName+' → '+newName+' ('+changed+'件)');
+      }
+    }
+  };
+
+  /* editSupplierが呼ばれたときにIDを記憶 */
+  var _e=window.editSupplier;
+  if(_e) window.editSupplier=function(id){
+    window._editingSupId=id;
+    _e(id);
+  };
+  var _op=window.openSupplierModal;
+  if(_op) window.openSupplierModal=function(){
+    window._editingSupId=null;
+    _op();
+  };
+})();
+</script></body>
+</html>
