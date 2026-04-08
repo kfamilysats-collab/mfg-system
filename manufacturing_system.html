@@ -1425,7 +1425,7 @@ function filterProduction(q) {
       <td>${fmt(p.qty)}個</td>
       <td class="hide-mobile">${p.steps?p.steps.length:0}工程</td>
       <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
+      <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
     </tr>
   `).join('') : '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
 }
@@ -1455,6 +1455,38 @@ function deleteProd(id) {
   if (!confirm('削除しますか？')) return;
   DB.productions = DB.productions.filter(p=>p.id!==id);
   save(); showToast('削除しました'); renderProduction();
+}
+
+function editProduction(id) {
+  const p = DB.productions.find(x=>x.id===id);
+  if (!p) { showToast('対象が見つかりません','error'); return; }
+  window._editingProdId = id;
+  showSection('production-form');
+  // initProductionForm が today を入れた直後に上書き
+  setTimeout(function(){
+    document.getElementById('rf-date').value = p.date || '';
+    document.getElementById('rf-machine').value = p.machine || '';
+    document.getElementById('rf-fignum').value = p.fignum || '';
+    document.getElementById('rf-name').value = p.name || '';
+    document.getElementById('rf-qty').value = p.qty || 1;
+    document.getElementById('rf-price').value = p.price || '';
+    document.getElementById('rf-mat-price').value = p.matPrice || '';
+    document.getElementById('rf-worker').value = p.worker || '';
+    // 工程ステップを既存件数で再構築して値をセット
+    const steps = p.steps || [];
+    processStepCount = 0;
+    document.getElementById('process-steps-form').innerHTML = '';
+    if (steps.length === 0) {
+      renderProcessSteps(1);
+    } else {
+      renderProcessSteps(steps.length);
+      steps.forEach(function(v,i){
+        const el = document.getElementById('step-'+(i+1));
+        if (el) el.value = v;
+      });
+    }
+    showToast('編集モード: 内容を変更して保存してください');
+  }, 0);
 }
 
 let processStepCount = 1;
@@ -1561,6 +1593,7 @@ function copyLastSteps() {
 }
 
 function clearProductionForm() {
+  window._editingProdId = null;
   document.getElementById('rf-fignum').value = '';
   document.getElementById('rf-name').value = '';
   document.getElementById('rf-qty').value = 1;
@@ -1589,8 +1622,9 @@ function saveProduction() {
     if (v) steps.push(v);
   }
 
+  const editingId = window._editingProdId || null;
   const p = {
-    id: genId(),
+    id: editingId || genId(),
     date, machine, fignum,
     name: document.getElementById('rf-name').value.trim(),
     worker: document.getElementById('rf-worker').value,
@@ -1600,10 +1634,15 @@ function saveProduction() {
     steps
   };
 
-  DB.productions.push(p);
+  if (editingId) {
+    const idx = DB.productions.findIndex(x=>x.id===editingId);
+    if (idx >= 0) DB.productions[idx] = p; else DB.productions.push(p);
+  } else {
+    DB.productions.push(p);
+  }
   if (!DB.machines.includes(machine)) DB.machines.push(machine);
   save();
-  showToast('登録しました');
+  showToast(editingId ? '更新しました' : '登録しました');
   clearProductionForm();
   showSection('production');
 }
