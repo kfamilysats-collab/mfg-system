@@ -1311,40 +1311,71 @@ function showProductDetail(id) {
   const p = DB.products.find(x=>x.id===id);
   if (!p) return;
   document.getElementById('detail-title').textContent = `${p.fignum} / ${p.name}`;
+
+  // ---- カードスタイル ----
+  const cardBase = 'padding:14px 16px;border-radius:10px;';
+  const blue   = 'border-left:4px solid #2563eb;background:#eff6ff;';
+  const green  = 'border-left:4px solid #059669;background:#f0fdf4;';
+  const orange = 'border-left:4px solid #d97706;background:#fff7ed;';
+  const red    = 'border-left:4px solid #dc2626;background:#fef2f2;';
+  const labelStyle = 'font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;letter-spacing:0.5px;';
+  const valueStyle = 'font-size:15px;font-weight:600;color:#0f172a;word-break:break-all;line-height:1.45;';
+  const card = (color,label,value)=>`<div style="${cardBase}${color}"><div style="${labelStyle}">${label}</div><div style="${valueStyle}">${value||'—'}</div></div>`;
+
+  const outsourceCards = (p.outsource||[]).filter(o=>o.name).map((o,i)=>{
+    const txt = o.name + (o.materialType?' ['+o.materialType+']':'') + (o.note?' ('+o.note+')':'') + ' ¥'+fmt(o.price);
+    return card(orange,'外注先'+(i+1),txt);
+  }).join('');
+
+  const sectionLabel = (text,color)=>`<div style="font-size:12px;font-weight:700;color:${color};margin:18px 0 10px;letter-spacing:0.5px;">${text}</div>`;
+
   document.getElementById('product-detail-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;">
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">図番</div><div>${p.fignum}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">品名</div><div>${p.name}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">受注先</div><div>${p.client||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">製品単価</div><div>¥${fmt(p.price)}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料発注先</div><div>${p.matSupplier||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料名</div><div>${p.matName||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">寸法</div><div>${p.matSize||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">材料単価</div><div>¥${fmt(p.matPrice)}</div></div>
-      ${p.outsource&&p.outsource.length?p.outsource.filter(o=>o.name).map((o,i)=>`<div><div style="color:var(--text2);font-size:11px;margin-bottom:4px;">外注先${i+1}</div><div>${o.name}${o.materialType?' ['+o.materialType+']':''}${o.note?' ('+o.note+')':''} ¥${fmt(o.price)}</div></div>`).join(''):''}
+    ${sectionLabel('■ 基本情報','#2563eb')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+      ${card(blue,'図番',p.fignum)}
+      ${card(blue,'品名',p.name)}
+      ${card(blue,'受注先',p.client)}
+      ${card(blue,'製品単価','¥'+fmt(p.price))}
     </div>
-    ${p.pdf?`<div style="margin-top:12px;"><span class="pdf-link">📄 ${p.pdf}</span></div>`:''}
-    ${p.priceTable&&p.priceTable.length?`
-      <div style="margin-top:14px;">
-        <div style="color:var(--text2);font-size:11px;margin-bottom:6px;">📊 数量別単価テーブル</div>
+
+    ${sectionLabel('■ 材料情報','#059669')}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+      ${card(green,'材料発注先',p.matSupplier)}
+      ${card(green,'材料名',p.matName)}
+      ${card(green,'寸法',p.matSize)}
+      ${card(green,'材料単価','¥'+fmt(p.matPrice))}
+    </div>
+
+    ${outsourceCards ? sectionLabel('■ 外注情報','#d97706') : ''}
+    ${outsourceCards ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${outsourceCards}</div>` : ''}
+
+    ${p.pdf ? `<div style="margin-top:18px;"><span class="pdf-link">📄 ${p.pdf}</span></div>` : ''}
+
+    ${p.priceTable&&p.priceTable.length ? `
+      <div style="margin-top:18px;">
+        <div style="font-size:12px;font-weight:700;color:#2563eb;margin-bottom:10px;letter-spacing:0.5px;">📊 数量別単価テーブル</div>
         <table style="width:100%;font-size:12px;border-collapse:collapse;">
           <thead><tr>
-            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">数量（個〜）</th>
-            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">製品単価</th>
-            <th style="background:var(--bg3);color:var(--text2);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);">材料単価</th>
+            <th style="background:var(--bg3);color:var(--text2);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">数量（個〜）</th>
+            <th style="background:var(--bg3);color:var(--text2);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">製品単価</th>
+            <th style="background:var(--bg3);color:var(--text2);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);">材料単価</th>
           </tr></thead>
-          <tbody>${p.priceTable.sort((a,b)=>a.qty-b.qty).map(r=>`
+          <tbody>${p.priceTable.slice().sort((a,b)=>a.qty-b.qty).map(r=>`
             <tr>
-              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">${r.qty}個〜</td>
-              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.price)}</td>
-              <td style="padding:6px 10px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.matPrice)}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid rgba(46,50,80,0.4);">${r.qty}個〜</td>
+              <td style="padding:8px 12px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.price)}</td>
+              <td style="padding:8px 12px;border-bottom:1px solid rgba(46,50,80,0.4);">¥${fmt(r.matPrice)}</td>
             </tr>`).join('')}
           </tbody>
         </table>
-      </div>`:''}
-    ${p.note?`<div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:12px;font-size:13px;"><div style="color:var(--text2);font-size:11px;margin-bottom:6px;">⚠ 注意書き</div>${p.note}</div>`:''}
-    ${p.claimPdf?`<div style="margin-top:12px;background:rgba(255,107,107,0.1);border-radius:8px;padding:12px;font-size:13px;"><div style="color:var(--accent3);font-size:11px;margin-bottom:6px;">🚨 クレーム</div><div>📄 ${p.claimPdf}</div>${p.claimNote?`<div style="margin-top:4px;">${p.claimNote}</div>`:''}</div>`:''}
-    <div style="display:flex;gap:8px;margin-top:16px;">
+      </div>` : ''}
+
+    ${(p.note || p.claimPdf || p.claimNote) ? sectionLabel('■ 注意書き・備考','#dc2626') : ''}
+    ${p.note ? `<div style="${cardBase}${red}margin-top:6px;"><div style="${labelStyle}">⚠ 注意書き</div><div style="${valueStyle}white-space:pre-wrap;">${p.note}</div></div>` : ''}
+    ${p.claimPdf ? `<div style="${cardBase}${red}margin-top:10px;"><div style="${labelStyle}">🚨 クレーム資料</div><div style="${valueStyle}">📄 ${p.claimPdf}</div></div>` : ''}
+    ${p.claimNote ? `<div style="${cardBase}${red}margin-top:10px;"><div style="${labelStyle}">🚨 クレーム内容</div><div style="${valueStyle}white-space:pre-wrap;">${p.claimNote}</div></div>` : ''}
+
+    <div style="display:flex;gap:8px;margin-top:22px;">
       <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}');closeModal('product-detail-modal')">編集</button>
       <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">削除</button>
     </div>
@@ -2144,7 +2175,7 @@ function renderSuppliers() {
 function deleteSupplier(id) {
   if (!confirm('削除しますか？')) return;
   DB.companies = DB.companies.filter(c=>c.id!==id);
-  save(); renderSuppliers(); showToast('削除しました');
+  save(); renderSuppliers(); updateDataLists(); refreshProductFormLists(); showToast('削除しました');
 }
 
 function openSupplierModal() {
@@ -2200,7 +2231,7 @@ function saveSupplier() {
     DB.companies.push(obj);
     showToast('追加しました');
   }
-  save(); closeModal('supplier-modal'); renderSuppliers(); updateDataLists();
+  save(); closeModal('supplier-modal'); renderSuppliers(); updateDataLists(); refreshProductFormLists();
 }
 
 // ===== MACHINE INFO =====
@@ -2309,12 +2340,25 @@ function updateDataLists() {
   const mc = document.getElementById('machine-list');
   if (mc) mc.innerHTML = [...new Set([...DB.machines,...DB.machineInfo.map(m=>m.name),...DB.productions.map(p=>p.machine).filter(Boolean)])].map(m=>`<option value="${m}">`).join('');
   const ol = document.getElementById('outsource-list');
-  if (ol) ol.innerHTML = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>`<option value="${c.name}">`).join('');
+  if (ol) ol.innerHTML = DB.companies.filter(c=>(c.types||[]).includes('other')).map(c=>`<option value="${c.name}">`).join('');
   const wk = document.getElementById('rf-worker');
   if (wk) {
     const prev = wk.value;
     wk.innerHTML = '<option value="">選択（任意）</option>' + DB.workers.map(w=>`<option value="${w}" ${w===prev?'selected':''}>${w}</option>`).join('');
   }
+}
+
+// 製品フォームの取引先datalistを再生成（取引先管理が更新されたら呼ぶ）
+function refreshProductFormLists() {
+  const clientNames = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>c.name);
+  const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
+  const otherNames = DB.companies.filter(c=>(c.types||[]).includes('other')).map(c=>c.name);
+  const cl = document.getElementById('client-list');
+  if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
+  const ml = document.getElementById('mat-supplier-list');
+  if (ml) ml.innerHTML = materialNames.map(n=>`<option value="${n}">`).join('');
+  const ol = document.getElementById('outsource-list');
+  if (ol) ol.innerHTML = otherNames.map(n=>`<option value="${n}">`).join('');
 }
 
 // ===== EXCEL EXPORTS =====
