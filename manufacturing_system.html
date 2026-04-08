@@ -2330,6 +2330,41 @@ document.documentElement.style.setProperty('font-size','17px');
       }
     }
   };
+
+  /* machine-list datalist を DB.machineInfo の機械名で同期 */
+  function refreshMachineList(){
+    var dl=document.getElementById('machine-list');
+    if(!dl||!window.DB||!DB.machineInfo)return;
+    var names={};
+    // 既存optionを保持（他ソース由来のものを失わないため）
+    var existing=dl.querySelectorAll('option');
+    for(var i=0;i<existing.length;i++){
+      var v=existing[i].getAttribute('value');
+      if(v)names[v]=1;
+    }
+    // DB.machineInfo の name を追加
+    DB.machineInfo.forEach(function(m){if(m&&m.name)names[m.name]=1;});
+    var html='';
+    Object.keys(names).forEach(function(n){
+      html+='<option value="'+n.replace(/"/g,'&quot;')+'">';
+    });
+    dl.innerHTML=html;
+  }
+  window.refreshMachineList=refreshMachineList;
+
+  var _rm=window.renderMachineInfo;
+  if(_rm) window.renderMachineInfo=function(){_rm.apply(this,arguments);refreshMachineList();};
+  var _sm=window.saveMachineInfo;
+  if(_sm) window.saveMachineInfo=function(){_sm.apply(this,arguments);refreshMachineList();};
+  var _dm=window.deleteMachineInfo;
+  if(_dm) window.deleteMachineInfo=function(){_dm.apply(this,arguments);refreshMachineList();};
+
+  // ページロード後に初期反映
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',refreshMachineList);
+  }else{
+    setTimeout(refreshMachineList,0);
+  }
 })();
 </script></body>
 </html>
