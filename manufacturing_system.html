@@ -1466,14 +1466,23 @@ function initProductionForm() {
 }
 
 function renderProcessSteps(n) {
-  processStepCount = n;
   const container = document.getElementById('process-steps-form');
+  // 既存の入力値を保持
+  const prevValues = {};
+  for (let i = 1; i <= processStepCount; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) prevValues[i] = el.value;
+  }
+  processStepCount = n;
   container.innerHTML = '';
   for (let i = 1; i <= n; i++) {
     const div = document.createElement('div');
     div.className = 'form-group';
     div.innerHTML = `<label>工程${i}（時:分:秒）</label><input type="text" id="step-${i}" placeholder="例：0:05:30" pattern="\\d+:\\d{2}:\\d{2}">`;
     container.appendChild(div);
+    if (prevValues[i] != null) {
+      div.querySelector('input').value = prevValues[i];
+    }
   }
 }
 
