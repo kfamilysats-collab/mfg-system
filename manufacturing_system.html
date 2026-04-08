@@ -535,6 +535,7 @@
               <tr>
                 <th>日付</th><th>機械</th><th>図番</th><th>品名</th>
                 <th>数量</th><th class="hide-mobile">工程数</th>
+                <th class="hide-mobile">合計時間</th>
                 <th>金額</th><th>操作</th>
               </tr>
             </thead>
@@ -645,6 +646,63 @@
               <tbody id="machine-sales-tbody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin:0;">受注先別売上</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="tabs">
+              <div class="tab active" data-mode="year" onclick="setSalesSubMode('client','year')">年間</div>
+              <div class="tab" data-mode="month" onclick="setSalesSubMode('client','month')">月別</div>
+            </div>
+            <select id="client-month-sel" onchange="setSalesSubMonth('client',this.value)" style="width:96px;display:none;"></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead>
+            <tbody id="client-sales-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin:0;">材料発注先別支払い</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="tabs">
+              <div class="tab active" data-mode="year" onclick="setSalesSubMode('mat','year')">年間</div>
+              <div class="tab" data-mode="month" onclick="setSalesSubMode('mat','month')">月別</div>
+            </div>
+            <select id="mat-month-sel" onchange="setSalesSubMonth('mat',this.value)" style="width:96px;display:none;"></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead>
+            <tbody id="mat-sales-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin:0;">機械別稼働時間</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="tabs">
+              <div class="tab active" data-mode="year" onclick="setSalesSubMode('machine','year')">年間</div>
+              <div class="tab" data-mode="month" onclick="setSalesSubMode('machine','month')">月別</div>
+            </div>
+            <select id="machine-month-sel" onchange="setSalesSubMonth('machine',this.value)" style="width:96px;display:none;"></select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>機械</th><th>稼働時間</th><th>件数</th></tr></thead>
+            <tbody id="machine-time-tbody"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -1424,10 +1482,11 @@ function filterProduction(q) {
       <td>${p.name||''}</td>
       <td>${fmt(p.qty)}個</td>
       <td class="hide-mobile">${p.steps?p.steps.length:0}工程</td>
+      <td class="hide-mobile">${fmtDuration(stepsToSeconds(p.steps))}</td>
       <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
       <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
     </tr>
-  `).join('') : '<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+  `).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
 }
 
 function showProdDetail(id) {
@@ -1649,6 +1708,68 @@ function saveProduction() {
 
 // ===== SALES =====
 let salesYear = new Date().getFullYear().toString();
+
+// 工程時間ヘルパー
+function stepsToSeconds(steps) {
+  if (!Array.isArray(steps)) return 0;
+  let total = 0;
+  steps.forEach(function(s) {
+    if (typeof s !== 'string') return;
+    const parts = s.split(':');
+    if (parts.length !== 3) return;
+    const h = parseInt(parts[0])||0, m = parseInt(parts[1])||0, sec = parseInt(parts[2])||0;
+    total += h*3600 + m*60 + sec;
+  });
+  return total;
+}
+function fmtDuration(seconds) {
+  if (!seconds || seconds<=0) return '0時間00分';
+  const h = Math.floor(seconds/3600);
+  const m = Math.floor((seconds%3600)/60);
+  return h + '時間' + (m<10?'0':'') + m + '分';
+}
+// 図番→製品マスタ→受注先・材料発注先
+function getProdMeta(fignum) {
+  const prod = (DB.products||[]).find(function(p){return p.fignum===fignum;});
+  return {
+    client: (prod && prod.client) || '(未設定)',
+    matSupplier: (prod && prod.matSupplier) || '(未設定)'
+  };
+}
+
+// 各テーブルの月別/年間モード状態
+const _curMonth = new Date().getMonth()+1;
+let salesSubMode = { client:'year', mat:'year', machine:'year' };
+let salesSubMonth = { client:_curMonth, mat:_curMonth, machine:_curMonth };
+
+function setSalesSubMode(key, mode) {
+  salesSubMode[key] = mode;
+  renderSales();
+}
+function setSalesSubMonth(key, m) {
+  salesSubMonth[key] = parseInt(m)||1;
+  renderSales();
+}
+
+function _populateMonthSelect(id, key) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const cur = salesSubMonth[key];
+  let html = '';
+  for (let i=1;i<=12;i++) {
+    html += '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+i+'月</option>';
+  }
+  sel.innerHTML = html;
+  sel.style.display = salesSubMode[key]==='month' ? '' : 'none';
+}
+function _syncSubTabs(card, mode) {
+  // tab.activeを切り替え
+  card.querySelectorAll('.tab').forEach(function(t){
+    if (t.dataset.mode===mode) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+}
+
 function renderSales() {
   const years = getYears();
   document.getElementById('sales-year-tabs').innerHTML = years.map(y=>`
@@ -1689,6 +1810,64 @@ function renderSales() {
   document.getElementById('machine-sales-tbody').innerHTML = Object.entries(machines).sort((a,b)=>b[1].total-a[1].total).map(([m,v])=>`
     <tr><td>${m}</td><td>¥${fmt(v.total)}</td><td>${v.count}件</td></tr>
   `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  // ===== 月別/年間切替テーブル =====
+  function periodFilter(key) {
+    if (salesSubMode[key]==='year') return function(){return true;};
+    const mm = String(salesSubMonth[key]).padStart(2,'0');
+    return function(p){return p.date.slice(5,7)===mm;};
+  }
+
+  // 受注先別売上
+  _populateMonthSelect('client-month-sel','client');
+  const clientCard = document.getElementById('client-sales-tbody').closest('.card');
+  if (clientCard) _syncSubTabs(clientCard, salesSubMode.client);
+  const clientAgg = {};
+  yProds.filter(periodFilter('client')).forEach(function(p){
+    const meta = getProdMeta(p.fignum);
+    const k = meta.client;
+    if (!clientAgg[k]) clientAgg[k] = {total:0,count:0};
+    clientAgg[k].total += (p.price||0)*(p.qty||0);
+    clientAgg[k].count++;
+  });
+  const clientGrand = Object.values(clientAgg).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('client-sales-tbody').innerHTML = Object.entries(clientAgg).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
+    const pct = clientGrand ? (e[1].total/clientGrand*100).toFixed(1) : '0.0';
+    return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  // 材料発注先別支払い
+  _populateMonthSelect('mat-month-sel','mat');
+  const matCard = document.getElementById('mat-sales-tbody').closest('.card');
+  if (matCard) _syncSubTabs(matCard, salesSubMode.mat);
+  const matAgg = {};
+  yProds.filter(periodFilter('mat')).forEach(function(p){
+    const meta = getProdMeta(p.fignum);
+    const k = meta.matSupplier;
+    if (!matAgg[k]) matAgg[k] = {total:0,count:0};
+    matAgg[k].total += (p.matPrice||0)*(p.qty||0);
+    matAgg[k].count++;
+  });
+  const matGrand = Object.values(matAgg).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('mat-sales-tbody').innerHTML = Object.entries(matAgg).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
+    const pct = matGrand ? (e[1].total/matGrand*100).toFixed(1) : '0.0';
+    return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  // 機械別稼働時間（工程時間 × 数量）
+  _populateMonthSelect('machine-month-sel','machine');
+  const mcCard = document.getElementById('machine-time-tbody').closest('.card');
+  if (mcCard) _syncSubTabs(mcCard, salesSubMode.machine);
+  const machineTime = {};
+  yProds.filter(periodFilter('machine')).forEach(function(p){
+    const k = p.machine || '(未設定)';
+    if (!machineTime[k]) machineTime[k] = {sec:0,count:0};
+    machineTime[k].sec += stepsToSeconds(p.steps) * (p.qty||1);
+    machineTime[k].count++;
+  });
+  document.getElementById('machine-time-tbody').innerHTML = Object.entries(machineTime).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){
+    return '<tr><td>'+e[0]+'</td><td>'+fmtDuration(e[1].sec)+'</td><td>'+e[1].count+'件</td></tr>';
+  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
 }
 
 function setSalesYear(y) { salesYear = y; renderSales(); }
