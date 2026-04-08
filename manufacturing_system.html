@@ -3096,8 +3096,9 @@ document.documentElement.style.setProperty('font-size','17px');
     if(document.getElementById('od-quick-bar'))return;
     var bar=document.createElement('div');
     bar.id='od-quick-bar';
-    bar.style.cssText='position:fixed;top:56px;right:16px;z-index:9999;display:flex;gap:6px;';
+    bar.style.cssText='position:fixed;top:56px;right:16px;z-index:9999;display:flex;gap:6px;align-items:center;';
     bar.innerHTML=
+      '<span id="od-status" style="font-size:11px;color:#475569;font-weight:600;margin-right:4px;min-width:80px;text-align:right;"></span>'+
       '<button type="button" id="od-quick-save" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);transition:background 0.2s,color 0.2s;">☁️保存</button>'+
       '<button type="button" id="od-quick-load" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);">☁️読込</button>';
     document.body.appendChild(bar);
@@ -3118,13 +3119,104 @@ document.documentElement.style.setProperty('font-size','17px');
   // 未保存時の離脱警告
   window.addEventListener('beforeunload',function(e){
     if(!dirty)return;
-    var msg='OneDriveに保存しましたか？未保存の変更があります。';
+    var msg='OneDriveへの保存が完了していない変更があります。閉じますか？';
     e.preventDefault();
     e.returnValue=msg;
     return msg;
   });
 
-  function _initQuick(){injectQuickButtons();updateQuickBarVisibility();}
+  /* ===== 自動読込・自動保存 ===== */
+  function _setStatus(text, autoClearMs){
+    var s=document.getElementById('od-status');if(!s)return;
+    s.textContent=text||'';
+    if(autoClearMs)setTimeout(function(){if(s.textContent===text)s.textContent='';},autoClearMs);
+  }
+  function _ensureBanner(){
+    var b=document.getElementById('od-banner');
+    if(b)return b;
+    b=document.createElement('div');
+    b.id='od-banner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10000;background:#1e3a8a;color:#fff;text-align:center;padding:10px 14px;font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,0.18);display:none;letter-spacing:0.5px;';
+    document.body.appendChild(b);
+    return b;
+  }
+  function _showBanner(text, autoHideMs){
+    var b=_ensureBanner();b.textContent=text;b.style.display='';
+    if(autoHideMs)setTimeout(function(){if(b.textContent===text)b.style.display='none';},autoHideMs);
+  }
+  function _hideBanner(){var b=document.getElementById('od-banner');if(b)b.style.display='none';}
+
+  // OneDriveに認証済みアカウントがあるか
+  function _isOdReady(){
+    try{
+      if(!window.msalInstance||!window.msalInstance.getAllAccounts)return false;
+      return window.msalInstance.getAllAccounts().length>0;
+    }catch(e){return false;}
+  }
+
+  // ----- 自動読込（認証済みなら起動時に1回） -----
+  async function _autoLoadOnStart(){
+    try{
+      if(typeof odGetConfig!=='function')return;
+      var cfg=odGetConfig();
+      if(!cfg||!cfg.clientId||!cfg.tenantId)return;
+      // MSAL初期化＋アカウント復元
+      if(typeof odInitMsal==='function'&&!window.msalInstance) odInitMsal();
+      if(!_isOdReady())return;
+      var accs=window.msalInstance.getAllAccounts();
+      window.odAccount=accs[0];
+      _showBanner('☁️ OneDriveから読み込み中...');
+      // odLoadはconfirmを出すので一時的に無効化
+      var origConfirm=window.confirm;
+      window.confirm=function(){return true;};
+      try{
+        await window.odLoad();
+        _showBanner('✅ 読み込み完了',2000);
+      }finally{
+        window.confirm=origConfirm;
+      }
+    }catch(e){
+      _hideBanner();
+      console.warn('OneDrive自動読込失敗:',e);
+    }
+  }
+
+  // ----- 自動保存（debounce 3秒） -----
+  var _autoSaveTimer=null;
+  function _scheduleAutoSave(){
+    if(!_isOdReady())return;
+    if(!dirty)return;
+    if(_autoSaveTimer)clearTimeout(_autoSaveTimer);
+    _setStatus('変更検知…');
+    _autoSaveTimer=setTimeout(function(){
+      _autoSaveTimer=null;
+      if(!window.odSave){_setStatus('');return;}
+      _setStatus('自動保存中...');
+      Promise.resolve(window.odSave()).then(function(){
+        _setStatus('✅ 自動保存',2000);
+      }).catch(function(){
+        _setStatus('❌ 自動保存失敗',3000);
+      });
+    },3000);
+  }
+
+  // 主要セーブ関数をラップして変更後に自動保存をスケジュール
+  ['saveProduction','saveProduct','saveSupplier','saveMachineInfo','saveWorker'].forEach(function(fn){
+    var orig=window[fn];
+    if(!orig)return;
+    window[fn]=function(){
+      var r=orig.apply(this,arguments);
+      try{_scheduleAutoSave();}catch(e){}
+      return r;
+    };
+  });
+
+  function _initQuick(){
+    injectQuickButtons();
+    updateQuickBarVisibility();
+    // 起動時自動読込（少し遅延してMSALロードを待つ）
+    setTimeout(_autoLoadOnStart,400);
+  }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',_initQuick);
   }else{
