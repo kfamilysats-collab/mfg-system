@@ -3067,22 +3067,60 @@ document.documentElement.style.setProperty('font-size','17px');
   var _save=window.save;
   if(_save) window.save=function(){var r=_save.apply(this,arguments);dirty=true;return r;};
 
-  // odSave をラップして成功時にフラグクリア + ボタン点灯
+  // odSave をラップして成功時にフラグクリア + ボタン点灯 + バックアップ + 最終保存時刻
   var _odSave=window.odSave;
   if(_odSave) window.odSave=async function(){
     var btn=document.getElementById('od-quick-save');
     try{
       var r=await _odSave.apply(this,arguments);
       dirty=false;
+      localStorage.setItem('mfg_last_save', String(Date.now()));
+      _updateLastSaveText();
       if(btn){
         var orig=btn.style.background;
         btn.style.background='#22c55e';
         btn.style.color='#fff';
         setTimeout(function(){btn.style.background=orig||'';btn.style.color='';},2000);
       }
+      // バックアップ（fire-and-forget）
+      _writeBackup().catch(function(e){console.warn('backup失敗:',e);});
       return r;
     }catch(e){throw e;}
   };
+
+  // ----- 自動バックアップ（mfg_backup_YYYYMMDD.json、直近7日分のみ保持） -----
+  async function _writeBackup(){
+    if(typeof odGetToken!=='function')return;
+    var token=await odGetToken();
+    if(!token)return;
+    var d=new Date();
+    var ymd=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+    var name='mfg_backup_'+ymd+'.json';
+    // PUT
+    var put=await fetch('https://graph.microsoft.com/v1.0/me/drive/root:/'+encodeURIComponent(name)+':/content',{
+      method:'PUT',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify(DB)
+    });
+    if(!put.ok)throw new Error('backup PUT '+put.status);
+    // 古いバックアップを削除
+    var list=await fetch('https://graph.microsoft.com/v1.0/me/drive/root/children?$top=200',{
+      headers:{'Authorization':'Bearer '+token}
+    });
+    if(!list.ok)return;
+    var json=await list.json();
+    var files=(json.value||[]).filter(function(f){return /^mfg_backup_\d{8}\.json$/.test(f.name);});
+    files.sort(function(a,b){return b.name.localeCompare(a.name);}); // 新しい順
+    var stale=files.slice(7);
+    for(var i=0;i<stale.length;i++){
+      try{
+        await fetch('https://graph.microsoft.com/v1.0/me/drive/items/'+stale[i].id,{
+          method:'DELETE',
+          headers:{'Authorization':'Bearer '+token}
+        });
+      }catch(e){}
+    }
+  }
 
   // odLoad をラップ（読込直後はクリーン）
   var _odLoad=window.odLoad;
@@ -3211,9 +3249,97 @@ document.documentElement.style.setProperty('font-size','17px');
     };
   });
 
+  // ----- 最終保存日時表示 -----
+  function _ensureLastSave(){
+    if(document.getElementById('od-lastsave'))return;
+    var el=document.createElement('div');
+    el.id='od-lastsave';
+    el.style.cssText='position:fixed;top:88px;right:16px;z-index:9998;font-size:10px;color:#475569;background:rgba(255,255,255,0.92);padding:3px 8px;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.06);pointer-events:none;font-weight:600;letter-spacing:0.2px;';
+    document.body.appendChild(el);
+  }
+  function _updateLastSaveText(){
+    var el=document.getElementById('od-lastsave');if(!el)return;
+    var ts=parseInt(localStorage.getItem('mfg_last_save')||'0');
+    if(!ts){el.textContent='最終保存: 未保存';return;}
+    var d=new Date(ts);
+    var dateStr=(d.getMonth()+1)+'月'+d.getDate()+'日 '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    var diffMin=Math.floor((Date.now()-ts)/60000);
+    var rel;
+    if(diffMin<1)rel='たった今';
+    else if(diffMin<60)rel=diffMin+'分前';
+    else if(diffMin<1440)rel=Math.floor(diffMin/60)+'時間前';
+    else rel=Math.floor(diffMin/1440)+'日前';
+    el.textContent='最終保存: '+dateStr+'  ('+rel+')';
+  }
+
+  // OneDrive連携ページではlastsaveも隠す
+  var _origUpdQB=updateQuickBarVisibility;
+  updateQuickBarVisibility=function(){
+    _origUpdQB();
+    var ls=document.getElementById('od-lastsave');
+    var sec=document.getElementById('sec-onedrive');
+    var onOd=sec&&sec.classList.contains('active');
+    if(ls)ls.style.display=onOd?'none':'';
+  };
+
+  // ----- 復元確認ダイアログ（2択） -----
+  function _showRestoreDialog(){
+    return new Promise(function(resolve){
+      var ov=document.createElement('div');
+      ov.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px;';
+      ov.innerHTML='<div style="background:#fff;border-radius:14px;padding:26px;max-width:440px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">'+
+        '<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:14px;">⚠ データ復元の確認</div>'+
+        '<div style="font-size:13px;color:#334155;line-height:1.7;margin-bottom:22px;">現在のデータは上書きされます。<br>先にOneDriveに保存しましたか？</div>'+
+        '<div style="display:flex;gap:10px;flex-direction:column;">'+
+          '<button id="rd-save-then" style="background:#2563eb;color:#fff;border:none;padding:11px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">☁️ 保存してから復元</button>'+
+          '<button id="rd-just-restore" style="background:#dc2626;color:#fff;border:none;padding:11px 16px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;">そのまま復元</button>'+
+          '<button id="rd-cancel" style="background:#fff;color:#475569;border:1px solid #cbd5e1;padding:11px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">キャンセル</button>'+
+        '</div></div>';
+      document.body.appendChild(ov);
+      function close(v){document.body.removeChild(ov);resolve(v);}
+      ov.querySelector('#rd-save-then').onclick=function(){close('save-then');};
+      ov.querySelector('#rd-just-restore').onclick=function(){close('just');};
+      ov.querySelector('#rd-cancel').onclick=function(){close(null);};
+    });
+  }
+
+  // importBackupをラップ（FileReader経由でJSONを読み、確認ダイアログを表示）
+  if(typeof window.importBackup==='function'){
+    window.importBackup=function(input){
+      var file=input.files[0];
+      if(!file)return;
+      var reader=new FileReader();
+      reader.onload=async function(e){
+        var data;
+        try{data=JSON.parse(e.target.result);}
+        catch(ex){showToast('ファイルの読み込みに失敗しました','error');return;}
+        var choice=await _showRestoreDialog();
+        if(!choice)return;
+        if(choice==='save-then'){
+          if(window.odSave){
+            try{await window.odSave();}
+            catch(ex){
+              if(!confirm('OneDrive保存に失敗しました。それでも復元しますか？'))return;
+            }
+          }
+        }
+        Object.assign(DB,data);
+        if(typeof save==='function')save();
+        showToast('データを復元しました');
+        if(typeof renderDashboard==='function')renderDashboard();
+      };
+      reader.readAsText(file);
+      input.value='';
+    };
+  }
+
   function _initQuick(){
     injectQuickButtons();
+    _ensureLastSave();
+    _updateLastSaveText();
     updateQuickBarVisibility();
+    // 30秒ごとに相対時間を再計算
+    setInterval(_updateLastSaveText,30000);
     // 起動時自動読込（少し遅延してMSALロードを待つ）
     setTimeout(_autoLoadOnStart,400);
   }
