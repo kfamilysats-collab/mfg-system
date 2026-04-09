@@ -579,6 +579,7 @@
             <thead>
               <tr>
                 <th>日付</th><th>機械</th><th>図番</th><th>品名</th>
+                <th class="hide-mobile">受注先</th>
                 <th>数量</th><th class="hide-mobile">工程数</th>
                 <th class="hide-mobile">合計時間</th>
                 <th>金額</th><th>操作</th>
@@ -620,6 +621,10 @@
           <div class="form-group">
             <label>品名（自動入力）</label>
             <input type="text" id="rf-name" placeholder="図番から自動入力">
+          </div>
+          <div class="form-group">
+            <label>受注先（自動入力）</label>
+            <input type="text" id="rf-client" placeholder="図番から自動入力" style="background:var(--bg3);">
           </div>
           <div class="form-group">
             <label>作業員</label>
@@ -1734,13 +1739,14 @@ function filterProduction(q) {
       <td>${p.machine}</td>
       <td><span class="badge badge-blue">${p.fignum}</span></td>
       <td>${p.name||''}</td>
+      <td class="hide-mobile">${p.client||'—'}</td>
       <td>${fmt(p.qty)}個</td>
       <td class="hide-mobile">${p.steps?p.steps.length:0}工程</td>
       <td class="hide-mobile">${fmtDuration(stepsToSeconds(p.steps))}</td>
       <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
       <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
     </tr>
-  `).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+  `).join('') : '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
 }
 
 function showProdDetail(id) {
@@ -1783,6 +1789,7 @@ function editProduction(id) {
     document.getElementById('rf-machine').value = p.machine || '';
     document.getElementById('rf-fignum').value = p.fignum || '';
     document.getElementById('rf-name').value = p.name || '';
+    document.getElementById('rf-client').value = p.client || '';
     document.getElementById('rf-qty').value = p.qty || 1;
     document.getElementById('rf-price').value = p.price || '';
     document.getElementById('rf-mat-price').value = p.matPrice || '';
@@ -1865,6 +1872,7 @@ function autoFillProduct() {
 
   if (prod) {
     document.getElementById('rf-name').value = prod.name;
+    document.getElementById('rf-client').value = prod.client||'';
     const looked = lookupPrice(prod.priceTable, qty, prod.price, prod.matPrice);
     document.getElementById('rf-price').value = looked.price||'';
     document.getElementById('rf-mat-price').value = looked.matPrice||'';
@@ -1932,6 +1940,7 @@ function clearProductionForm() {
   window._editingProdId = null;
   document.getElementById('rf-fignum').value = '';
   document.getElementById('rf-name').value = '';
+  document.getElementById('rf-client').value = '';
   document.getElementById('rf-qty').value = 1;
   document.getElementById('rf-price').value = '';
   document.getElementById('rf-mat-price').value = '';
@@ -1963,6 +1972,7 @@ function saveProduction() {
     id: editingId || genId(),
     date, machine, fignum,
     name: document.getElementById('rf-name').value.trim(),
+    client: document.getElementById('rf-client').value.trim(),
     worker: document.getElementById('rf-worker').value,
     qty: parseInt(document.getElementById('rf-qty').value)||1,
     price: parseFloat(document.getElementById('rf-price').value)||0,
