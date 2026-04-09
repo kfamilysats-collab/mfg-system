@@ -3742,6 +3742,7 @@ document.documentElement.style.setProperty('font-size','17px');
     document.body.appendChild(el);
   }
   window._updateLastSaveText=function(){return _updateLastSaveText();};
+  var _lastSaveHideTimer=null;
   function _updateLastSaveText(){
     var el=document.getElementById('od-lastsave');if(!el)return;
     var ts=parseInt(localStorage.getItem('mfg_last_save')||'0');
@@ -3755,6 +3756,13 @@ document.documentElement.style.setProperty('font-size','17px');
     else if(diffMin<1440)rel=Math.floor(diffMin/60)+'時間前';
     else rel=Math.floor(diffMin/1440)+'日前';
     el.textContent='最終保存: '+dateStr+'  ('+rel+')';
+    // 表示してから5秒後に自動で消す
+    el.style.display='';
+    if(_lastSaveHideTimer)clearTimeout(_lastSaveHideTimer);
+    _lastSaveHideTimer=setTimeout(function(){
+      el.style.display='none';
+      _lastSaveHideTimer=null;
+    },5000);
   }
 
   // OneDrive連携ページではlastsaveも隠す
