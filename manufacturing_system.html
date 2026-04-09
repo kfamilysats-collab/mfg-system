@@ -677,9 +677,11 @@
         <div class="tab" id="sv-annual" onclick="setSalesView('annual')">年間</div>
       </div>
 
+      <!-- ===== 月タブ（月別ビュー用） ===== -->
+      <div id="sales-month-tabs" class="year-tabs" style="overflow-x:auto;white-space:nowrap;margin-bottom:16px;"></div>
+
       <!-- ===== 月別ビュー ===== -->
       <div id="sales-monthly-view">
-        <div style="margin-bottom:16px;"><select id="sales-month-sel" onchange="renderSales()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;"></select></div>
         <div class="stats-grid" id="sales-month-stats"></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead><tbody id="sm-client-tbody"></tbody></table></div></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="sm-product-tbody"></tbody><tfoot id="sm-product-tfoot"></tfoot></table></div></div>
@@ -710,9 +712,11 @@
         <div class="tab" id="pv-annual" onclick="setProfitView('annual')">年間</div>
       </div>
 
+      <!-- 月タブ（月別ビュー用） -->
+      <div id="profit-month-tabs" class="year-tabs" style="overflow-x:auto;white-space:nowrap;margin-bottom:16px;"></div>
+
       <!-- 月別 -->
       <div id="profit-monthly-view">
-        <div style="margin-bottom:16px;"><select id="profit-month-sel" onchange="renderProfit()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;"></select></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pm-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pm-product-tbody"></tbody><tfoot id="pm-product-tfoot"></tfoot></table></div></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pm-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pm-client-tbody"></tbody><tfoot id="pm-client-tfoot"></tfoot></table></div></div>
       </div>
@@ -1950,23 +1954,28 @@ function _filterTable(input, tbodyId) {
     tr.style.display = tr.textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none';
   });
 }
-function _initMonthSelect(selId) {
-  var sel = document.getElementById(selId);
-  if (!sel || sel.children.length) return;
-  var cur = new Date().getMonth() + 1;
+var salesMonth = new Date().getMonth() + 1;
+var profitMonth = new Date().getMonth() + 1;
+
+function _renderMonthTabs(containerId, currentMonth, setFn) {
+  var el = document.getElementById(containerId);
+  if (!el) return;
+  var html = '';
   for (var i = 1; i <= 12; i++) {
-    var opt = document.createElement('option');
-    opt.value = i; opt.textContent = i + '月';
-    if (i === cur) opt.selected = true;
-    sel.appendChild(opt);
+    html += '<div class="year-tab' + (i === currentMonth ? ' active' : '') + '" onclick="' + setFn + '(' + i + ')" style="cursor:pointer;">' + i + '月</div>';
   }
+  el.innerHTML = html;
 }
+function setSalesMonth(m) { salesMonth = m; renderSales(); }
+function setProfitMonth(m) { profitMonth = m; renderProfit(); }
+
 function setSalesView(v) {
   salesView = v;
   document.getElementById('sv-monthly').classList.toggle('active', v==='monthly');
   document.getElementById('sv-annual').classList.toggle('active', v==='annual');
   document.getElementById('sales-monthly-view').style.display = v==='monthly' ? '' : 'none';
   document.getElementById('sales-annual-view').style.display = v==='annual' ? '' : 'none';
+  document.getElementById('sales-month-tabs').style.display = v==='monthly' ? '' : 'none';
   renderSales();
 }
 function setProfitView(v) {
@@ -1975,6 +1984,7 @@ function setProfitView(v) {
   document.getElementById('pv-annual').classList.toggle('active', v==='annual');
   document.getElementById('profit-monthly-view').style.display = v==='monthly' ? '' : 'none';
   document.getElementById('profit-annual-view').style.display = v==='annual' ? '' : 'none';
+  document.getElementById('profit-month-tabs').style.display = v==='monthly' ? '' : 'none';
   renderProfit();
 }
 
@@ -2017,9 +2027,10 @@ var _noData10='<tr><td colspan="10" style="text-align:center;color:var(--text3);
 function renderSales() {
   var years = getYears();
   document.getElementById('sales-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===salesYear?'active':'')+'" onclick="setSalesYear(\''+y+'\')">'+y+'年</div>';}).join('');
-  _initMonthSelect('sales-month-sel');
+  _renderMonthTabs('sales-month-tabs', salesMonth, 'setSalesMonth');
+  document.getElementById('sales-month-tabs').style.display = salesView==='monthly' ? '' : 'none';
   var yProds = DB.productions.filter(function(p){return p.date.startsWith(salesYear);});
-  var selMonth = parseInt(document.getElementById('sales-month-sel').value)||1;
+  var selMonth = salesMonth;
   var mm = String(selMonth).padStart(2,'0');
   var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
 
@@ -2099,9 +2110,10 @@ function _clientProfitTotals(prodList){if(!prodList.length)return '';var t=prodL
 function renderProfit() {
   var years = getYears();
   document.getElementById('profit-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===profitYear?'active':'')+'" onclick="setProfitYear(\''+y+'\')">'+y+'年</div>';}).join('');
-  _initMonthSelect('profit-month-sel');
+  _renderMonthTabs('profit-month-tabs', profitMonth, 'setProfitMonth');
+  document.getElementById('profit-month-tabs').style.display = profitView==='monthly' ? '' : 'none';
   var yProds = DB.productions.filter(function(p){return p.date.startsWith(profitYear);});
-  var selMonth = parseInt(document.getElementById('profit-month-sel').value)||1;
+  var selMonth = profitMonth;
   var mm = String(selMonth).padStart(2,'0');
   var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
   var _nd='<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">データなし</div></div></td></tr>';
@@ -2618,7 +2630,7 @@ function exportSalesExcel() {
   var year=salesYear;
   var yProds=DB.productions.filter(function(p){return p.date.startsWith(year);});
   if (salesView==='monthly') {
-    var selMonth=parseInt(document.getElementById('sales-month-sel').value)||1;
+    var selMonth=salesMonth;
     var mm=String(selMonth).padStart(2,'0');
     var mProds=yProds.filter(function(p){return p.date.slice(5,7)===mm;});
     var wb=_exportSalesData(mProds, year+'年'+selMonth+'月');
@@ -2657,7 +2669,7 @@ function exportProfitExcel() {
   var year=profitYear;
   var yProds=DB.productions.filter(function(p){return p.date.startsWith(year);});
   if (profitView==='monthly') {
-    var selMonth=parseInt(document.getElementById('profit-month-sel').value)||1;
+    var selMonth=profitMonth;
     var mm=String(selMonth).padStart(2,'0');
     var mProds=yProds.filter(function(p){return p.date.slice(5,7)===mm;});
     var wb=_exportProfitData(mProds, year+'年'+selMonth+'月');
