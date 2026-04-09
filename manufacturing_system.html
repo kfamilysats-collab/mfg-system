@@ -346,16 +346,16 @@
           </select>
         </div>
         <div class="table-wrap">
-          <table>
+          <table style="table-layout:auto;width:100%;">
             <thead>
               <tr>
-                <th style="min-width:100px;">図番</th>
-                <th style="min-width:120px;">品名</th>
-                <th style="min-width:150px;">受注先</th>
-                <th class="hide-mobile" style="min-width:120px;">寸法</th>
-                <th style="min-width:80px;">単価</th>
-                <th class="hide-mobile" style="min-width:70px;">クレーム</th>
-                <th style="min-width:130px;">操作</th>
+                <th style="min-width:100px;white-space:nowrap;">図番</th>
+                <th style="min-width:140px;white-space:nowrap;">品名</th>
+                <th style="min-width:160px;white-space:nowrap;">受注先</th>
+                <th class="hide-mobile" style="min-width:100px;white-space:nowrap;">寸法</th>
+                <th style="min-width:80px;white-space:nowrap;text-align:right;">単価</th>
+                <th class="hide-mobile" style="min-width:70px;white-space:nowrap;text-align:center;">クレーム</th>
+                <th style="min-width:130px;white-space:nowrap;">操作</th>
               </tr>
             </thead>
             <tbody id="product-tbody"></tbody>
@@ -1455,8 +1455,8 @@ function filterProducts(q) {
     <tr>
       <td style="white-space:nowrap;"><span class="badge badge-blue">${p.fignum}</span></td>
       <td style="white-space:nowrap;">${p.name}</td>
-      <td style="min-width:150px;">${p.client||'—'}</td>
-      <td class="hide-mobile" style="min-width:120px;text-align:left;white-space:nowrap;">${p.matSize||'—'}</td>
+      <td style="white-space:nowrap;min-width:160px;">${p.client||'—'}</td>
+      <td class="hide-mobile" style="white-space:nowrap;min-width:100px;text-align:left;">${p.matSize||'—'}</td>
       <td style="white-space:nowrap;text-align:right;">¥${fmt(p.price)}</td>
       <td class="hide-mobile" style="white-space:nowrap;text-align:center;">${p.claimPdf?`<span class="badge badge-red">あり</span>`:'—'}</td>
       <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">編集</button></td>
