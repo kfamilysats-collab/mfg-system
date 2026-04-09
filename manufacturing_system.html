@@ -668,140 +668,33 @@
     <!-- ===== SALES ===== -->
     <section class="section" id="sec-sales">
       <div class="page-header">
-        <div>
-          <div class="page-title">売上集計</div>
-        </div>
+        <div><div class="page-title">売上集計</div></div>
         <button class="btn btn-ghost btn-sm" onclick="exportSalesExcel()">📊 Excel出力</button>
       </div>
-
       <div class="year-tabs" id="sales-year-tabs"></div>
-
-      <div class="stats-grid" id="sales-stats"></div>
-
-      <div class="tabs" id="sales-master-tabs" style="margin-top:8px;">
-        <div class="tab active" data-stab="monthly"  onclick="setSalesTab('monthly')">月別</div>
-        <div class="tab"        data-stab="client"   onclick="setSalesTab('client')">受注先別</div>
-        <div class="tab"        data-stab="product"  onclick="setSalesTab('product')">製品別</div>
-        <div class="tab"        data-stab="machine"  onclick="setSalesTab('machine')">機械別</div>
-        <div class="tab"        data-stab="material" onclick="setSalesTab('material')">材料発注先別</div>
+      <div class="tabs" style="margin-bottom:16px;">
+        <div class="tab active" id="sv-monthly" onclick="setSalesView('monthly')">月別</div>
+        <div class="tab" id="sv-annual" onclick="setSalesView('annual')">年間</div>
       </div>
 
-      <!-- 月別 -->
-      <div class="sales-pane" data-pane="monthly">
-        <div class="card">
-          <div class="card-title">月別売上</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>月</th><th>金額</th><th>件数</th></tr></thead>
-              <tbody id="monthly-sales-tbody"></tbody>
-              <tfoot id="monthly-sales-tfoot"></tfoot>
-            </table>
-          </div>
-        </div>
+      <!-- ===== 月別ビュー ===== -->
+      <div id="sales-monthly-view">
+        <div style="margin-bottom:16px;"><select id="sales-month-sel" onchange="renderSales()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;"></select></div>
+        <div class="stats-grid" id="sales-month-stats"></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead><tbody id="sm-client-tbody"></tbody></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="sm-product-tbody"></tbody><tfoot id="sm-product-tfoot"></tfoot></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">機械別稼働</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-machine-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>機械</th><th>稼働時間</th><th>件数</th><th>売上</th></tr></thead><tbody id="sm-machine-tbody"></tbody></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">材料発注先別支払い</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sm-mat-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead><tbody id="sm-mat-tbody"></tbody></table></div></div>
       </div>
 
-      <!-- 受注先別 -->
-      <div class="sales-pane" data-pane="client" style="display:none;">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-            <div class="card-title" style="margin:0;">受注先別売上</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="tabs">
-                <div class="tab active" data-mode="year" onclick="setSalesSubMode('client','year')">年間</div>
-                <div class="tab" data-mode="month" onclick="setSalesSubMode('client','month')">月別</div>
-              </div>
-              <select id="client-month-sel" onchange="setSalesSubMonth('client',this.value)" style="width:96px;display:none;"></select>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead>
-              <tbody id="client-sales-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- 製品別 -->
-      <div class="sales-pane" data-pane="product" style="display:none;">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-            <div class="card-title" style="margin:0;">製品別売上</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="tabs">
-                <div class="tab active" data-mode="year" onclick="setSalesSubMode('product','year')">年間</div>
-                <div class="tab" data-mode="month" onclick="setSalesSubMode('product','month')">月別</div>
-              </div>
-              <select id="product-month-sel" onchange="setSalesSubMonth('product',this.value)" style="width:96px;display:none;"></select>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr>
-                <th>図番</th><th>品名</th><th>受注先</th><th>件数</th>
-                <th>売上合計</th><th>材料費合計</th><th>外注費合計</th>
-                <th>粗利</th><th>粗利率</th><th>合計工程時間</th>
-              </tr></thead>
-              <tbody id="product-sales-tbody"></tbody>
-              <tfoot id="product-sales-tfoot"></tfoot>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- 機械別 -->
-      <div class="sales-pane" data-pane="machine" style="display:none;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div class="card">
-            <div class="card-title">機械別売上</div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>機械</th><th>金額</th><th>件数</th></tr></thead>
-                <tbody id="machine-sales-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-              <div class="card-title" style="margin:0;">機械別稼働時間</div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <div class="tabs">
-                  <div class="tab active" data-mode="year" onclick="setSalesSubMode('machine','year')">年間</div>
-                  <div class="tab" data-mode="month" onclick="setSalesSubMode('machine','month')">月別</div>
-                </div>
-                <select id="machine-month-sel" onchange="setSalesSubMonth('machine',this.value)" style="width:96px;display:none;"></select>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>機械</th><th>稼働時間</th><th>件数</th></tr></thead>
-                <tbody id="machine-time-tbody"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 材料発注先別 -->
-      <div class="sales-pane" data-pane="material" style="display:none;">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-            <div class="card-title" style="margin:0;">材料発注先別支払い</div>
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="tabs">
-                <div class="tab active" data-mode="year" onclick="setSalesSubMode('mat','year')">年間</div>
-                <div class="tab" data-mode="month" onclick="setSalesSubMode('mat','month')">月別</div>
-              </div>
-              <select id="mat-month-sel" onchange="setSalesSubMonth('mat',this.value)" style="width:96px;display:none;"></select>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead>
-              <tbody id="mat-sales-tbody"></tbody>
-            </table>
-          </div>
-        </div>
+      <!-- ===== 年間ビュー ===== -->
+      <div id="sales-annual-view" style="display:none;">
+        <div class="stats-grid" id="sales-year-stats"></div>
+        <div class="card" style="margin-bottom:16px;"><div class="card-title">月別売上</div><div class="table-wrap"><table><thead><tr><th>月</th><th>売上</th><th>件数</th><th>材料費</th><th>粗利</th></tr></thead><tbody id="sa-monthly-tbody"></tbody><tfoot id="sa-monthly-tfoot"></tfoot></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別年間売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>件数</th><th>売上</th><th>割合</th></tr></thead><tbody id="sa-client-tbody"></tbody></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別年間売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th><th>工程時間</th></tr></thead><tbody id="sa-product-tbody"></tbody><tfoot id="sa-product-tfoot"></tfoot></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">機械別年間稼働</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-machine-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>機械</th><th>稼働時間</th><th>件数</th><th>売上</th></tr></thead><tbody id="sa-machine-tbody"></tbody></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">材料発注先別年間支払い</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-mat-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead><tbody id="sa-mat-tbody"></tbody></table></div></div>
       </div>
     </section>
 
@@ -812,14 +705,22 @@
         <button class="btn btn-ghost btn-sm" onclick="exportProfitExcel()">📊 Excel出力</button>
       </div>
       <div class="year-tabs" id="profit-year-tabs"></div>
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">製品別利益</div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>図番</th><th>品名</th><th>売上単価</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead>
-            <tbody id="profit-tbody"></tbody>
-          </table>
-        </div>
+      <div class="tabs" style="margin-bottom:16px;">
+        <div class="tab active" id="pv-monthly" onclick="setProfitView('monthly')">月別</div>
+        <div class="tab" id="pv-annual" onclick="setProfitView('annual')">年間</div>
+      </div>
+
+      <!-- 月別 -->
+      <div id="profit-monthly-view">
+        <div style="margin-bottom:16px;"><select id="profit-month-sel" onchange="renderProfit()" style="padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg3);color:var(--text);font-size:14px;font-weight:600;"></select></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pm-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pm-product-tbody"></tbody><tfoot id="pm-product-tfoot"></tfoot></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pm-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pm-client-tbody"></tbody><tfoot id="pm-client-tfoot"></tfoot></table></div></div>
+      </div>
+
+      <!-- 年間 -->
+      <div id="profit-annual-view" style="display:none;">
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別年間利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pa-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pa-product-tbody"></tbody><tfoot id="pa-product-tfoot"></tfoot></table></div></div>
+        <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">受注先別年間利益</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'pa-client-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>受注先</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th></tr></thead><tbody id="pa-client-tbody"></tbody><tfoot id="pa-client-tfoot"></tfoot></table></div></div>
       </div>
     </section>
 
@@ -2037,252 +1938,188 @@ function getProdMeta(fignum) {
   };
 }
 
-// 各テーブルの月別/年間モード状態
-const _curMonth = new Date().getMonth()+1;
-let salesSubMode = { client:'year', mat:'year', machine:'year', product:'year' };
-let salesSubMonth = { client:_curMonth, mat:_curMonth, machine:_curMonth, product:_curMonth };
-let salesActiveTab = 'monthly';
+// ===== 売上集計・利益レポート：月別/年間ビュー切替 =====
+let salesView = 'monthly';
+let profitView = 'monthly';
 
-function setSalesTab(name) {
-  salesActiveTab = name;
-  document.querySelectorAll('#sales-master-tabs .tab').forEach(function(t){
-    if (t.dataset.stab===name) t.classList.add('active');
-    else t.classList.remove('active');
-  });
-  document.querySelectorAll('.sales-pane').forEach(function(p){
-    p.style.display = (p.dataset.pane===name) ? '' : 'none';
+function _filterTable(input, tbodyId) {
+  var q = (input.value||'').toLowerCase();
+  var rows = document.getElementById(tbodyId);
+  if (!rows) return;
+  Array.prototype.forEach.call(rows.children, function(tr) {
+    tr.style.display = tr.textContent.toLowerCase().indexOf(q) >= 0 ? '' : 'none';
   });
 }
-
-function setSalesSubMode(key, mode) {
-  salesSubMode[key] = mode;
-  renderSales();
-}
-function setSalesSubMonth(key, m) {
-  salesSubMonth[key] = parseInt(m)||1;
-  renderSales();
-}
-
-function _populateMonthSelect(id, key) {
-  const sel = document.getElementById(id);
-  if (!sel) return;
-  const cur = salesSubMonth[key];
-  let html = '';
-  for (let i=1;i<=12;i++) {
-    html += '<option value="'+i+'"'+(i===cur?' selected':'')+'>'+i+'月</option>';
+function _initMonthSelect(selId) {
+  var sel = document.getElementById(selId);
+  if (!sel || sel.children.length) return;
+  var cur = new Date().getMonth() + 1;
+  for (var i = 1; i <= 12; i++) {
+    var opt = document.createElement('option');
+    opt.value = i; opt.textContent = i + '月';
+    if (i === cur) opt.selected = true;
+    sel.appendChild(opt);
   }
-  sel.innerHTML = html;
-  sel.style.display = salesSubMode[key]==='month' ? '' : 'none';
 }
-function _syncSubTabs(card, mode) {
-  // tab.activeを切り替え
-  card.querySelectorAll('.tab').forEach(function(t){
-    if (t.dataset.mode===mode) t.classList.add('active');
-    else t.classList.remove('active');
+function setSalesView(v) {
+  salesView = v;
+  document.getElementById('sv-monthly').classList.toggle('active', v==='monthly');
+  document.getElementById('sv-annual').classList.toggle('active', v==='annual');
+  document.getElementById('sales-monthly-view').style.display = v==='monthly' ? '' : 'none';
+  document.getElementById('sales-annual-view').style.display = v==='annual' ? '' : 'none';
+  renderSales();
+}
+function setProfitView(v) {
+  profitView = v;
+  document.getElementById('pv-monthly').classList.toggle('active', v==='monthly');
+  document.getElementById('pv-annual').classList.toggle('active', v==='annual');
+  document.getElementById('profit-monthly-view').style.display = v==='monthly' ? '' : 'none';
+  document.getElementById('profit-annual-view').style.display = v==='annual' ? '' : 'none';
+  renderProfit();
+}
+
+// ===== 共通集計ヘルパー =====
+function _aggProds(prods) {
+  // 受注先別, 材料発注先別, 機械別, 製品別 を一度にまとめる
+  var client={}, mat={}, machine={}, product={};
+  prods.forEach(function(p){
+    var s=(p.price||0)*(p.qty||0), mc=(p.matPrice||0)*(p.qty||0), sec=stepsToSeconds(p.steps)*(p.qty||1);
+    var ck=getClient(p.fignum);
+    if(!client[ck])client[ck]={count:0,total:0}; client[ck].count++; client[ck].total+=s;
+    var mk=getMatSupplier(p.fignum);
+    if(!mat[mk])mat[mk]={count:0,total:0}; mat[mk].count++; mat[mk].total+=mc;
+    var mck=p.machine||'(未設定)';
+    if(!machine[mck])machine[mck]={count:0,sales:0,sec:0}; machine[mck].count++; machine[mck].sales+=s; machine[mck].sec+=sec;
+    var pk=p.fignum||'(未設定)';
+    if(!product[pk])product[pk]={fignum:pk,name:p.name||'',count:0,qty:0,sales:0,mat:0,sec:0};
+    product[pk].count++; product[pk].qty+=(p.qty||0); product[pk].sales+=s; product[pk].mat+=mc; product[pk].sec+=sec;
+    if(!product[pk].name&&p.name)product[pk].name=p.name;
   });
+  return {client:client,mat:mat,machine:machine,product:product};
 }
+function _enrichProducts(prodAgg) {
+  return Object.values(prodAgg).map(function(pa){
+    var master=(DB.products||[]).find(function(x){return x.fignum===pa.fignum;});
+    var osPerUnit=master&&master.outsource?master.outsource.reduce(function(a,o){return a+(o.price||0);},0):0;
+    var os=osPerUnit*pa.qty, gross=pa.sales-pa.mat-os, rate=pa.sales>0?gross/pa.sales*100:0;
+    return {fignum:pa.fignum,name:pa.name||(master&&master.name)||'',client:getClient(pa.fignum),count:pa.count,sales:pa.sales,mat:pa.mat,os:os,gross:gross,rate:rate,sec:pa.sec};
+  }).sort(function(a,b){return b.sales-a.sales;});
+}
+function _clientRow(e,grand){var pct=grand?(e[1].total/grand*100).toFixed(1):'0.0';return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';}
+function _matRow(e,grand){var pct=grand?(e[1].total/grand*100).toFixed(1):'0.0';return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';}
+function _machineRow(e){return '<tr><td>'+e[0]+'</td><td>'+fmtDuration(e[1].sec)+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].sales)+'</td></tr>';}
+function _productRow(r,showTime){return '<tr><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td>¥'+fmt(r.gross)+'</td><td>'+r.rate.toFixed(1)+'%</td>'+(showTime?'<td>'+fmtDuration(r.sec)+'</td>':'')+'</tr>';}
+function _productTotals(list,showTime){if(!list.length)return '';var t=list.reduce(function(a,r){a.count+=r.count;a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;a.sec+=r.sec;return a;},{count:0,sales:0,mat:0,os:0,gross:0,sec:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td colspan="3">合計</td><td>'+t.count+'件</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(1)+'%</td>'+(showTime?'<td>'+fmtDuration(t.sec)+'</td>':'')+'</tr>';}
+var _noData4='<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+var _noData9='<tr><td colspan="9" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+var _noData10='<tr><td colspan="10" style="text-align:center;color:var(--text3);">データなし</td></tr>';
 
 function renderSales() {
-  const years = getYears();
-  document.getElementById('sales-year-tabs').innerHTML = years.map(y=>`
-    <div class="year-tab ${y===salesYear?'active':''}" onclick="setSalesYear('${y}')">${y}年</div>
-  `).join('');
+  var years = getYears();
+  document.getElementById('sales-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===salesYear?'active':'')+'" onclick="setSalesYear(\''+y+'\')">'+y+'年</div>';}).join('');
+  _initMonthSelect('sales-month-sel');
+  var yProds = DB.productions.filter(function(p){return p.date.startsWith(salesYear);});
+  var selMonth = parseInt(document.getElementById('sales-month-sel').value)||1;
+  var mm = String(selMonth).padStart(2,'0');
+  var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
 
-  const yProds = DB.productions.filter(p=>p.date.startsWith(salesYear));
-  const total = yProds.reduce((a,p)=>a+(p.price||0)*(p.qty||0),0);
-  const count = yProds.length;
-  const avgMonth = total / 12;
+  // ===== 月別ビュー =====
+  var ma = _aggProds(mProds);
+  var mTotal = mProds.reduce(function(a,p){return a+(p.price||0)*(p.qty||0);},0);
+  var mMat   = mProds.reduce(function(a,p){return a+(p.matPrice||0)*(p.qty||0);},0);
+  var mGross = mTotal - mMat;
+  document.getElementById('sales-month-stats').innerHTML =
+    '<div class="stat-card blue"><div class="stat-label">'+selMonth+'月 売上</div><div class="stat-value">¥'+fmt(mTotal)+'</div><div class="stat-sub">'+mProds.length+'件</div></div>'+
+    '<div class="stat-card green"><div class="stat-label">材料費</div><div class="stat-value">¥'+fmt(mMat)+'</div></div>'+
+    '<div class="stat-card yellow"><div class="stat-label">粗利</div><div class="stat-value">¥'+fmt(mGross)+'</div></div>'+
+    '<div class="stat-card red"><div class="stat-label">粗利率</div><div class="stat-value">'+(mTotal>0?(mGross/mTotal*100).toFixed(1):'0.0')+'%</div></div>';
+  // 受注先
+  var cg=Object.values(ma.client).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('sm-client-tbody').innerHTML = Object.entries(ma.client).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){return _clientRow(e,cg);}).join('')||_noData4;
+  // 製品
+  var mProdList=_enrichProducts(ma.product);
+  document.getElementById('sm-product-tbody').innerHTML = mProdList.length?mProdList.map(function(r){return _productRow(r,false);}).join(''):_noData9;
+  document.getElementById('sm-product-tfoot').innerHTML = _productTotals(mProdList,false);
+  // 機械
+  document.getElementById('sm-machine-tbody').innerHTML = Object.entries(ma.machine).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){return _machineRow(e);}).join('')||_noData4;
+  // 材料
+  var mg=Object.values(ma.mat).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('sm-mat-tbody').innerHTML = Object.entries(ma.mat).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){return _matRow(e,mg);}).join('')||_noData4;
 
-  document.getElementById('sales-stats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-label">年間売上（${salesYear}）</div><div class="stat-value">¥${fmt(total)}</div><div class="stat-sub">${count}件</div></div>
-    <div class="stat-card green"><div class="stat-label">月平均売上</div><div class="stat-value">¥${fmt(Math.round(avgMonth))}</div></div>
-    <div class="stat-card yellow"><div class="stat-label">加工件数</div><div class="stat-value">${count}</div><div class="stat-sub">件</div></div>
-    <div class="stat-card red"><div class="stat-label">稼働機械数</div><div class="stat-value">${new Set(yProds.map(p=>p.machine)).size}</div><div class="stat-sub">台</div></div>
-  `;
-
-  // Monthly
-  const monthly = Array(12).fill(null).map(()=>({total:0,count:0}));
-  yProds.forEach(p=>{
-    const m = parseInt(p.date.slice(5,7))-1;
-    monthly[m].total += (p.price||0)*(p.qty||0);
-    monthly[m].count++;
-  });
-  document.getElementById('monthly-sales-tbody').innerHTML = monthly.map((m,i)=>`
-    <tr><td>${MONTHS[i]}</td><td>¥${fmt(m.total)}</td><td>${m.count}件</td></tr>
-  `).join('');
-  document.getElementById('monthly-sales-tfoot').innerHTML = `<tr style="font-weight:700;border-top:2px solid var(--border);"><td>合計</td><td>¥${fmt(total)}</td><td>${count}件</td></tr>`;
-
-  // Machine
-  const machines = {};
-  yProds.forEach(p=>{
-    if (!machines[p.machine]) machines[p.machine]={total:0,count:0};
-    machines[p.machine].total += (p.price||0)*(p.qty||0);
-    machines[p.machine].count++;
-  });
-  document.getElementById('machine-sales-tbody').innerHTML = Object.entries(machines).sort((a,b)=>b[1].total-a[1].total).map(([m,v])=>`
-    <tr><td>${m}</td><td>¥${fmt(v.total)}</td><td>${v.count}件</td></tr>
-  `).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
-
-  // ===== 月別/年間切替テーブル =====
-  function periodFilter(key) {
-    if (salesSubMode[key]==='year') return function(){return true;};
-    const mm = String(salesSubMonth[key]).padStart(2,'0');
-    return function(p){return p.date.slice(5,7)===mm;};
-  }
-
-  // 受注先別売上
-  _populateMonthSelect('client-month-sel','client');
-  const clientCard = document.getElementById('client-sales-tbody').closest('.card');
-  if (clientCard) _syncSubTabs(clientCard, salesSubMode.client);
-  const clientAgg = {};
-  yProds.filter(periodFilter('client')).forEach(function(p){
-    const meta = getProdMeta(p.fignum);
-    const k = meta.client;
-    if (!clientAgg[k]) clientAgg[k] = {total:0,count:0};
-    clientAgg[k].total += (p.price||0)*(p.qty||0);
-    clientAgg[k].count++;
-  });
-  const clientGrand = Object.values(clientAgg).reduce(function(a,v){return a+v.total;},0);
-  document.getElementById('client-sales-tbody').innerHTML = Object.entries(clientAgg).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
-    const pct = clientGrand ? (e[1].total/clientGrand*100).toFixed(1) : '0.0';
-    return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';
-  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
-
-  // 材料発注先別支払い
-  _populateMonthSelect('mat-month-sel','mat');
-  const matCard = document.getElementById('mat-sales-tbody').closest('.card');
-  if (matCard) _syncSubTabs(matCard, salesSubMode.mat);
-  const matAgg = {};
-  yProds.filter(periodFilter('mat')).forEach(function(p){
-    const meta = getProdMeta(p.fignum);
-    const k = meta.matSupplier;
-    if (!matAgg[k]) matAgg[k] = {total:0,count:0};
-    matAgg[k].total += (p.matPrice||0)*(p.qty||0);
-    matAgg[k].count++;
-  });
-  const matGrand = Object.values(matAgg).reduce(function(a,v){return a+v.total;},0);
-  document.getElementById('mat-sales-tbody').innerHTML = Object.entries(matAgg).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){
-    const pct = matGrand ? (e[1].total/matGrand*100).toFixed(1) : '0.0';
-    return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';
-  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
-
-  // 機械別稼働時間（工程時間 × 数量）
-  _populateMonthSelect('machine-month-sel','machine');
-  const mcCard = document.getElementById('machine-time-tbody').closest('.card');
-  if (mcCard) _syncSubTabs(mcCard, salesSubMode.machine);
-  const machineTime = {};
-  yProds.filter(periodFilter('machine')).forEach(function(p){
-    const k = p.machine || '(未設定)';
-    if (!machineTime[k]) machineTime[k] = {sec:0,count:0};
-    machineTime[k].sec += stepsToSeconds(p.steps) * (p.qty||1);
-    machineTime[k].count++;
-  });
-  document.getElementById('machine-time-tbody').innerHTML = Object.entries(machineTime).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){
-    return '<tr><td>'+e[0]+'</td><td>'+fmtDuration(e[1].sec)+'</td><td>'+e[1].count+'件</td></tr>';
-  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--text3);">データなし</td></tr>';
-
-  // 製品別売上（fignumごと）
-  _populateMonthSelect('product-month-sel','product');
-  const prodCard = document.getElementById('product-sales-tbody').closest('.card');
-  if (prodCard) _syncSubTabs(prodCard, salesSubMode.product);
-  const prodAgg = {};
-  yProds.filter(periodFilter('product')).forEach(function(p){
-    const k = p.fignum || '(未設定)';
-    if (!prodAgg[k]) prodAgg[k] = {fignum:k,name:p.name||'',count:0,qty:0,sales:0,mat:0,sec:0};
-    prodAgg[k].count++;
-    prodAgg[k].qty   += (p.qty||0);
-    prodAgg[k].sales += (p.price||0)*(p.qty||0);
-    prodAgg[k].mat   += (p.matPrice||0)*(p.qty||0);
-    prodAgg[k].sec   += stepsToSeconds(p.steps)*(p.qty||1);
-    if (!prodAgg[k].name && p.name) prodAgg[k].name = p.name;
-  });
-  const prodList = Object.values(prodAgg).map(function(pa){
-    const master = (DB.products||[]).find(function(x){return x.fignum===pa.fignum;});
-    const osPerUnit = master && master.outsource ? master.outsource.reduce(function(a,o){return a+(o.price||0);},0) : 0;
-    const os = osPerUnit * pa.qty;
-    const gross = pa.sales - pa.mat - os;
-    const rate = pa.sales>0 ? gross/pa.sales*100 : 0;
-    return {
-      fignum:pa.fignum,
-      name: pa.name || (master&&master.name) || '',
-      client: getClient(pa.fignum),
-      count: pa.count, sales: pa.sales, mat: pa.mat, os: os,
-      gross: gross, rate: rate, sec: pa.sec
-    };
-  }).sort(function(a,b){return b.sales-a.sales;});
-
-  document.getElementById('product-sales-tbody').innerHTML = prodList.length ? prodList.map(function(r){
-    return '<tr>'+
-      '<td><span class="badge badge-blue">'+r.fignum+'</span></td>'+
-      '<td>'+r.name+'</td>'+
-      '<td>'+r.client+'</td>'+
-      '<td>'+r.count+'件</td>'+
-      '<td>¥'+fmt(r.sales)+'</td>'+
-      '<td>¥'+fmt(r.mat)+'</td>'+
-      '<td>¥'+fmt(r.os)+'</td>'+
-      '<td>¥'+fmt(r.gross)+'</td>'+
-      '<td>'+r.rate.toFixed(1)+'%</td>'+
-      '<td>'+fmtDuration(r.sec)+'</td>'+
-    '</tr>';
-  }).join('') : '<tr><td colspan="10" style="text-align:center;color:var(--text3);">データなし</td></tr>';
-
-  if (prodList.length) {
-    const tot = prodList.reduce(function(a,r){
-      a.count+=r.count; a.sales+=r.sales; a.mat+=r.mat; a.os+=r.os; a.gross+=r.gross; a.sec+=r.sec; return a;
-    },{count:0,sales:0,mat:0,os:0,gross:0,sec:0});
-    const totRate = tot.sales>0 ? tot.gross/tot.sales*100 : 0;
-    document.getElementById('product-sales-tfoot').innerHTML =
-      '<tr style="font-weight:700;border-top:2px solid var(--border);">'+
-      '<td colspan="3">合計</td>'+
-      '<td>'+tot.count+'件</td>'+
-      '<td>¥'+fmt(tot.sales)+'</td>'+
-      '<td>¥'+fmt(tot.mat)+'</td>'+
-      '<td>¥'+fmt(tot.os)+'</td>'+
-      '<td>¥'+fmt(tot.gross)+'</td>'+
-      '<td>'+totRate.toFixed(1)+'%</td>'+
-      '<td>'+fmtDuration(tot.sec)+'</td>'+
-      '</tr>';
-  } else {
-    document.getElementById('product-sales-tfoot').innerHTML = '';
-  }
+  // ===== 年間ビュー =====
+  var total = yProds.reduce(function(a,p){return a+(p.price||0)*(p.qty||0);},0);
+  var count = yProds.length;
+  document.getElementById('sales-year-stats').innerHTML =
+    '<div class="stat-card blue"><div class="stat-label">年間売上（'+salesYear+'）</div><div class="stat-value">¥'+fmt(total)+'</div><div class="stat-sub">'+count+'件</div></div>'+
+    '<div class="stat-card green"><div class="stat-label">月平均売上</div><div class="stat-value">¥'+fmt(Math.round(total/12))+'</div></div>'+
+    '<div class="stat-card yellow"><div class="stat-label">加工件数</div><div class="stat-value">'+count+'</div><div class="stat-sub">件</div></div>'+
+    '<div class="stat-card red"><div class="stat-label">稼働機械数</div><div class="stat-value">'+new Set(yProds.map(function(p){return p.machine;})).size+'</div><div class="stat-sub">台</div></div>';
+  // 月別サマリ
+  var monthly=Array(12).fill(null).map(function(){return {sales:0,mat:0,count:0};});
+  yProds.forEach(function(p){var mi=parseInt(p.date.slice(5,7))-1;monthly[mi].sales+=(p.price||0)*(p.qty||0);monthly[mi].mat+=(p.matPrice||0)*(p.qty||0);monthly[mi].count++;});
+  var yMat=monthly.reduce(function(a,m){return a+m.mat;},0);
+  document.getElementById('sa-monthly-tbody').innerHTML = monthly.map(function(m,i){return '<tr><td>'+MONTHS[i]+'</td><td>¥'+fmt(m.sales)+'</td><td>'+m.count+'件</td><td>¥'+fmt(m.mat)+'</td><td>¥'+fmt(m.sales-m.mat)+'</td></tr>';}).join('');
+  document.getElementById('sa-monthly-tfoot').innerHTML = '<tr style="font-weight:700;border-top:2px solid var(--border);"><td>合計</td><td>¥'+fmt(total)+'</td><td>'+count+'件</td><td>¥'+fmt(yMat)+'</td><td>¥'+fmt(total-yMat)+'</td></tr>';
+  // 年間テーブル
+  var ya=_aggProds(yProds);
+  var ycg=Object.values(ya.client).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('sa-client-tbody').innerHTML = Object.entries(ya.client).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){return _clientRow(e,ycg);}).join('')||_noData4;
+  var yProdList=_enrichProducts(ya.product);
+  document.getElementById('sa-product-tbody').innerHTML = yProdList.length?yProdList.map(function(r){return _productRow(r,true);}).join(''):_noData10;
+  document.getElementById('sa-product-tfoot').innerHTML = _productTotals(yProdList,true);
+  document.getElementById('sa-machine-tbody').innerHTML = Object.entries(ya.machine).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){return _machineRow(e);}).join('')||_noData4;
+  var ymg=Object.values(ya.mat).reduce(function(a,v){return a+v.total;},0);
+  document.getElementById('sa-mat-tbody').innerHTML = Object.entries(ya.mat).sort(function(a,b){return b[1].total-a[1].total;}).map(function(e){return _matRow(e,ymg);}).join('')||_noData4;
 }
 
 function setSalesYear(y) { salesYear = y; renderSales(); }
 
 // ===== PROFIT =====
 let profitYear = new Date().getFullYear().toString();
-function renderProfit() {
-  const years = getYears();
-  document.getElementById('profit-year-tabs').innerHTML = years.map(y=>`
-    <div class="year-tab ${y===profitYear?'active':''}" onclick="setProfitYear('${y}')">${y}年</div>
-  `).join('');
 
-  const yProds = DB.productions.filter(p=>p.date.startsWith(profitYear));
-  const productMap = {};
-  yProds.forEach(p=>{
-    if (!productMap[p.fignum]) productMap[p.fignum] = {fignum:p.fignum,name:p.name||'',sales:0,qty:0};
-    productMap[p.fignum].sales += (p.price||0)*(p.qty||0);
-    productMap[p.fignum].qty += (p.qty||0);
+function _profitAgg(prods) {
+  var pm={};
+  prods.forEach(function(p){
+    if(!pm[p.fignum])pm[p.fignum]={fignum:p.fignum,name:p.name||'',sales:0,qty:0,count:0};
+    pm[p.fignum].count++; pm[p.fignum].qty+=(p.qty||0); pm[p.fignum].sales+=(p.price||0)*(p.qty||0);
   });
+  return Object.values(pm).map(function(v){
+    var prod=(DB.products||[]).find(function(x){return x.fignum===v.fignum;});
+    var matCost=prod?(prod.matPrice||0)*v.qty:0;
+    var osCost=prod&&prod.outsource?prod.outsource.reduce(function(a,o){return a+(o.price||0);},0)*v.qty:0;
+    var gross=v.sales-matCost-osCost, rate=v.sales>0?gross/v.sales*100:0;
+    return {fignum:v.fignum,name:v.name||(prod&&prod.name)||'',client:getClient(v.fignum),count:v.count,sales:v.sales,mat:matCost,os:osCost,gross:gross,rate:rate};
+  }).sort(function(a,b){return b.sales-a.sales;});
+}
+function _profitRow(r){return '<tr><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td style="color:'+(r.gross>=0?'var(--accent2)':'var(--accent3)')+'">¥'+fmt(r.gross)+'</td><td><span class="badge '+(r.rate>=30?'badge-green':r.rate>=10?'badge-yellow':'badge-red')+'">'+r.rate.toFixed(0)+'%</span></td></tr>';}
+function _profitTotals(list){if(!list.length)return '';var t=list.reduce(function(a,r){a.count+=r.count;a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;return a;},{count:0,sales:0,mat:0,os:0,gross:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td colspan="3">合計</td><td>'+t.count+'件</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}
+function _clientProfitRows(prodList){var cp={};prodList.forEach(function(r){var k=r.client;if(!cp[k])cp[k]={sales:0,mat:0,os:0,gross:0};cp[k].sales+=r.sales;cp[k].mat+=r.mat;cp[k].os+=r.os;cp[k].gross+=r.gross;});return Object.entries(cp).sort(function(a,b){return b[1].sales-a[1].sales;}).map(function(e){var v=e[1],rate=v.sales>0?v.gross/v.sales*100:0;return '<tr><td>'+e[0]+'</td><td>¥'+fmt(v.sales)+'</td><td>¥'+fmt(v.mat)+'</td><td>¥'+fmt(v.os)+'</td><td style="color:'+(v.gross>=0?'var(--accent2)':'var(--accent3)')+'">¥'+fmt(v.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}).join('');}
+function _clientProfitTotals(prodList){if(!prodList.length)return '';var t=prodList.reduce(function(a,r){a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;return a;},{sales:0,mat:0,os:0,gross:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td>合計</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}
 
-  document.getElementById('profit-tbody').innerHTML = Object.values(productMap).length ?
-    Object.values(productMap).sort((a,b)=>b.sales-a.sales).map(pm=>{
-      const prod = DB.products.find(x=>x.fignum===pm.fignum);
-      const matCost = prod ? (prod.matPrice||0) * pm.qty : 0;
-      const osCost = prod && prod.outsource ? prod.outsource.reduce((a,o)=>a+(o.price||0),0) * pm.qty : 0;
-      const gross = pm.sales - matCost - osCost;
-      const rate = pm.sales > 0 ? Math.round(gross/pm.sales*100) : 0;
-      return `<tr>
-        <td><span class="badge badge-blue">${pm.fignum}</span></td>
-        <td>${pm.name}</td>
-        <td>¥${fmt(pm.sales)}</td>
-        <td>¥${fmt(matCost)}</td>
-        <td>¥${fmt(osCost)}</td>
-        <td style="color:${gross>=0?'var(--accent2)':'var(--accent3)'};">¥${fmt(gross)}</td>
-        <td><span class="badge ${rate>=30?'badge-green':rate>=10?'badge-yellow':'badge-red'}">${rate}%</span></td>
-      </tr>`;
-    }).join('') :
-    '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">データなし</div></div></td></tr>';
+function renderProfit() {
+  var years = getYears();
+  document.getElementById('profit-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===profitYear?'active':'')+'" onclick="setProfitYear(\''+y+'\')">'+y+'年</div>';}).join('');
+  _initMonthSelect('profit-month-sel');
+  var yProds = DB.productions.filter(function(p){return p.date.startsWith(profitYear);});
+  var selMonth = parseInt(document.getElementById('profit-month-sel').value)||1;
+  var mm = String(selMonth).padStart(2,'0');
+  var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
+  var _nd='<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">データなし</div></div></td></tr>';
+  var _nd6='<tr><td colspan="6" style="text-align:center;color:var(--text3);">データなし</td></tr>';
+
+  // 月別
+  var mPL=_profitAgg(mProds);
+  document.getElementById('pm-product-tbody').innerHTML = mPL.length?mPL.map(_profitRow).join(''):_nd;
+  document.getElementById('pm-product-tfoot').innerHTML = _profitTotals(mPL);
+  document.getElementById('pm-client-tbody').innerHTML = _clientProfitRows(mPL)||_nd6;
+  document.getElementById('pm-client-tfoot').innerHTML = _clientProfitTotals(mPL);
+
+  // 年間
+  var aPL=_profitAgg(yProds);
+  document.getElementById('pa-product-tbody').innerHTML = aPL.length?aPL.map(_profitRow).join(''):_nd;
+  document.getElementById('pa-product-tfoot').innerHTML = _profitTotals(aPL);
+  document.getElementById('pa-client-tbody').innerHTML = _clientProfitRows(aPL)||_nd6;
+  document.getElementById('pa-client-tfoot').innerHTML = _clientProfitTotals(aPL);
 }
 
 function setProfitYear(y) { profitYear = y; renderProfit(); }
@@ -2751,207 +2588,84 @@ function exportProductionExcel() {
 }
 
 // ============ 2. 売上集計 ============
+function _exportSalesData(prods, label) {
+  var wb = XLSX.utils.book_new();
+  var a = _aggProds(prods);
+  // 受注先
+  var cg=Object.values(a.client).reduce(function(x,v){return x+v.total;},0);
+  var cRows=Object.entries(a.client).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e){return [e[0],e[1].count,e[1].total,cg>0?e[1].total/cg:0];});
+  var cTot=['合計',cRows.reduce(function(x,r){return x+r[1];},0),cg,cg>0?1:0];
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'受注先別売上 - '+label,headers:['受注先','件数','売上','割合'],rows:cRows,colWidths:[24,10,16,12],currencyCols:[2],percentCols:[3],totalRow:cTot}),'受注先別売上');
+  // 材料
+  var mg=Object.values(a.mat).reduce(function(x,v){return x+v.total;},0);
+  var mRows=Object.entries(a.mat).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e){return [e[0],e[1].count,e[1].total,mg>0?e[1].total/mg:0];});
+  var mTot=['合計',mRows.reduce(function(x,r){return x+r[1];},0),mg,mg>0?1:0];
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'材料発注先別支払い - '+label,headers:['材料発注先','件数','支払合計','割合'],rows:mRows,colWidths:[24,10,16,12],currencyCols:[2],percentCols:[3],totalRow:mTot}),'材料発注先別');
+  // 機械
+  var mcRows=Object.entries(a.machine).sort(function(x,y){return y[1].sec-x[1].sec;}).map(function(e){return [e[0],e[1].count,e[1].sales,secondsToHM(e[1].sec)];});
+  var mcTot=['合計',mcRows.reduce(function(x,r){return x+r[1];},0),mcRows.reduce(function(x,r){return x+r[2];},0),secondsToHM(Object.values(a.machine).reduce(function(x,v){return x+v.sec;},0))];
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'機械別稼働 - '+label,headers:['機械名','件数','売上','稼働時間'],rows:mcRows,colWidths:[18,10,16,18],currencyCols:[2],totalRow:mcTot}),'機械別');
+  // 製品
+  var pList=_enrichProducts(a.product);
+  var pRows=pList.map(function(r){return [r.fignum,r.name,r.client,r.count,r.sales,r.mat,r.os,r.gross,r.sales>0?r.gross/r.sales:0,secondsToHM(r.sec)];});
+  var pTot=['合計','','',pRows.reduce(function(x,r){return x+r[3];},0),pRows.reduce(function(x,r){return x+r[4];},0),pRows.reduce(function(x,r){return x+r[5];},0),pRows.reduce(function(x,r){return x+r[6];},0),pRows.reduce(function(x,r){return x+r[7];},0),0,''];
+  pTot[8]=pTot[4]>0?pTot[7]/pTot[4]:0;
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'製品別売上 - '+label,headers:['図番','品名','受注先','件数','売上','材料費','外注費','粗利','粗利率','工程時間'],rows:pRows,colWidths:[14,22,18,10,16,16,16,16,12,16],currencyCols:[4,5,6,7],percentCols:[8],totalRow:pTot}),'製品別');
+  return wb;
+}
+
 function exportSalesExcel() {
-  const year = salesYear;
-  const yProds = DB.productions.filter(function(p){return p.date.startsWith(year);});
-  const wb = XLSX.utils.book_new();
-
-  // --- シート1: 月別売上 ---
-  const monthly = Array(12).fill(null).map(function(){return {sales:0,mat:0,count:0};});
-  yProds.forEach(function(p){
-    const mi = parseInt(p.date.slice(5,7))-1;
-    monthly[mi].sales += (p.price||0)*(p.qty||0);
-    monthly[mi].mat   += (p.matPrice||0)*(p.qty||0);
-    monthly[mi].count++;
-  });
-  const monthlyRows = monthly.map(function(m,i){
-    const profit = m.sales - m.mat;
-    const rate = m.sales>0 ? profit/m.sales : 0;
-    return [MONTHS[i], m.sales, m.count, m.mat, profit, rate];
-  });
-  const totSales = monthly.reduce(function(a,m){return a+m.sales;},0);
-  const totMat   = monthly.reduce(function(a,m){return a+m.mat;},0);
-  const totCount = monthly.reduce(function(a,m){return a+m.count;},0);
-  const totProfit= totSales-totMat;
-  const monthlyTotal = ['合計', totSales, totCount, totMat, totProfit, totSales>0?totProfit/totSales:0];
-  const wsM = _buildStyledSheet({
-    title:'月別売上 - '+year+'年',
-    headers:['月','売上','件数','材料費','粗利','粗利率'],
-    rows:monthlyRows, colWidths:[10,16,10,16,16,12],
-    currencyCols:[1,3,4], percentCols:[5], totalRow:monthlyTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsM,'月別売上');
-
-  // --- シート2: 受注先別売上 ---
-  const cAgg = {};
-  yProds.forEach(function(p){
-    const k = getClient(p.fignum);
-    if (!cAgg[k]) cAgg[k]={count:0,sales:0};
-    cAgg[k].count++;
-    cAgg[k].sales += (p.price||0)*(p.qty||0);
-  });
-  const cGrand = Object.values(cAgg).reduce(function(a,v){return a+v.sales;},0);
-  const cRows = Object.entries(cAgg).sort(function(a,b){return b[1].sales-a[1].sales;}).map(function(e){
-    return [e[0], e[1].count, e[1].sales, cGrand>0?e[1].sales/cGrand:0];
-  });
-  const cTotal = ['合計',
-    Object.values(cAgg).reduce(function(a,v){return a+v.count;},0),
-    cGrand, cGrand>0?1:0
-  ];
-  const wsC = _buildStyledSheet({
-    title:'受注先別売上 - '+year+'年',
-    headers:['受注先','件数','売上','割合'], rows:cRows,
-    colWidths:[24,10,16,12], currencyCols:[2], percentCols:[3], totalRow:cTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsC,'受注先別売上');
-
-  // --- シート3: 材料発注先別支払い ---
-  const mAgg = {};
-  yProds.forEach(function(p){
-    const k = getMatSupplier(p.fignum);
-    if (!mAgg[k]) mAgg[k]={count:0,pay:0};
-    mAgg[k].count++;
-    mAgg[k].pay += (p.matPrice||0)*(p.qty||0);
-  });
-  const mGrand = Object.values(mAgg).reduce(function(a,v){return a+v.pay;},0);
-  const mRows = Object.entries(mAgg).sort(function(a,b){return b[1].pay-a[1].pay;}).map(function(e){
-    return [e[0], e[1].count, e[1].pay, mGrand>0?e[1].pay/mGrand:0];
-  });
-  const mTotal = ['合計',
-    Object.values(mAgg).reduce(function(a,v){return a+v.count;},0),
-    mGrand, mGrand>0?1:0
-  ];
-  const wsMat = _buildStyledSheet({
-    title:'材料発注先別支払い - '+year+'年',
-    headers:['材料発注先','件数','支払合計','割合'], rows:mRows,
-    colWidths:[24,10,16,12], currencyCols:[2], percentCols:[3], totalRow:mTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsMat,'材料発注先別支払い');
-
-  // --- シート4: 機械別稼働 ---
-  const mcAgg = {};
-  yProds.forEach(function(p){
-    const k = p.machine||'(未設定)';
-    if (!mcAgg[k]) mcAgg[k]={count:0,sales:0,sec:0};
-    mcAgg[k].count++;
-    mcAgg[k].sales += (p.price||0)*(p.qty||0);
-    mcAgg[k].sec += stepsToSeconds(p.steps)*(p.qty||1);
-  });
-  const mcRows = Object.entries(mcAgg).sort(function(a,b){return b[1].sec-a[1].sec;}).map(function(e){
-    return [e[0], e[1].count, e[1].sales, secondsToHM(e[1].sec)];
-  });
-  const mcTotal = ['合計',
-    Object.values(mcAgg).reduce(function(a,v){return a+v.count;},0),
-    Object.values(mcAgg).reduce(function(a,v){return a+v.sales;},0),
-    secondsToHM(Object.values(mcAgg).reduce(function(a,v){return a+v.sec;},0))
-  ];
-  const wsMc = _buildStyledSheet({
-    title:'機械別稼働 - '+year+'年',
-    headers:['機械名','件数','売上','稼働時間合計'], rows:mcRows,
-    colWidths:[18,10,16,18], currencyCols:[2], totalRow:mcTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsMc,'機械別稼働');
-
-  // --- シート5: 製品別 ---
-  const pAgg = {};
-  yProds.forEach(function(p){
-    const k = p.fignum||'(未設定)';
-    if (!pAgg[k]) pAgg[k]={fignum:k,name:p.name||'',count:0,qty:0,sales:0,mat:0,sec:0};
-    pAgg[k].count++;
-    pAgg[k].qty   += (p.qty||0);
-    pAgg[k].sales += (p.price||0)*(p.qty||0);
-    pAgg[k].mat   += (p.matPrice||0)*(p.qty||0);
-    pAgg[k].sec   += stepsToSeconds(p.steps)*(p.qty||1);
-    if (!pAgg[k].name && p.name) pAgg[k].name = p.name;
-  });
-  const pList = Object.values(pAgg).map(function(pa){
-    const master = (DB.products||[]).find(function(x){return x.fignum===pa.fignum;});
-    const osPerUnit = master && master.outsource ? master.outsource.reduce(function(a,o){return a+(o.price||0);},0) : 0;
-    const os = osPerUnit * pa.qty;
-    const gross = pa.sales - pa.mat - os;
-    const rate = pa.sales>0 ? gross/pa.sales : 0;
-    return [pa.fignum, pa.name||(master&&master.name)||'', getClient(pa.fignum), pa.count, pa.sales, pa.mat, os, gross, rate, secondsToHM(pa.sec)];
-  }).sort(function(a,b){return b[4]-a[4];});
-  const pTotSales = pList.reduce(function(a,r){return a+r[4];},0);
-  const pTotMat   = pList.reduce(function(a,r){return a+r[5];},0);
-  const pTotOs    = pList.reduce(function(a,r){return a+r[6];},0);
-  const pTotGross = pList.reduce(function(a,r){return a+r[7];},0);
-  const pTotCount = pList.reduce(function(a,r){return a+r[3];},0);
-  const pTotSec   = Object.values(pAgg).reduce(function(a,v){return a+v.sec;},0);
-  const pTotal = ['合計','','',pTotCount,pTotSales,pTotMat,pTotOs,pTotGross, pTotSales>0?pTotGross/pTotSales:0, secondsToHM(pTotSec)];
-  const wsP = _buildStyledSheet({
-    title:'製品別売上 - '+year+'年',
-    headers:['図番','品名','受注先','件数','売上合計','材料費','外注費','粗利','粗利率','合計工程時間'],
-    rows:pList, colWidths:[14,22,18,10,16,16,16,16,12,16],
-    currencyCols:[4,5,6,7], percentCols:[8], totalRow:pTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsP,'製品別');
-
-  XLSX.writeFile(wb,'売上集計_'+year+'.xlsx');
+  var year=salesYear;
+  var yProds=DB.productions.filter(function(p){return p.date.startsWith(year);});
+  if (salesView==='monthly') {
+    var selMonth=parseInt(document.getElementById('sales-month-sel').value)||1;
+    var mm=String(selMonth).padStart(2,'0');
+    var mProds=yProds.filter(function(p){return p.date.slice(5,7)===mm;});
+    var wb=_exportSalesData(mProds, year+'年'+selMonth+'月');
+    XLSX.writeFile(wb,'売上集計_'+year+'年'+selMonth+'月.xlsx');
+  } else {
+    // 年間：月別サマリシートを先頭に追加
+    var monthly=Array(12).fill(null).map(function(){return {sales:0,mat:0,count:0};});
+    yProds.forEach(function(p){var mi=parseInt(p.date.slice(5,7))-1;monthly[mi].sales+=(p.price||0)*(p.qty||0);monthly[mi].mat+=(p.matPrice||0)*(p.qty||0);monthly[mi].count++;});
+    var mRows=monthly.map(function(m,i){var profit=m.sales-m.mat;return [MONTHS[i],m.sales,m.count,m.mat,profit,m.sales>0?profit/m.sales:0];});
+    var ts=monthly.reduce(function(a,m){return a+m.sales;},0),tm=monthly.reduce(function(a,m){return a+m.mat;},0),tc=monthly.reduce(function(a,m){return a+m.count;},0);
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'月別売上 - '+year+'年',headers:['月','売上','件数','材料費','粗利','粗利率'],rows:mRows,colWidths:[10,16,10,16,16,12],currencyCols:[1,3,4],percentCols:[5],totalRow:['合計',ts,tc,tm,ts-tm,ts>0?(ts-tm)/ts:0]}),'月別売上');
+    var wb2=_exportSalesData(yProds, year+'年度年間');
+    wb2.SheetNames.forEach(function(n){XLSX.utils.book_append_sheet(wb,wb2.Sheets[n],n);});
+    XLSX.writeFile(wb,'売上集計_'+year+'年間.xlsx');
+  }
   showToast('Excelをダウンロードしました');
 }
 
 // ============ 3. 利益レポート ============
+function _exportProfitData(prods, label) {
+  var wb=XLSX.utils.book_new();
+  var pList=_profitAgg(prods);
+  var prodRows=pList.map(function(r){return [r.fignum,r.name,r.client,r.count,r.sales,r.mat,r.os,r.gross,r.sales>0?r.gross/r.sales:0];});
+  var ts=prodRows.reduce(function(a,r){return a+r[4];},0),tm=prodRows.reduce(function(a,r){return a+r[5];},0),to=prodRows.reduce(function(a,r){return a+r[6];},0),tg=prodRows.reduce(function(a,r){return a+r[7];},0),tc=prodRows.reduce(function(a,r){return a+r[3];},0);
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'製品別利益 - '+label,headers:['図番','品名','受注先','件数','売上','材料費','外注費','粗利','粗利率'],rows:prodRows,colWidths:[14,22,18,10,16,16,16,16,12],currencyCols:[4,5,6,7],percentCols:[8],totalRow:['合計','','',tc,ts,tm,to,tg,ts>0?tg/ts:0]}),'製品別利益');
+  // 受注先別
+  var cp={};pList.forEach(function(r){var k=r.client;if(!cp[k])cp[k]={sales:0,mat:0,os:0,gross:0};cp[k].sales+=r.sales;cp[k].mat+=r.mat;cp[k].os+=r.os;cp[k].gross+=r.gross;});
+  var cpRows=Object.entries(cp).sort(function(a,b){return b[1].sales-a[1].sales;}).map(function(e){var v=e[1];return [e[0],v.sales,v.mat,v.os,v.gross,v.sales>0?v.gross/v.sales:0];});
+  var ct=Object.values(cp).reduce(function(a,v){a.sales+=v.sales;a.mat+=v.mat;a.os+=v.os;a.gross+=v.gross;return a;},{sales:0,mat:0,os:0,gross:0});
+  XLSX.utils.book_append_sheet(wb,_buildStyledSheet({title:'受注先別利益 - '+label,headers:['受注先','売上','材料費','外注費','粗利','粗利率'],rows:cpRows,colWidths:[24,16,16,16,16,12],currencyCols:[1,2,3,4],percentCols:[5],totalRow:['合計',ct.sales,ct.mat,ct.os,ct.gross,ct.sales>0?ct.gross/ct.sales:0]}),'受注先別利益');
+  return wb;
+}
+
 function exportProfitExcel() {
-  const year = profitYear;
-  const yProds = DB.productions.filter(function(p){return p.date.startsWith(year);});
-  const wb = XLSX.utils.book_new();
-
-  // --- シート1: 製品別利益 ---
-  const prodMap = {};
-  yProds.forEach(function(p){
-    if (!prodMap[p.fignum]) prodMap[p.fignum]={fignum:p.fignum,name:p.name||'',count:0,qty:0,sales:0};
-    prodMap[p.fignum].count++;
-    prodMap[p.fignum].qty += (p.qty||0);
-    prodMap[p.fignum].sales += (p.price||0)*(p.qty||0);
-  });
-  const prodRows = Object.values(prodMap).map(function(pm){
-    const prod = (DB.products||[]).find(function(x){return x.fignum===pm.fignum;});
-    const matCost = prod ? (prod.matPrice||0)*pm.qty : 0;
-    const osCost  = prod && prod.outsource ? prod.outsource.reduce(function(a,o){return a+(o.price||0);},0)*pm.qty : 0;
-    const gross = pm.sales - matCost - osCost;
-    const rate = pm.sales>0 ? gross/pm.sales : 0;
-    return [pm.fignum, pm.name, getClient(pm.fignum), pm.count, pm.sales, matCost, osCost, gross, rate];
-  });
-  const pTotSales = prodRows.reduce(function(a,r){return a+r[4];},0);
-  const pTotMat   = prodRows.reduce(function(a,r){return a+r[5];},0);
-  const pTotOs    = prodRows.reduce(function(a,r){return a+r[6];},0);
-  const pTotGross = prodRows.reduce(function(a,r){return a+r[7];},0);
-  const pTotCount = prodRows.reduce(function(a,r){return a+r[3];},0);
-  const profitTotal = ['合計','','',pTotCount,pTotSales,pTotMat,pTotOs,pTotGross, pTotSales>0?pTotGross/pTotSales:0];
-  const wsP = _buildStyledSheet({
-    title:'製品別利益 - '+year+'年',
-    headers:['図番','品名','受注先','件数','売上','材料費','外注費','粗利','粗利率'],
-    rows:prodRows, colWidths:[14,22,18,10,16,16,16,16,12],
-    currencyCols:[4,5,6,7], percentCols:[8], totalRow:profitTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsP,'製品別利益');
-
-  // --- シート2: 受注先別利益 ---
-  const clientProfit = {};
-  prodRows.forEach(function(r){
-    const k = r[2]; // client
-    if (!clientProfit[k]) clientProfit[k]={sales:0,mat:0,os:0,gross:0};
-    clientProfit[k].sales += r[4];
-    clientProfit[k].mat   += r[5];
-    clientProfit[k].os    += r[6];
-    clientProfit[k].gross += r[7];
-  });
-  const cpRows = Object.entries(clientProfit).sort(function(a,b){return b[1].sales-a[1].sales;}).map(function(e){
-    const v = e[1];
-    return [e[0], v.sales, v.mat, v.os, v.gross, v.sales>0?v.gross/v.sales:0];
-  });
-  const cpT = Object.values(clientProfit).reduce(function(a,v){a.sales+=v.sales;a.mat+=v.mat;a.os+=v.os;a.gross+=v.gross;return a;},{sales:0,mat:0,os:0,gross:0});
-  const cpTotal = ['合計',cpT.sales,cpT.mat,cpT.os,cpT.gross, cpT.sales>0?cpT.gross/cpT.sales:0];
-  const wsCp = _buildStyledSheet({
-    title:'受注先別利益 - '+year+'年',
-    headers:['受注先','売上','材料費','外注費','粗利','粗利率'],
-    rows:cpRows, colWidths:[24,16,16,16,16,12],
-    currencyCols:[1,2,3,4], percentCols:[5], totalRow:cpTotal
-  });
-  XLSX.utils.book_append_sheet(wb,wsCp,'受注先別利益');
-
-  XLSX.writeFile(wb,'利益レポート_'+year+'.xlsx');
+  var year=profitYear;
+  var yProds=DB.productions.filter(function(p){return p.date.startsWith(year);});
+  if (profitView==='monthly') {
+    var selMonth=parseInt(document.getElementById('profit-month-sel').value)||1;
+    var mm=String(selMonth).padStart(2,'0');
+    var mProds=yProds.filter(function(p){return p.date.slice(5,7)===mm;});
+    var wb=_exportProfitData(mProds, year+'年'+selMonth+'月');
+    XLSX.writeFile(wb,'利益レポート_'+year+'年'+selMonth+'月.xlsx');
+  } else {
+    var wb=_exportProfitData(yProds, year+'年度年間');
+    XLSX.writeFile(wb,'利益レポート_'+year+'年間.xlsx');
+  }
   showToast('Excelをダウンロードしました');
 }
 
