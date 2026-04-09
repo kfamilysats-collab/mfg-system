@@ -616,8 +616,6 @@
             <label>図番 *</label>
             <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()" autocomplete="off">
             <datalist id="fignum-list"></datalist>
-            <button type="button" id="copy-last-steps-btn" onclick="copyLastSteps()" disabled style="margin-top:10px;width:100%;background:#94a3b8;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:not-allowed;transition:background 0.2s;">📋 同じ図番の前回工程をコピー</button>
-            <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-top:6px;display:none;"></div>
           </div>
           <div class="form-group">
             <label>品名（自動入力）</label>
@@ -651,6 +649,10 @@
         </div>
 
         <hr class="divider">
+        <div id="copy-last-section" style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+          <button type="button" id="copy-last-steps-btn" onclick="copyLastSteps()" style="background:#94a3b8;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:not-allowed;opacity:0.5;transition:all 0.2s;white-space:nowrap;">📋 前回の工程をコピー</button>
+          <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);"></div>
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div style="font-size:13px;font-weight:700;color:var(--accent);">工程時間（最大10工程）</div>
           <div style="display:flex;gap:8px;">
@@ -1798,7 +1800,7 @@ function autoFillProduct() {
     matHint.style.display = 'none';
   }
 
-  // 前回工程コピーボタンの有効/無効制御（常時表示）
+  // 前回工程コピーボタンの有効/無効制御（常時表示・opacity切替）
   const copyBtn = document.getElementById('copy-last-steps-btn');
   const lastHint = document.getElementById('last-steps-hint');
   if (copyBtn) {
@@ -1806,24 +1808,27 @@ function autoFillProduct() {
       .filter(p => p.fignum === fignum && Array.isArray(p.steps) && p.steps.length > 0)
       .sort((a, b) => b.date.localeCompare(a.date))[0] : null;
     if (fignum && lastProd) {
-      // 図番あり & 前回実績あり → 青く有効化
-      copyBtn.disabled = false;
+      // 図番あり & 前回実績あり → 青くアクティブ表示
+      copyBtn.dataset.active = 'true';
       copyBtn.style.background = '#2563eb';
       copyBtn.style.cursor = 'pointer';
-      lastHint.style.display = 'block';
+      copyBtn.style.opacity = '1';
       const dateStr = lastProd.date.replace(/-/g, '/');
       lastHint.textContent = `📅 前回実績: ${dateStr}  工程${lastProd.steps.length}個 (${lastProd.steps.join(' / ')})`;
     } else {
-      // 図番なし or 前回実績なし → グレーで無効化
-      copyBtn.disabled = true;
+      // 図番なし or 前回実績なし → グレーアウト（opacity:0.5）
+      copyBtn.dataset.active = 'false';
       copyBtn.style.background = '#94a3b8';
       copyBtn.style.cursor = 'not-allowed';
-      lastHint.style.display = 'none';
+      copyBtn.style.opacity = '0.5';
+      lastHint.textContent = '';
     }
   }
 }
 
 function copyLastSteps() {
+  const btn = document.getElementById('copy-last-steps-btn');
+  if (btn && btn.dataset.active !== 'true') return;
   const fignum = document.getElementById('rf-fignum').value.trim();
   if (!fignum) return;
   const lastProd = DB.productions
@@ -1858,8 +1863,8 @@ function clearProductionForm() {
   document.getElementById('rf-mat-price-hint').style.display = 'none';
   const copyBtn = document.getElementById('copy-last-steps-btn');
   const lastHint = document.getElementById('last-steps-hint');
-  if (copyBtn) copyBtn.style.display = 'none';
-  if (lastHint) lastHint.style.display = 'none';
+  if (copyBtn) { copyBtn.dataset.active = 'false'; copyBtn.style.background = '#94a3b8'; copyBtn.style.cursor = 'not-allowed'; copyBtn.style.opacity = '0.5'; }
+  if (lastHint) lastHint.textContent = '';
   renderProcessSteps(1);
 }
 
