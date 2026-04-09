@@ -1974,10 +1974,11 @@ function stepsToSeconds(steps) {
   return total;
 }
 function fmtDuration(seconds) {
-  if (!seconds || seconds<=0) return '0時間00分';
+  if (!seconds || seconds<=0) return '0時間0分0秒';
   const h = Math.floor(seconds/3600);
   const m = Math.floor((seconds%3600)/60);
-  return h + '時間' + (m<10?'0':'') + m + '分';
+  const s = Math.floor(seconds%60);
+  return h + '時間' + m + '分' + s + '秒';
 }
 // 図番→製品マスタ→受注先・材料発注先
 function getProdMeta(fignum) {
@@ -2550,10 +2551,11 @@ function refreshProductFormLists() {
 // ===== EXCEL EXPORTS =====
 // ---- 共通ヘルパー ----
 function secondsToHM(sec) {
-  if (!sec || sec<=0) return '0時間00分';
+  if (!sec || sec<=0) return '0時間0分0秒';
   const h = Math.floor(sec/3600);
   const m = Math.floor((sec%3600)/60);
-  return h + '時間' + (m<10?'0':'') + m + '分';
+  const s = Math.floor(sec%60);
+  return h + '時間' + m + '分' + s + '秒';
 }
 function getClient(fignum) {
   const p = (DB.products||[]).find(function(x){return x.fignum===fignum;});
