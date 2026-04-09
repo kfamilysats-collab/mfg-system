@@ -624,7 +624,8 @@
           </div>
           <div class="form-group">
             <label>受注先（自動入力）</label>
-            <input type="text" id="rf-client" placeholder="図番から自動入力" style="background:var(--bg3);">
+            <input type="text" id="rf-client" list="rf-client-list" placeholder="図番から自動入力 or 候補から選択">
+            <datalist id="rf-client-list"></datalist>
           </div>
           <div class="form-group">
             <label>作業員</label>
@@ -2565,6 +2566,8 @@ function updateDataLists() {
   if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
   const ml = document.getElementById('pf-mat-supplier-list');
   if (ml) ml.innerHTML = materialNames.map(n=>`<option value="${n}">`).join('');
+  const rcl = document.getElementById('rf-client-list');
+  if (rcl) rcl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
   const fl = document.getElementById('fignum-list');
   if (fl) fl.innerHTML = DB.products.map(p=>`<option value="${p.fignum}">`).join('');
   const mc = document.getElementById('machine-list');
