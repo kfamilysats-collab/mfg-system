@@ -3637,6 +3637,25 @@ document.documentElement.style.setProperty('font-size','17px');
         setTimeout(function(){btn.style.background='#fff';btn.style.color='';btn.textContent='☁️保存';},2000);
         return;
       }
+      // ログアウト状態（msalInstance未初期化 or アカウント0件）→ 要ログイン → OneDrive連携ページへ
+      var loggedOut=true;
+      try{
+        if(window.msalInstance&&typeof window.msalInstance.getAllAccounts==='function'){
+          loggedOut=window.msalInstance.getAllAccounts().length===0;
+        }
+      }catch(e){loggedOut=true;}
+      if(loggedOut){
+        btn.disabled=true;
+        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='要ログイン';
+        setTimeout(function(){
+          btn.style.background='#fff';
+          btn.style.color='';
+          btn.textContent='☁️保存';
+          btn.disabled=false;
+          if(typeof showSection==='function')showSection('onedrive');
+        },2000);
+        return;
+      }
       btn.disabled=true;
       btn.style.background='#fff';btn.style.color='#0f172a';btn.textContent='保存中...';
       try{
