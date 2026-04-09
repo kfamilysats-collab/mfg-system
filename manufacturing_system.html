@@ -3578,6 +3578,14 @@ document.documentElement.style.setProperty('font-size','17px');
     return b;
   }
   function _showReloginBanner(){
+    // 既にログイン済みなら出さない（誤検知防止）
+    try{
+      if(window.msalInstance&&window.msalInstance.getAllAccounts&&
+         window.msalInstance.getAllAccounts().length>0){
+        _hideReloginBanner();
+        return;
+      }
+    }catch(e){}
     var b=_ensureReloginBanner();
     b.innerHTML='⚠️ OneDriveの接続が切れています。タップしてログインし直す';
     b.style.pointerEvents='auto';
@@ -3587,6 +3595,36 @@ document.documentElement.style.setProperty('font-size','17px');
     var b=document.getElementById('od-relogin-banner');
     if(b)b.style.display='none';
   }
+
+  // ----- バナー再判定：ID保存済み・ログイン済みなら消す -----
+  function _recheckOdBanners(){
+    try{
+      var hasIds=!!(localStorage.getItem('od_client_id')&&localStorage.getItem('od_tenant_id'));
+      var hasAccount=false;
+      try{
+        if(window.msalInstance&&window.msalInstance.getAllAccounts){
+          hasAccount=window.msalInstance.getAllAccounts().length>0;
+        }
+      }catch(e){}
+      var rb=document.getElementById('od-relogin-banner');
+      if(rb){
+        var html=rb.innerHTML||'';
+        // 「設定が未完了」表示：IDが両方揃っていれば消す
+        if(hasIds&&html.indexOf('設定が未完了')>=0){
+          rb.style.display='none';
+        }
+        // 「接続が切れています」表示：MSALアカウントがあれば消す
+        if(hasAccount&&html.indexOf('接続が切れて')>=0){
+          rb.style.display='none';
+        }
+        // どちらの条件も満たせば無条件で消す
+        if(hasIds&&hasAccount){
+          rb.style.display='none';
+        }
+      }
+    }catch(e){}
+  }
+  window._recheckOdBanners=_recheckOdBanners;
 
   // odGetTokenを置き換え：popupフォールバックの代わりに再ログインバナーを出す
   window.odGetToken=async function(){
@@ -3778,11 +3816,26 @@ document.documentElement.style.setProperty('font-size','17px');
     setInterval(_updateLastSaveText,30000);
     // 起動時自動読込（少し遅延してMSALロードを待つ）
     setTimeout(_autoLoadOnStart,400);
+    // バナー誤表示対策：DOMContentLoaded直後 / 500ms / 2000ms の3回再判定
+    _recheckOdBanners();
+    setTimeout(_recheckOdBanners,500);
+    setTimeout(_recheckOdBanners,2000);
   }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',_initQuick);
   }else{
     setTimeout(_initQuick,0);
+  }
+
+  // IDを保存ボタン押下後にバナー再判定
+  if(typeof window.odSaveConfig==='function'){
+    var _origOdSaveConfig=window.odSaveConfig;
+    window.odSaveConfig=function(){
+      var r=_origOdSaveConfig.apply(this,arguments);
+      try{_recheckOdBanners();}catch(e){}
+      setTimeout(_recheckOdBanners,200);
+      return r;
+    };
   }
 })();
 </script></body>
