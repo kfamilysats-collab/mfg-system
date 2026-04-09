@@ -3223,29 +3223,104 @@ async function odGetToken() {
 }
 
 async function odSave() {
-  const token = await odGetToken();
-  if (!token) return;
+  console.log('[odSave] start');
   const btn = document.getElementById('od-save-btn');
   const status = document.getElementById('od-save-status');
-  btn.disabled = true; btn.textContent = '保存中...';
-  status.textContent = '';
+  const LOGIN_MSG = '⚠️ ログインが必要です。OneDrive連携ページからログインしてください';
+
+  // 1) 設定チェック
+  const cfg = odGetConfig();
+  console.log('[odSave] config', { hasClientId: !!cfg.clientId, hasTenantId: !!cfg.tenantId });
+  if (!cfg.clientId || !cfg.tenantId) {
+    console.warn('[odSave] missing client/tenant id');
+    showToast(LOGIN_MSG, 'error');
+    return;
+  }
+
+  // 2) MSAL 初期化
+  if (!msalInstance) {
+    console.log('[odSave] msalInstance missing → odInitMsal()');
+    try { odInitMsal(); } catch(e) { console.error('[odSave] odInitMsal threw', e); }
+  }
+  if (!msalInstance) {
+    console.error('[odSave] msalInstance still null after init');
+    showToast(LOGIN_MSG, 'error');
+    return;
+  }
+
+  // 3) アカウント復元
+  if (!odAccount) {
+    const accs = msalInstance.getAllAccounts();
+    console.log('[odSave] restoring account, count=', accs && accs.length);
+    if (accs && accs.length) odAccount = accs[0];
+  }
+
+  // 4) トークン取得：Silent → Popup フォールバック
+  let token = null;
+  try {
+    if (!odAccount) throw new Error('no cached account');
+    console.log('[odSave] acquireTokenSilent');
+    const resp = await msalInstance.acquireTokenSilent({
+      scopes: ['Files.ReadWrite'],
+      account: odAccount
+    });
+    token = resp.accessToken;
+    console.log('[odSave] silent OK');
+  } catch (eSilent) {
+    console.warn('[odSave] silent failed:', eSilent && (eSilent.errorCode || eSilent.message));
+    try {
+      console.log('[odSave] acquireTokenPopup fallback');
+      const resp = await msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite'] });
+      token = resp.accessToken;
+      if (resp.account) odAccount = resp.account;
+      console.log('[odSave] popup OK');
+    } catch (ePopup) {
+      console.error('[odSave] popup failed:', ePopup && (ePopup.errorCode || ePopup.message));
+      showToast(LOGIN_MSG, 'error');
+      return;
+    }
+  }
+  if (!token) {
+    console.error('[odSave] token is empty');
+    showToast(LOGIN_MSG, 'error');
+    return;
+  }
+
+  // 5) PUT to graph.microsoft.com
+  if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+  if (status) { status.textContent = ''; }
   try {
     const json = JSON.stringify(DB);
-    const resp = await fetch(
-      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
-      { method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: json }
-    );
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`;
+    console.log('[odSave] PUT', url, 'bytes=', json.length);
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: json
+    });
+    console.log('[odSave] response status=', resp.status);
+    if (!resp.ok) {
+      let body = '';
+      try { body = await resp.text(); } catch(_) {}
+      throw new Error('HTTP ' + resp.status + (body ? ' - ' + body.slice(0, 200) : ''));
+    }
     const now = new Date().toLocaleString('ja-JP');
-    status.textContent = `✅ 保存完了: ${now}`;
-    status.style.color = 'var(--accent2)';
-    showToast('OneDriveに保存しました');
-  } catch(e) {
-    status.textContent = '❌ 保存失敗: '+e.message;
-    status.style.color = 'var(--accent3)';
-    showToast('保存に失敗しました','error');
+    if (status) {
+      status.textContent = `✅ 保存完了: ${now}`;
+      status.style.color = 'var(--accent2)';
+    }
+    showToast('✅ OneDriveに保存しました');
+    console.log('[odSave] success');
+  } catch (e) {
+    console.error('[odSave] PUT failed:', e);
+    if (status) {
+      status.textContent = '❌ 保存失敗: ' + e.message;
+      status.style.color = 'var(--accent3)';
+    }
+    showToast('❌ 保存に失敗しました: ' + e.message, 'error');
+    throw e;
   } finally {
-    btn.disabled = false; btn.textContent = '☁️ OneDriveに保存';
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ OneDriveに保存'; }
   }
 }
 
