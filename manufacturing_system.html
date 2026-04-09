@@ -613,7 +613,7 @@
           </div>
           <div class="form-group">
             <label>図番 *</label>
-            <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()">
+            <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()" autocomplete="off">
             <datalist id="fignum-list"></datalist>
             <button type="button" id="copy-last-steps-btn" onclick="copyLastSteps()" disabled style="margin-top:10px;width:100%;background:#94a3b8;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:not-allowed;transition:background 0.2s;">📋 同じ図番の前回工程をコピー</button>
             <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-top:6px;display:none;"></div>
@@ -635,7 +635,7 @@
           </div>
           <div class="form-group">
             <label>数量</label>
-            <input type="number" id="rf-qty" value="1" min="1" oninput="autoFillProduct()">
+            <input type="number" id="rf-qty" value="" min="1" placeholder="数量を入力" oninput="autoFillProduct()">
           </div>
           <div class="form-group">
             <label>製品単価（円）</label>
@@ -1925,8 +1925,9 @@ function copyLastSteps() {
     .sort((a, b) => b.date.localeCompare(a.date))[0];
   if (!lastProd) return;
 
-  // 全工程を一度にレンダリングしてから値を流し込む
-  const steps = lastProd.steps.slice(0, 10); // 最大10工程
+  // 全工程を一度にレンダリングしてから値を流し込む（空文字は除外）
+  const steps = lastProd.steps.filter(s => s && s.trim()).slice(0, 10);
+  if (steps.length === 0) return;
   processStepCount = 0;
   document.getElementById('process-steps-form').innerHTML = '';
   renderProcessSteps(steps.length);
@@ -1942,7 +1943,7 @@ function clearProductionForm() {
   document.getElementById('rf-fignum').value = '';
   document.getElementById('rf-name').value = '';
   document.getElementById('rf-client').value = '';
-  document.getElementById('rf-qty').value = 1;
+  document.getElementById('rf-qty').value = '';
   document.getElementById('rf-price').value = '';
   document.getElementById('rf-mat-price').value = '';
   document.getElementById('rf-machine').value = '';
@@ -1961,6 +1962,8 @@ function saveProduction() {
   const machine = document.getElementById('rf-machine').value.trim();
   const fignum = document.getElementById('rf-fignum').value.trim();
   if (!date || !machine || !fignum) { showToast('日付・機械・図番は必須です', 'error'); return; }
+  const qtyVal = document.getElementById('rf-qty').value;
+  if (!qtyVal || parseInt(qtyVal) <= 0) { showToast('数量を入力してください', 'error'); return; }
 
   const steps = [];
   for (let i = 1; i <= processStepCount; i++) {
