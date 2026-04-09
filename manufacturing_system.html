@@ -3234,7 +3234,7 @@ async function odSave() {
   if (!cfg.clientId || !cfg.tenantId) {
     console.warn('[odSave] missing client/tenant id');
     showToast(LOGIN_MSG, 'error');
-    return;
+    throw new Error('not-logged-in');
   }
 
   // 2) MSAL 初期化
@@ -3245,7 +3245,7 @@ async function odSave() {
   if (!msalInstance) {
     console.error('[odSave] msalInstance still null after init');
     showToast(LOGIN_MSG, 'error');
-    return;
+    throw new Error('not-logged-in');
   }
 
   // 3) アカウント復元
@@ -3283,7 +3283,7 @@ async function odSave() {
   if (!token) {
     console.error('[odSave] token is empty');
     showToast(LOGIN_MSG, 'error');
-    return;
+    throw new Error('not-logged-in');
   }
 
   // 5) PUT to graph.microsoft.com
@@ -3325,34 +3325,121 @@ async function odSave() {
 }
 
 async function odLoad() {
-  const token = await odGetToken();
-  if (!token) return;
+  console.log('[odLoad] start');
   const btn = document.getElementById('od-load-btn');
   const status = document.getElementById('od-load-status');
-  btn.disabled = true; btn.textContent = '読み込み中...';
-  status.textContent = '';
+  const LOGIN_MSG = '⚠️ ログインが必要です。OneDrive連携ページからログインしてください';
+  const _toast = (msg, type) => {
+    if (typeof showToast === 'function') showToast(msg, type);
+    else if (type === 'error') alert(msg);
+  };
+
+  // 1) 設定チェック
+  const cfg = odGetConfig();
+  console.log('[odLoad] config', { hasClientId: !!cfg.clientId, hasTenantId: !!cfg.tenantId });
+  if (!cfg.clientId || !cfg.tenantId) {
+    console.warn('[odLoad] missing client/tenant id');
+    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
+    _toast(LOGIN_MSG, 'error');
+    throw new Error('not-logged-in');
+  }
+
+  // 2) MSAL 初期化
+  if (!msalInstance) {
+    console.log('[odLoad] msalInstance missing → odInitMsal()');
+    try { odInitMsal(); } catch(e) { console.error('[odLoad] odInitMsal threw', e); }
+  }
+  if (!msalInstance) {
+    console.error('[odLoad] msalInstance still null after init');
+    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
+    _toast(LOGIN_MSG, 'error');
+    throw new Error('not-logged-in');
+  }
+
+  // 3) アカウント復元
+  if (!odAccount) {
+    const accs = msalInstance.getAllAccounts();
+    console.log('[odLoad] restoring account, count=', accs && accs.length);
+    if (accs && accs.length) odAccount = accs[0];
+  }
+
+  // 4) トークン取得：Silent → Popup フォールバック
+  let token = null;
   try {
-    const resp = await fetch(
-      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
-    if (resp.status === 404) { status.textContent = '⚠️ OneDriveにデータがまだありません'; status.style.color='var(--accent4)'; return; }
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    if (!odAccount) throw new Error('no cached account');
+    console.log('[odLoad] acquireTokenSilent');
+    const resp = await msalInstance.acquireTokenSilent({
+      scopes: ['Files.ReadWrite'],
+      account: odAccount
+    });
+    token = resp.accessToken;
+    console.log('[odLoad] silent OK');
+  } catch (eSilent) {
+    console.warn('[odLoad] silent failed:', eSilent && (eSilent.errorCode || eSilent.message));
+    try {
+      console.log('[odLoad] acquireTokenPopup fallback');
+      const resp = await msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite'] });
+      token = resp.accessToken;
+      if (resp.account) odAccount = resp.account;
+      console.log('[odLoad] popup OK');
+    } catch (ePopup) {
+      console.error('[odLoad] popup failed:', ePopup && (ePopup.errorCode || ePopup.message));
+      if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
+      _toast(LOGIN_MSG, 'error');
+      throw new Error('not-logged-in');
+    }
+  }
+  if (!token) {
+    console.error('[odLoad] token is empty');
+    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
+    _toast(LOGIN_MSG, 'error');
+    throw new Error('not-logged-in');
+  }
+
+  // 5) GET from graph.microsoft.com
+  if (btn) { btn.disabled = true; btn.textContent = '読み込み中...'; }
+  if (status) { status.textContent = ''; }
+  try {
+    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`;
+    console.log('[odLoad] GET', url);
+    const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    console.log('[odLoad] response status=', resp.status);
+    if (resp.status === 404) {
+      if (status) { status.textContent = '⚠️ OneDriveにデータがまだありません'; status.style.color = 'var(--accent4)'; }
+      _toast('OneDriveにデータがまだありません', 'error');
+      return;
+    }
+    if (!resp.ok) {
+      let body = '';
+      try { body = await resp.text(); } catch(_) {}
+      throw new Error('HTTP ' + resp.status + (body ? ' - ' + body.slice(0, 200) : ''));
+    }
     const data = await resp.json();
-    if (!confirm('OneDriveのデータを読み込みます。現在のデータは上書きされます。よろしいですか？')) return;
+    if (!confirm('OneDriveのデータを読み込みます。現在のデータは上書きされます。よろしいですか？')) {
+      console.log('[odLoad] cancelled by user');
+      if (status) { status.textContent = ''; }
+      return;
+    }
     Object.assign(DB, data);
     save();
     const now = new Date().toLocaleString('ja-JP');
-    status.textContent = `✅ 読み込み完了: ${now}`;
-    status.style.color = 'var(--accent2)';
-    showToast('OneDriveから読み込みました');
+    if (status) {
+      status.textContent = `✅ 読み込み完了: ${now}`;
+      status.style.color = 'var(--accent2)';
+    }
+    _toast('✅ OneDriveから読み込みました');
+    console.log('[odLoad] success');
     renderDashboard();
-  } catch(e) {
-    status.textContent = '❌ 読み込み失敗: '+e.message;
-    status.style.color = 'var(--accent3)';
-    showToast('読み込みに失敗しました','error');
+  } catch (e) {
+    console.error('[odLoad] GET failed:', e);
+    if (status) {
+      status.textContent = '❌ 読み込み失敗: ' + e.message;
+      status.style.color = 'var(--accent3)';
+    }
+    _toast('❌ 読み込みに失敗しました: ' + e.message, 'error');
+    throw e;
   } finally {
-    btn.disabled = false; btn.textContent = '☁️ OneDriveから読み込み';
+    if (btn) { btn.disabled = false; btn.textContent = '☁️ OneDriveから読み込み'; }
   }
 }
 
