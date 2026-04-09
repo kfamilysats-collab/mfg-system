@@ -3228,7 +3228,93 @@ document.documentElement.style.setProperty('font-size','17px');
     }catch(e){return false;}
   }
 
-  // ----- 自動読込（認証済みなら起動時に1回） -----
+  // ----- 再ログイン用の目立つバナー（赤〜オレンジ・クリック可能） -----
+  function _ensureReloginBanner(){
+    var b=document.getElementById('od-relogin-banner');
+    if(b)return b;
+    b=document.createElement('div');
+    b.id='od-relogin-banner';
+    b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:10002;'+
+      'background:linear-gradient(90deg,#dc2626 0%,#ea580c 100%);color:#fff;'+
+      'text-align:center;padding:14px 18px;font-size:15px;font-weight:800;'+
+      'box-shadow:0 4px 16px rgba(220,38,38,0.45);cursor:pointer;'+
+      'letter-spacing:0.5px;display:none;border-bottom:2px solid #fbbf24;'+
+      'user-select:none;';
+    b.innerHTML='⚠️ OneDriveの接続が切れています。タップしてログインし直す';
+    b.onclick=async function(){
+      var orig=b.innerHTML;
+      b.innerHTML='🔄 ログイン中...';
+      b.style.pointerEvents='none';
+      try{
+        if(typeof odInitMsal==='function'&&!window.msalInstance) odInitMsal();
+        if(!window.msalInstance){
+          b.innerHTML='⚠️ 設定が未完了です。OneDrive連携ページでIDを保存してください';
+          b.style.pointerEvents='auto';
+          return;
+        }
+        // 通常のloginPopupを呼ぶ（odLoginは内部でshowToastするだけなので直接呼んでOK）
+        var resp=await window.msalInstance.loginPopup({scopes:['Files.ReadWrite','User.Read']});
+        window.odAccount=resp.account;
+        if(typeof odUpdateStatus==='function'){
+          try{odUpdateStatus(true,window.odAccount.username);}catch(e){}
+        }
+        _hideReloginBanner();
+        if(typeof showToast==='function')showToast('ログインしました');
+        // 自動でodLoadを実行（confirmは抑制）
+        if(window.odLoad){
+          var origConfirm=window.confirm;
+          window.confirm=function(){return true;};
+          try{await window.odLoad();}
+          finally{window.confirm=origConfirm;}
+        }
+      }catch(e){
+        b.innerHTML=orig;
+        b.style.pointerEvents='auto';
+        if(e&&e.errorCode!=='user_cancelled'&&typeof showToast==='function'){
+          showToast('ログイン失敗: '+(e.message||e),'error');
+        }
+      }
+    };
+    document.body.appendChild(b);
+    return b;
+  }
+  function _showReloginBanner(){
+    var b=_ensureReloginBanner();
+    b.innerHTML='⚠️ OneDriveの接続が切れています。タップしてログインし直す';
+    b.style.pointerEvents='auto';
+    b.style.display='block';
+  }
+  function _hideReloginBanner(){
+    var b=document.getElementById('od-relogin-banner');
+    if(b)b.style.display='none';
+  }
+
+  // odGetTokenを置き換え：popupフォールバックの代わりに再ログインバナーを出す
+  window.odGetToken=async function(){
+    // OneDrive未設定ならバナーは出さず、従来通りtoastで促すだけ
+    var cfg=(typeof odGetConfig==='function')?odGetConfig():null;
+    if(!cfg||!cfg.clientId||!cfg.tenantId){
+      if(typeof showToast==='function')showToast('先にIDを保存してください','error');
+      return null;
+    }
+    try{
+      if(!window.msalInstance&&typeof odInitMsal==='function') odInitMsal();
+      if(!window.msalInstance){_showReloginBanner();return null;}
+      var accs=window.msalInstance.getAllAccounts();
+      if(!accs.length){_showReloginBanner();return null;}
+      if(!window.odAccount) window.odAccount=accs[0];
+      var resp=await window.msalInstance.acquireTokenSilent({
+        scopes:['Files.ReadWrite'],
+        account:window.odAccount
+      });
+      return resp.accessToken;
+    }catch(e){
+      _showReloginBanner();
+      return null;
+    }
+  };
+
+  // ----- 自動読込（起動時に1回・トークン有効性まで検証） -----
   async function _autoLoadOnStart(){
     try{
       if(typeof odGetConfig!=='function')return;
@@ -3236,11 +3322,26 @@ document.documentElement.style.setProperty('font-size','17px');
       if(!cfg||!cfg.clientId||!cfg.tenantId)return;
       // MSAL初期化＋アカウント復元
       if(typeof odInitMsal==='function'&&!window.msalInstance) odInitMsal();
-      if(!_isOdReady())return;
+      if(!window.msalInstance)return;
       var accs=window.msalInstance.getAllAccounts();
+      if(!accs.length)return; // 一度もログインしていない → バナーは出さない
       window.odAccount=accs[0];
+      // サイレントログインでトークン有効性を確認
+      try{
+        await window.msalInstance.acquireTokenSilent({
+          scopes:['Files.ReadWrite'],
+          account:window.odAccount
+        });
+      }catch(e){
+        // トークン切れ → 目立つバナーで再ログインを促す
+        _showReloginBanner();
+        return;
+      }
+      // トークン有効 → 自動でodLoad
+      if(typeof odUpdateStatus==='function'){
+        try{odUpdateStatus(true,window.odAccount.username);}catch(e){}
+      }
       _showBanner('☁️ OneDriveから読み込み中...');
-      // odLoadはconfirmを出すので一時的に無効化
       var origConfirm=window.confirm;
       window.confirm=function(){return true;};
       try{
