@@ -240,6 +240,9 @@
         <div class="nav-item" onclick="showSection('workers')">
           <span class="nav-icon">👷</span>作業員
         </div>
+        <div class="nav-item" onclick="showSection('history')">
+          <span class="nav-icon">📋</span>変更履歴
+        </div>
         <div class="nav-item" onclick="showSection('backup')">
           <span class="nav-icon">💾</span>バックアップ
         </div>
@@ -877,6 +880,52 @@
       </div>
     </section>
 
+    <!-- ===== HISTORY ===== -->
+    <section class="section" id="sec-history">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📋 変更履歴</div>
+          <div class="page-subtitle" id="history-count-label">記録された操作を確認できます</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="exportHistoryExcel()">📊 Excel出力</button>
+      </div>
+      <div class="card">
+        <div class="search-row" style="gap:8px;flex-wrap:wrap;">
+          <select id="hist-filter-category" onchange="renderHistory()" style="width:160px;">
+            <option value="">全カテゴリ</option>
+            <option value="product">製品</option>
+            <option value="production">作業実績</option>
+            <option value="supplier">取引先</option>
+            <option value="machine">機械情報</option>
+          </select>
+          <select id="hist-filter-action" onchange="renderHistory()" style="width:140px;">
+            <option value="">全操作</option>
+            <option value="add">追加</option>
+            <option value="edit">編集</option>
+            <option value="delete">削除</option>
+          </select>
+          <input type="date" id="hist-filter-from" onchange="renderHistory()" style="width:160px;">
+          <span style="color:var(--text2);align-self:center;">〜</span>
+          <input type="date" id="hist-filter-to" onchange="renderHistory()" style="width:160px;">
+          <button class="btn btn-ghost btn-sm" onclick="clearHistoryFilters()">クリア</button>
+        </div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table>
+            <thead>
+              <tr>
+                <th style="white-space:nowrap;">日時</th>
+                <th>操作</th>
+                <th>カテゴリ</th>
+                <th>内容</th>
+                <th class="hide-mobile">操作者</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <!-- ===== BACKUP ===== -->
     <section class="section" id="sec-backup">
       <div class="page-header">
@@ -972,6 +1021,16 @@
 </div>
 
 <!-- Modals -->
+<div class="modal-overlay" id="history-detail-modal">
+  <div class="modal" style="max-width:880px;">
+    <div class="modal-header">
+      <div class="modal-title" id="history-detail-title">変更履歴の詳細</div>
+      <button class="modal-close" onclick="closeModal('history-detail-modal')">✕</button>
+    </div>
+    <div id="history-detail-body"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="product-detail-modal">
   <div class="modal">
     <div class="modal-header">
@@ -1116,7 +1175,8 @@ const DB = {
   companies: [], // 統合取引先マスタ
   machines: [],
   machineInfo: [],
-  workers: []
+  workers: [],
+  history: [] // 変更履歴（最大500件）
 };
 
 function save() {
@@ -1152,6 +1212,35 @@ function load() {
     }
     if (!DB.machineInfo) DB.machineInfo = [];
     if (!DB.workers) DB.workers = [];
+    if (!DB.history) DB.history = [];
+  }
+}
+
+// ===== HISTORY =====
+const HISTORY_MAX = 500;
+function _historyUserLabel() {
+  try {
+    return localStorage.getItem('mfg_user_label') || (navigator.platform || 'unknown');
+  } catch(e) { return 'unknown'; }
+}
+function _deepClone(o) {
+  if (o == null) return null;
+  try { return JSON.parse(JSON.stringify(o)); } catch(e) { return null; }
+}
+function recordHistory(action, category, label, before, after) {
+  if (!DB.history) DB.history = [];
+  DB.history.unshift({
+    id: genId(),
+    timestamp: new Date().toISOString(),
+    action: action,
+    category: category,
+    label: label || '',
+    before: _deepClone(before),
+    after: _deepClone(after),
+    user: _historyUserLabel()
+  });
+  if (DB.history.length > HISTORY_MAX) {
+    DB.history.length = HISTORY_MAX;
   }
 }
 
@@ -1183,6 +1272,7 @@ function showSection(name) {
   if (name === 'suppliers') renderSuppliers();
   if (name === 'machine-info') renderMachineInfo();
   if (name === 'workers') renderWorkers();
+  if (name === 'history') renderHistory();
   if (name === 'onedrive') initOneDriveSection();
   if (name === 'production-form') initProductionForm();
   if (name === 'product-form') refreshProductFormLists();
@@ -1447,7 +1537,9 @@ function editProduct(id) {
 
 function deleteProduct(id) {
   if (!confirm('この製品を削除しますか？')) return;
+  const _hBefore = DB.products.find(p=>p.id===id);
   DB.products = DB.products.filter(p=>p.id!==id);
+  if (_hBefore) recordHistory('delete','product',`図番${_hBefore.fignum||''} ${_hBefore.name||''}`.trim(),_hBefore,null);
   save(); showToast('削除しました'); closeModal('product-detail-modal'); renderProducts();
 }
 
@@ -1538,8 +1630,11 @@ function saveProduct() {
     outsource: os
   };
 
+  let _hBefore = null, _hAction = 'add';
   if (editId) {
     const idx = DB.products.findIndex(p=>p.id===editId);
+    _hBefore = _deepClone(DB.products[idx]);
+    _hAction = 'edit';
     DB.products[idx] = prod;
     showToast('更新しました');
   } else {
@@ -1547,6 +1642,7 @@ function saveProduct() {
     DB.products.push(prod);
     showToast('登録しました');
   }
+  recordHistory(_hAction,'product',`図番${prod.fignum} ${prod.name}`,_hBefore,prod);
 
   if (prod.client && !DB.suppliers.clients.includes(prod.client)) DB.suppliers.clients.push(prod.client);
   if (prod.matSupplier && !DB.suppliers.materials.includes(prod.matSupplier)) DB.suppliers.materials.push(prod.matSupplier);
@@ -1624,7 +1720,9 @@ function showProdDetail(id) {
 
 function deleteProd(id) {
   if (!confirm('削除しますか？')) return;
+  const _hBefore = DB.productions.find(p=>p.id===id);
   DB.productions = DB.productions.filter(p=>p.id!==id);
+  if (_hBefore) recordHistory('delete','production',`${_hBefore.date||''} ${_hBefore.fignum||''} ${_hBefore.name||''}`.trim(),_hBefore,null);
   save(); showToast('削除しました'); renderProduction();
 }
 
@@ -1805,13 +1903,21 @@ function saveProduction() {
     steps
   };
 
+  let _hBefore = null, _hAction = 'add';
   if (editingId) {
     const idx = DB.productions.findIndex(x=>x.id===editingId);
-    if (idx >= 0) DB.productions[idx] = p; else DB.productions.push(p);
+    if (idx >= 0) {
+      _hBefore = _deepClone(DB.productions[idx]);
+      _hAction = 'edit';
+      DB.productions[idx] = p;
+    } else {
+      DB.productions.push(p);
+    }
   } else {
     DB.productions.push(p);
   }
   if (!DB.machines.includes(machine)) DB.machines.push(machine);
+  recordHistory(_hAction,'production',`${p.date} ${p.fignum} ${p.name||''}`.trim(),_hBefore,p);
   save();
   showToast(editingId ? '更新しました' : '登録しました');
   clearProductionForm();
@@ -2208,7 +2314,9 @@ function renderSuppliers() {
 
 function deleteSupplier(id) {
   if (!confirm('削除しますか？')) return;
+  const _hBefore = DB.companies.find(c=>c.id===id);
   DB.companies = DB.companies.filter(c=>c.id!==id);
+  if (_hBefore) recordHistory('delete','supplier',_hBefore.name||'',_hBefore,null);
   save(); renderSuppliers(); updateDataLists(); refreshProductFormLists(); showToast('削除しました');
 }
 
@@ -2256,8 +2364,11 @@ function saveSupplier() {
     memo: document.getElementById('sup-memo').value.trim()
   };
   const editId = document.getElementById('sup-edit-id').value;
+  let _hBefore = null, _hAction = 'add';
   if (editId) {
     const idx = DB.companies.findIndex(c=>c.id===editId);
+    _hBefore = _deepClone(DB.companies[idx]);
+    _hAction = 'edit';
     DB.companies[idx] = obj;
     showToast('更新しました');
   } else {
@@ -2265,6 +2376,7 @@ function saveSupplier() {
     DB.companies.push(obj);
     showToast('追加しました');
   }
+  recordHistory(_hAction,'supplier',obj.name,_hBefore,obj);
   save(); closeModal('supplier-modal'); renderSuppliers(); updateDataLists(); refreshProductFormLists();
 }
 
@@ -2312,7 +2424,10 @@ function saveMachineInfo() {
     note: document.getElementById('mi-note').value.trim()
   };
   const editId = document.getElementById('mi-edit-id').value;
+  let _hBefore = null, _hAction = 'add';
   if (editId !== '') {
+    _hBefore = _deepClone(DB.machineInfo[parseInt(editId)]);
+    _hAction = 'edit';
     DB.machineInfo[parseInt(editId)] = obj;
     showToast('更新しました');
   } else {
@@ -2321,12 +2436,15 @@ function saveMachineInfo() {
     if (!DB.machines.includes(name)) DB.machines.push(name);
     showToast('追加しました');
   }
+  recordHistory(_hAction,'machine',obj.name,_hBefore,obj);
   save(); closeModal('machine-modal'); renderMachineInfo(); updateDataLists();
 }
 
 function deleteMachineInfo(idx) {
   if (!confirm('削除しますか？')) return;
+  const _hBefore = _deepClone(DB.machineInfo[idx]);
   DB.machineInfo.splice(idx,1);
+  if (_hBefore) recordHistory('delete','machine',_hBefore.name||'',_hBefore,null);
   save(); renderMachineInfo(); showToast('削除しました');
 }
 
@@ -2833,8 +2951,189 @@ function importExcel(input) {
 
 function clearAllData() {
   if (!confirm('全データを削除します。この操作は取り消せません。先にバックアップを取ってください。')) return;
-  DB.products=[];DB.productions=[];DB.suppliers={clients:[],materials:[]};DB.machines=[];DB.machineInfo=[];DB.workers=[];
+  DB.products=[];DB.productions=[];DB.suppliers={clients:[],materials:[]};DB.machines=[];DB.machineInfo=[];DB.workers=[];DB.history=[];
   save(); showToast('全データを削除しました'); renderDashboard();
+}
+
+// ===== HISTORY VIEW =====
+const HISTORY_CATEGORY_LABELS = {
+  product: '製品',
+  production: '作業実績',
+  supplier: '取引先',
+  machine: '機械情報'
+};
+const HISTORY_ACTION_BADGES = {
+  add:    {label:'追加', bg:'#dcfce7', color:'#166534', border:'#86efac'},
+  edit:   {label:'編集', bg:'#fef3c7', color:'#92400e', border:'#fcd34d'},
+  delete: {label:'削除', bg:'#fee2e2', color:'#991b1b', border:'#fca5a5'}
+};
+function _histFmtTimestamp(iso) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const Y = d.getFullYear();
+    const M = String(d.getMonth()+1).padStart(2,'0');
+    const D = String(d.getDate()).padStart(2,'0');
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    const s = String(d.getSeconds()).padStart(2,'0');
+    return `${Y}/${M}/${D} ${h}:${m}:${s}`;
+  } catch(e) { return iso; }
+}
+function _histActionBadge(action) {
+  const a = HISTORY_ACTION_BADGES[action] || HISTORY_ACTION_BADGES.edit;
+  return `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${a.bg};color:${a.color};border:1px solid ${a.border};font-size:11px;font-weight:700;">${a.label}</span>`;
+}
+function clearHistoryFilters() {
+  document.getElementById('hist-filter-category').value = '';
+  document.getElementById('hist-filter-action').value = '';
+  document.getElementById('hist-filter-from').value = '';
+  document.getElementById('hist-filter-to').value = '';
+  renderHistory();
+}
+function _getFilteredHistory() {
+  const cat = document.getElementById('hist-filter-category').value;
+  const act = document.getElementById('hist-filter-action').value;
+  const from = document.getElementById('hist-filter-from').value;
+  const to = document.getElementById('hist-filter-to').value;
+  const fromTs = from ? new Date(from+'T00:00:00').getTime() : null;
+  const toTs = to ? new Date(to+'T23:59:59').getTime() : null;
+  return (DB.history||[]).filter(h=>{
+    if (cat && h.category !== cat) return false;
+    if (act && h.action !== act) return false;
+    if (fromTs || toTs) {
+      const ts = new Date(h.timestamp).getTime();
+      if (fromTs && ts < fromTs) return false;
+      if (toTs && ts > toTs) return false;
+    }
+    return true;
+  });
+}
+function renderHistory() {
+  const list = _getFilteredHistory();
+  const total = (DB.history||[]).length;
+  document.getElementById('history-count-label').textContent = `${list.length}件（全${total}件中）`;
+  const tbody = document.getElementById('history-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">該当する履歴がありません</div></div></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(h=>{
+    const catLabel = HISTORY_CATEGORY_LABELS[h.category] || h.category;
+    const safeLabel = (h.label||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeUser = (h.user||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return `<tr style="cursor:pointer;" onclick="showHistoryDetail('${h.id}')">
+      <td style="white-space:nowrap;font-size:12px;color:var(--text2);">${_histFmtTimestamp(h.timestamp)}</td>
+      <td>${_histActionBadge(h.action)}</td>
+      <td><span class="badge badge-blue">${catLabel}</span></td>
+      <td>${safeLabel}</td>
+      <td class="hide-mobile" style="font-size:11px;color:var(--text3);">${safeUser}</td>
+    </tr>`;
+  }).join('');
+}
+function _histRenderObject(obj) {
+  if (obj == null) return '<div style="color:var(--text3);font-style:italic;font-size:12px;">（なし）</div>';
+  const labelStyle = 'font-size:11px;color:#64748b;font-weight:600;padding:6px 10px;border-bottom:1px solid #e2e8f0;background:#f8fafc;width:38%;vertical-align:top;';
+  const valueStyle = 'font-size:12px;color:#0f172a;padding:6px 10px;border-bottom:1px solid #e2e8f0;word-break:break-all;white-space:pre-wrap;';
+  let rows = '';
+  Object.keys(obj).forEach(k=>{
+    if (k === 'id') return;
+    let v = obj[k];
+    if (v == null || v === '') v = '—';
+    else if (typeof v === 'object') {
+      try { v = JSON.stringify(v, null, 2); } catch(e) { v = String(v); }
+    }
+    const safeV = String(v).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    rows += `<tr><td style="${labelStyle}">${k}</td><td style="${valueStyle}">${safeV}</td></tr>`;
+  });
+  return `<table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;">${rows}</table>`;
+}
+function _histDiffKeys(before, after) {
+  if (!before || !after) return new Set();
+  const keys = new Set();
+  const all = new Set([...Object.keys(before), ...Object.keys(after)]);
+  all.forEach(k=>{
+    if (k === 'id') return;
+    const a = JSON.stringify(before[k]);
+    const b = JSON.stringify(after[k]);
+    if (a !== b) keys.add(k);
+  });
+  return keys;
+}
+function showHistoryDetail(id) {
+  const h = (DB.history||[]).find(x=>x.id===id);
+  if (!h) return;
+  const catLabel = HISTORY_CATEGORY_LABELS[h.category] || h.category;
+  document.getElementById('history-detail-title').textContent = `${catLabel} - ${HISTORY_ACTION_BADGES[h.action]?HISTORY_ACTION_BADGES[h.action].label:h.action}`;
+
+  const meta = `<div style="margin-bottom:16px;padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;">
+    <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:#475569;">
+      <div><strong style="color:#0f172a;">日時:</strong> ${_histFmtTimestamp(h.timestamp)}</div>
+      <div><strong style="color:#0f172a;">操作:</strong> ${_histActionBadge(h.action)}</div>
+      <div><strong style="color:#0f172a;">カテゴリ:</strong> ${catLabel}</div>
+      <div><strong style="color:#0f172a;">操作者:</strong> ${(h.user||'').replace(/</g,'&lt;')}</div>
+    </div>
+    <div style="margin-top:8px;font-size:13px;color:#0f172a;font-weight:600;">${(h.label||'').replace(/</g,'&lt;')}</div>
+  </div>`;
+
+  const diffKeys = _histDiffKeys(h.before, h.after);
+  const beforeHtml = _histRenderObject(h.before);
+  const afterHtml  = _histRenderObject(h.after);
+
+  const beforeCard = `<div style="flex:1;min-width:0;">
+    <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:8px;">▼ 変更前</div>
+    ${beforeHtml}
+  </div>`;
+  const afterCard = `<div style="flex:1;min-width:0;">
+    <div style="font-size:12px;font-weight:700;color:#059669;margin-bottom:8px;">▼ 変更後</div>
+    ${afterHtml}
+  </div>`;
+
+  const diffNote = (h.action==='edit' && diffKeys.size)
+    ? `<div style="margin-top:12px;padding:10px 12px;background:#fef3c7;border-radius:8px;border:1px solid #fcd34d;font-size:12px;color:#92400e;"><strong>変更されたフィールド:</strong> ${[...diffKeys].join(', ')}</div>`
+    : '';
+
+  document.getElementById('history-detail-body').innerHTML = meta +
+    `<div style="display:flex;gap:14px;flex-wrap:wrap;">${beforeCard}${afterCard}</div>` +
+    diffNote;
+  openModal('history-detail-modal');
+}
+function _histSummarize(obj) {
+  if (!obj) return '';
+  // 主要フィールドだけ抜き出して短い文字列に
+  const keys = ['fignum','name','date','machine','price','client','matSupplier'];
+  const parts = [];
+  keys.forEach(k=>{ if (obj[k] != null && obj[k] !== '') parts.push(`${k}:${obj[k]}`); });
+  if (!parts.length) {
+    Object.keys(obj).slice(0,4).forEach(k=>{
+      if (k==='id') return;
+      const v = obj[k];
+      if (v != null && v !== '' && typeof v !== 'object') parts.push(`${k}:${v}`);
+    });
+  }
+  return parts.join(' / ');
+}
+function exportHistoryExcel() {
+  const list = _getFilteredHistory();
+  if (!list.length) { showToast('出力する履歴がありません','error'); return; }
+  const headers = ['日時','操作','カテゴリ','内容','操作者','変更前(要約)','変更後(要約)'];
+  const rows = list.map(h=>[
+    _histFmtTimestamp(h.timestamp),
+    (HISTORY_ACTION_BADGES[h.action]||{label:h.action}).label,
+    HISTORY_CATEGORY_LABELS[h.category]||h.category,
+    h.label||'',
+    h.user||'',
+    _histSummarize(h.before),
+    _histSummarize(h.after)
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = _buildStyledSheet({
+    title:'変更履歴',
+    headers, rows,
+    colWidths:[20,8,12,30,16,40,40]
+  });
+  XLSX.utils.book_append_sheet(wb, ws, '変更履歴');
+  XLSX.writeFile(wb, '変更履歴_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
 // ===== ONEDRIVE =====
