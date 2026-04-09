@@ -3577,15 +3577,16 @@ document.documentElement.style.setProperty('font-size','17px');
     document.body.appendChild(b);
     return b;
   }
+  // ===== バナー表示ロジック（シンプル版） =====
+  // ルール：localStorage の od_client_id が無い／空のときだけ表示。
+  //         IDが保存されていれば常に非表示。ログイン状態は見ない。
+  function _odIdMissing(){
+    var v=null;
+    try{v=localStorage.getItem('od_client_id');}catch(e){}
+    return !v;
+  }
   function _showReloginBanner(){
-    // 既にログイン済みなら出さない（誤検知防止）
-    try{
-      if(window.msalInstance&&window.msalInstance.getAllAccounts&&
-         window.msalInstance.getAllAccounts().length>0){
-        _hideReloginBanner();
-        return;
-      }
-    }catch(e){}
+    if(!_odIdMissing()){_hideReloginBanner();return;}
     var b=_ensureReloginBanner();
     b.innerHTML='⚠️ OneDriveの接続が切れています。タップしてログインし直す';
     b.style.pointerEvents='auto';
@@ -3596,33 +3597,15 @@ document.documentElement.style.setProperty('font-size','17px');
     if(b)b.style.display='none';
   }
 
-  // ----- バナー再判定：ID保存済み・ログイン済みなら消す -----
+  // ----- バナー再判定：IDがあれば問答無用で消す -----
   function _recheckOdBanners(){
-    try{
-      var hasIds=!!(localStorage.getItem('od_client_id')&&localStorage.getItem('od_tenant_id'));
-      var hasAccount=false;
-      try{
-        if(window.msalInstance&&window.msalInstance.getAllAccounts){
-          hasAccount=window.msalInstance.getAllAccounts().length>0;
-        }
-      }catch(e){}
-      var rb=document.getElementById('od-relogin-banner');
-      if(rb){
-        var html=rb.innerHTML||'';
-        // 「設定が未完了」表示：IDが両方揃っていれば消す
-        if(hasIds&&html.indexOf('設定が未完了')>=0){
-          rb.style.display='none';
-        }
-        // 「接続が切れています」表示：MSALアカウントがあれば消す
-        if(hasAccount&&html.indexOf('接続が切れて')>=0){
-          rb.style.display='none';
-        }
-        // どちらの条件も満たせば無条件で消す
-        if(hasIds&&hasAccount){
-          rb.style.display='none';
-        }
-      }
-    }catch(e){}
+    if(_odIdMissing())return;
+    var rb=document.getElementById('od-relogin-banner');
+    if(rb)rb.style.display='none';
+    var ob=document.getElementById('od-banner');
+    if(ob&&ob.textContent&&ob.textContent.indexOf('設定が未完了')>=0){
+      ob.style.display='none';
+    }
   }
   window._recheckOdBanners=_recheckOdBanners;
 
