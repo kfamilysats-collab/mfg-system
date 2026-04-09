@@ -3564,25 +3564,17 @@ document.documentElement.style.setProperty('font-size','17px');
   var _save=window.save;
   if(_save) window.save=function(){var r=_save.apply(this,arguments);dirty=true;return r;};
 
-  // odSave をラップして成功時にフラグクリア + ボタン点灯 + バックアップ + 最終保存時刻
+  // odSave をラップして成功時にフラグクリア + バックアップ + 最終保存時刻
+  // （ボタンの色・テキストは od-quick-save の click ハンドラで管理）
   var _odSave=window.odSave;
   if(_odSave) window.odSave=async function(){
-    var btn=document.getElementById('od-quick-save');
-    try{
-      var r=await _odSave.apply(this,arguments);
-      dirty=false;
-      localStorage.setItem('mfg_last_save', String(Date.now()));
-      _updateLastSaveText();
-      if(btn){
-        var orig=btn.style.background;
-        btn.style.background='#22c55e';
-        btn.style.color='#fff';
-        setTimeout(function(){btn.style.background=orig||'';btn.style.color='';},2000);
-      }
-      // バックアップ（fire-and-forget）
-      _writeBackup().catch(function(e){console.warn('backup失敗:',e);});
-      return r;
-    }catch(e){throw e;}
+    var r=await _odSave.apply(this,arguments);
+    dirty=false;
+    localStorage.setItem('mfg_last_save', String(Date.now()));
+    _updateLastSaveText();
+    // バックアップ（fire-and-forget）
+    _writeBackup().catch(function(e){console.warn('backup失敗:',e);});
+    return r;
   };
 
   // ----- 自動バックアップ（mfg_backup_YYYYMMDD.json、直近7日分のみ保持） -----
@@ -3637,8 +3629,59 @@ document.documentElement.style.setProperty('font-size','17px');
       '<button type="button" id="od-quick-save" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);transition:background 0.2s,color 0.2s;">☁️保存</button>'+
       '<button type="button" id="od-quick-load" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);">☁️読込</button>';
     document.body.appendChild(bar);
-    document.getElementById('od-quick-save').addEventListener('click',function(){if(window.odSave)window.odSave();});
-    document.getElementById('od-quick-load').addEventListener('click',function(){if(window.odLoad)window.odLoad();});
+    document.getElementById('od-quick-save').addEventListener('click',async function(){
+      var btn=this;
+      if(btn.disabled)return;
+      if(!window.odSave){
+        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 保存失敗';
+        setTimeout(function(){btn.style.background='#fff';btn.style.color='';btn.textContent='☁️保存';},2000);
+        return;
+      }
+      btn.disabled=true;
+      btn.style.background='#fff';btn.style.color='#0f172a';btn.textContent='保存中...';
+      try{
+        await window.odSave();
+        // 成功 → 緑 + ✅保存
+        btn.style.background='#22c55e';btn.style.color='#fff';btn.textContent='✅保存';
+      }catch(e){
+        // 失敗 → 赤 + ⚠️ 保存失敗
+        console.warn('[od-quick-save] save failed:',e);
+        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 保存失敗';
+      }finally{
+        // どちらでも 2 秒後に元の白色 + ☁️保存 に戻す
+        setTimeout(function(){
+          btn.style.background='#fff';
+          btn.style.color='';
+          btn.textContent='☁️保存';
+          btn.disabled=false;
+        },2000);
+      }
+    });
+    document.getElementById('od-quick-load').addEventListener('click',async function(){
+      var btn=this;
+      if(btn.disabled)return;
+      if(!window.odLoad){
+        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 読込失敗';
+        setTimeout(function(){btn.style.background='#fff';btn.style.color='';btn.textContent='☁️読込';},2000);
+        return;
+      }
+      btn.disabled=true;
+      btn.style.background='#fff';btn.style.color='#0f172a';btn.textContent='読込中...';
+      try{
+        await window.odLoad();
+        btn.style.background='#22c55e';btn.style.color='#fff';btn.textContent='✅読込';
+      }catch(e){
+        console.warn('[od-quick-load] load failed:',e);
+        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 読込失敗';
+      }finally{
+        setTimeout(function(){
+          btn.style.background='#fff';
+          btn.style.color='';
+          btn.textContent='☁️読込';
+          btn.disabled=false;
+        },2000);
+      }
+    });
   }
 
   // OneDrive 連携ページ表示中はクイックボタンを隠す
