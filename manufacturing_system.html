@@ -302,9 +302,17 @@
       </div>
       <div class="card">
         <div class="search-row">
-          <div class="search-input"><input type="text" placeholder="🔍 図番・品名・受注先で検索..." oninput="filterProducts(this.value)" id="product-search"></div>
+          <div class="search-input"><input type="text" placeholder="🔍 図番・品名・受注先・材料・外注先・備考で検索（スペース区切りでAND）..." oninput="filterProducts(this.value)" id="product-search"></div>
+        </div>
+        <div class="search-row" style="margin-top:8px;gap:8px;flex-wrap:wrap;">
           <select id="filter-supplier" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
             <option value="">全受注先</option>
+          </select>
+          <select id="filter-mat-supplier" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
+            <option value="">全材料発注先</option>
+          </select>
+          <select id="filter-outsource" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
+            <option value="">全外注先</option>
           </select>
         </div>
         <div class="table-wrap">
@@ -1279,21 +1287,45 @@ function renderProducts() {
   filteredProducts = [...DB.products];
   document.getElementById('product-count-label').textContent = `${DB.products.length}件の製品`;
 
-  // Supplier filter
-  const clients = [...new Set(DB.products.map(p=>p.client).filter(Boolean))];
+  // Client filter
+  const clients = [...new Set(DB.products.map(p=>p.client).filter(Boolean))].sort();
   const sel = document.getElementById('filter-supplier');
   const prev = sel.value;
   sel.innerHTML = '<option value="">全受注先</option>' + clients.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
+
+  // Material supplier filter
+  const matSuppliers = [...new Set(DB.products.map(p=>p.matSupplier).filter(Boolean))].sort();
+  const selMat = document.getElementById('filter-mat-supplier');
+  const prevMat = selMat.value;
+  selMat.innerHTML = '<option value="">全材料発注先</option>' + matSuppliers.map(c=>`<option value="${c}" ${c===prevMat?'selected':''}>${c}</option>`).join('');
+
+  // Outsource filter
+  const outsources = [...new Set(DB.products.flatMap(p=>(p.outsource||[]).map(o=>o.name).filter(Boolean)))].sort();
+  const selOut = document.getElementById('filter-outsource');
+  const prevOut = selOut.value;
+  selOut.innerHTML = '<option value="">全外注先</option>' + outsources.map(c=>`<option value="${c}" ${c===prevOut?'selected':''}>${c}</option>`).join('');
 
   filterProducts(document.getElementById('product-search').value);
 }
 function filterProducts(q) {
   const supplier = document.getElementById('filter-supplier').value;
-  q = (q||'').toLowerCase();
-  filteredProducts = DB.products.filter(p =>
-    (!q || p.fignum.toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q) || (p.client||'').toLowerCase().includes(q)) &&
-    (!supplier || p.client === supplier)
-  );
+  const matSupplier = document.getElementById('filter-mat-supplier').value;
+  const outsource = document.getElementById('filter-outsource').value;
+  const tokens = (q||'').toLowerCase().split(/\s+/).filter(Boolean);
+  filteredProducts = DB.products.filter(p => {
+    if (supplier && p.client !== supplier) return false;
+    if (matSupplier && p.matSupplier !== matSupplier) return false;
+    if (outsource && !(p.outsource||[]).some(o=>o.name===outsource)) return false;
+    if (tokens.length) {
+      const haystack = [
+        p.fignum, p.name, p.client, p.matName, p.matSize, p.matSupplier, p.note,
+        ...((p.outsource||[]).map(o=>o.name))
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!tokens.every(t => haystack.includes(t))) return false;
+    }
+    return true;
+  });
+  document.getElementById('product-count-label').textContent = `${filteredProducts.length}件（全${DB.products.length}件中）`;
   document.getElementById('product-tbody').innerHTML = filteredProducts.length ? filteredProducts.map(p=>`
     <tr>
       <td><span class="badge badge-blue">${p.fignum}</span></td>
