@@ -3366,7 +3366,7 @@ document.documentElement.style.setProperty('font-size','17px');
     _autoSaveTimer=setTimeout(function(){
       _autoSaveTimer=null;
       if(!window.odSave){_setStatus('');return;}
-      _setStatus('自動保存中...');
+      _setStatus('💾 自動保存中...');
       Promise.resolve(window.odSave()).then(function(){
         _setStatus('✅ 自動保存',2000);
       }).catch(function(){
