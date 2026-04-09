@@ -393,10 +393,6 @@
             <label>製品単価（基本・円）</label>
             <input type="number" id="pf-price" placeholder="数量別テーブルがない場合の単価">
           </div>
-          <div class="form-group">
-            <label>PDF図面ファイル名</label>
-            <input type="text" id="pf-pdf" placeholder="例：DWG-001.pdf">
-          </div>
         </div>
 
         <hr class="divider">
@@ -542,10 +538,6 @@
           <div class="form-group full">
             <label>⚠️ クレーム資料（OneDriveリンク）</label>
             <input type="url" id="pf-claim-url" placeholder="OneDriveでファイルを右クリック→リンクのコピー（Excel・PDF・Word等すべてOK）">
-          </div>
-          <div class="form-group">
-            <label>クレームPDFファイル名</label>
-            <input type="text" id="pf-claim-pdf" placeholder="例：CLM-001.pdf（ある場合のみ）">
           </div>
           <div class="form-group">
             <label>クレーム概要</label>
@@ -1471,7 +1463,7 @@ function filterProducts(q) {
       <td style="white-space:nowrap;min-width:160px;">${p.client||'—'}</td>
       <td class="hide-mobile" style="white-space:nowrap;min-width:100px;text-align:left;">${p.matSize||'—'}</td>
       <td style="white-space:nowrap;text-align:right;">¥${fmt(p.price)}</td>
-      <td class="hide-mobile" style="white-space:nowrap;text-align:center;">${p.claimPdf?`<span class="badge badge-red">あり</span>`:'—'}</td>
+      <td class="hide-mobile" style="white-space:nowrap;text-align:center;">${p.claimUrl?`<span class="badge badge-red">あり</span>`:'—'}</td>
       <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">編集</button></td>
     </tr>
   `).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">製品なし</div></div></td></tr>';
@@ -1519,7 +1511,6 @@ function showProductDetail(id) {
     ${outsourceCards ? sectionLabel('■ 外注情報','#d97706') : ''}
     ${outsourceCards ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${outsourceCards}</div>` : ''}
 
-    ${p.pdf ? `<div style="margin-top:18px;"><span class="pdf-link">📄 ${p.pdf}</span></div>` : ''}
 
     ${(p.drawingUrl || p.claimUrl) ? `
       <div style="margin-top:18px;">
@@ -1550,9 +1541,8 @@ function showProductDetail(id) {
         </table>
       </div>` : ''}
 
-    ${(p.note || p.claimPdf || p.claimNote) ? sectionLabel('■ 注意書き・備考','#dc2626') : ''}
+    ${(p.note || p.claimUrl || p.claimNote) ? sectionLabel('■ 注意書き・備考','#dc2626') : ''}
     ${p.note ? `<div style="${cardBase}${red}margin-top:6px;"><div style="${labelStyle}">⚠ 注意書き</div><div style="${valueStyle}white-space:pre-wrap;">${p.note}</div></div>` : ''}
-    ${p.claimPdf ? `<div style="${cardBase}${red}margin-top:10px;"><div style="${labelStyle}">🚨 クレーム資料</div><div style="${valueStyle}">📄 ${p.claimPdf}</div></div>` : ''}
     ${p.claimNote ? `<div style="${cardBase}${red}margin-top:10px;"><div style="${labelStyle}">🚨 クレーム内容</div><div style="${valueStyle}white-space:pre-wrap;">${p.claimNote}</div></div>` : ''}
 
     <div style="display:flex;gap:8px;margin-top:22px;">
@@ -1573,7 +1563,6 @@ function editProduct(id) {
   document.getElementById('pf-name').value = p.name;
   document.getElementById('pf-client').value = p.client||'';
   document.getElementById('pf-price').value = p.price||'';
-  document.getElementById('pf-pdf').value = p.pdf||'';
   document.getElementById('pf-mat-supplier').value = p.matSupplier||'';
   document.getElementById('pf-mat-name').value = p.matName||'';
   document.getElementById('pf-mat-size').value = p.matSize||'';
@@ -1581,7 +1570,6 @@ function editProduct(id) {
   document.getElementById('pf-note').value = p.note||'';
   document.getElementById('pf-drawing-url').value = p.drawingUrl||'';
   document.getElementById('pf-claim-url').value = p.claimUrl||'';
-  document.getElementById('pf-claim-pdf').value = p.claimPdf||'';
   document.getElementById('pf-claim-note').value = p.claimNote||'';
   const osRows = document.querySelectorAll('.outsource-row');
   if (p.outsource) p.outsource.forEach((o,i)=>{
@@ -1649,7 +1637,7 @@ function initProductForm() {
 }
 
 function clearProductForm() {
-  ['pf-fignum','pf-name','pf-client','pf-price','pf-pdf','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-drawing-url','pf-claim-url','pf-claim-pdf','pf-claim-note'].forEach(id=>{
+  ['pf-fignum','pf-name','pf-client','pf-price','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-drawing-url','pf-claim-url','pf-claim-note'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) { el.value=''; delete el.dataset.editId; }
   });
@@ -1676,7 +1664,6 @@ function saveProduct() {
     fignum, name,
     client: document.getElementById('pf-client').value.trim(),
     price: parseFloat(document.getElementById('pf-price').value)||0,
-    pdf: document.getElementById('pf-pdf').value.trim(),
     matSupplier: document.getElementById('pf-mat-supplier').value.trim(),
     matName: document.getElementById('pf-mat-name').value.trim(),
     matSize: document.getElementById('pf-mat-size').value.trim(),
@@ -1685,7 +1672,6 @@ function saveProduct() {
     note: document.getElementById('pf-note').value.trim(),
     drawingUrl: document.getElementById('pf-drawing-url').value.trim(),
     claimUrl: document.getElementById('pf-claim-url').value.trim(),
-    claimPdf: document.getElementById('pf-claim-pdf').value.trim(),
     claimNote: document.getElementById('pf-claim-note').value.trim(),
     outsource: os
   };
@@ -3021,7 +3007,7 @@ function importExcel(input) {
           client:String(row[2]||''), price:parseFloat(row[3])||0,
           matSupplier:String(row[4]||''), matName:String(row[5]||''),
           matSize:String(row[6]||''), matPrice:parseFloat(row[7])||0,
-          pdf:'', note:'', claimPdf:'', claimNote:'', outsource:[]
+          note:'', drawingUrl:'', claimUrl:'', claimNote:'', outsource:[]
         });
         added++;
       });
