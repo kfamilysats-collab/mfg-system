@@ -609,7 +609,7 @@
             <label>図番 *</label>
             <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()">
             <datalist id="fignum-list"></datalist>
-            <button type="button" class="btn btn-primary btn-sm" id="copy-last-steps-btn" onclick="copyLastSteps()" style="display:none;margin-top:8px;font-size:13px;padding:8px 14px;font-weight:700;align-self:flex-start;">📋 前回の工程をコピー</button>
+            <button type="button" id="copy-last-steps-btn" onclick="copyLastSteps()" disabled style="margin-top:10px;width:100%;background:#94a3b8;color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:not-allowed;transition:background 0.2s;">📋 同じ図番の前回工程をコピー</button>
             <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-top:6px;display:none;"></div>
           </div>
           <div class="form-group">
@@ -1870,26 +1870,28 @@ function autoFillProduct() {
     matHint.style.display = 'none';
   }
 
-  // 前回工程コピーボタンの表示制御
+  // 前回工程コピーボタンの有効/無効制御（常時表示）
   const copyBtn = document.getElementById('copy-last-steps-btn');
   const lastHint = document.getElementById('last-steps-hint');
-  if (copyBtn && fignum) {
-    // この図番の直近実績を探す
-    const lastProd = DB.productions
-      .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
-      .sort((a, b) => b.date.localeCompare(a.date))[0];
-    if (lastProd) {
-      copyBtn.style.display = 'inline-flex';
+  if (copyBtn) {
+    const lastProd = fignum ? DB.productions
+      .filter(p => p.fignum === fignum && Array.isArray(p.steps) && p.steps.length > 0)
+      .sort((a, b) => b.date.localeCompare(a.date))[0] : null;
+    if (fignum && lastProd) {
+      // 図番あり & 前回実績あり → 青く有効化
+      copyBtn.disabled = false;
+      copyBtn.style.background = '#2563eb';
+      copyBtn.style.cursor = 'pointer';
       lastHint.style.display = 'block';
       const dateStr = lastProd.date.replace(/-/g, '/');
       lastHint.textContent = `📅 前回実績: ${dateStr}  工程${lastProd.steps.length}個 (${lastProd.steps.join(' / ')})`;
     } else {
-      copyBtn.style.display = 'none';
+      // 図番なし or 前回実績なし → グレーで無効化
+      copyBtn.disabled = true;
+      copyBtn.style.background = '#94a3b8';
+      copyBtn.style.cursor = 'not-allowed';
       lastHint.style.display = 'none';
     }
-  } else if (copyBtn) {
-    copyBtn.style.display = 'none';
-    lastHint.style.display = 'none';
   }
 }
 
