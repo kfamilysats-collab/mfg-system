@@ -350,7 +350,7 @@
             <thead>
               <tr>
                 <th>図番</th><th>品名</th><th>受注先</th>
-                <th class="hide-mobile">材料</th>
+                <th class="hide-mobile">寸法</th>
                 <th>単価</th>
                 <th class="hide-mobile">クレーム</th>
                 <th>操作</th>
@@ -1454,7 +1454,7 @@ function filterProducts(q) {
       <td><span class="badge badge-blue">${p.fignum}</span></td>
       <td>${p.name}</td>
       <td>${p.client||'—'}</td>
-      <td class="hide-mobile">${p.matName||'—'}</td>
+      <td class="hide-mobile">${p.matSize||'—'}</td>
       <td>¥${fmt(p.price)}</td>
       <td class="hide-mobile">${p.claimPdf?`<span class="badge badge-red">あり</span>`:'—'}</td>
       <td><button class="btn btn-ghost btn-xs" onclick="showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">編集</button></td>
