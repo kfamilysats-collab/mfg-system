@@ -530,6 +530,14 @@
             <label>注意書き</label>
             <textarea id="pf-note" placeholder="加工上の注意点など"></textarea>
           </div>
+          <div class="form-group full">
+            <label>📄 図面（OneDriveリンク）</label>
+            <input type="url" id="pf-drawing-url" placeholder="https://1drv.ms/... または https://...sharepoint.com/...">
+          </div>
+          <div class="form-group full">
+            <label>⚠️ クレーム資料（OneDriveリンク）</label>
+            <input type="url" id="pf-claim-url" placeholder="https://1drv.ms/... または https://...sharepoint.com/...">
+          </div>
           <div class="form-group">
             <label>クレームPDFファイル名</label>
             <input type="text" id="pf-claim-pdf" placeholder="例：CLM-001.pdf（ある場合のみ）">
@@ -1508,6 +1516,13 @@ function showProductDetail(id) {
 
     ${p.pdf ? `<div style="margin-top:18px;"><span class="pdf-link">📄 ${p.pdf}</span></div>` : ''}
 
+    ${(p.drawingUrl || p.claimUrl) ? `
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+        ${p.drawingUrl ? `<a href="${p.drawingUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(37,99,235,0.3);">📄 図面を開く</a>` : ''}
+        ${p.claimUrl ? `<a href="${p.claimUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:6px;background:#dc2626;color:#fff;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 2px 6px rgba(220,38,38,0.3);">⚠️ クレーム資料を開く</a>` : ''}
+      </div>
+    ` : ''}
+
     ${p.priceTable&&p.priceTable.length ? `
       <div style="margin-top:18px;">
         <div style="font-size:12px;font-weight:700;color:#2563eb;margin-bottom:10px;letter-spacing:0.5px;">📊 数量別単価テーブル</div>
@@ -1556,6 +1571,8 @@ function editProduct(id) {
   document.getElementById('pf-mat-size').value = p.matSize||'';
   document.getElementById('pf-mat-price').value = p.matPrice||'';
   document.getElementById('pf-note').value = p.note||'';
+  document.getElementById('pf-drawing-url').value = p.drawingUrl||'';
+  document.getElementById('pf-claim-url').value = p.claimUrl||'';
   document.getElementById('pf-claim-pdf').value = p.claimPdf||'';
   document.getElementById('pf-claim-note').value = p.claimNote||'';
   const osRows = document.querySelectorAll('.outsource-row');
@@ -1624,7 +1641,7 @@ function initProductForm() {
 }
 
 function clearProductForm() {
-  ['pf-fignum','pf-name','pf-client','pf-price','pf-pdf','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-claim-pdf','pf-claim-note'].forEach(id=>{
+  ['pf-fignum','pf-name','pf-client','pf-price','pf-pdf','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-drawing-url','pf-claim-url','pf-claim-pdf','pf-claim-note'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) { el.value=''; delete el.dataset.editId; }
   });
@@ -1658,6 +1675,8 @@ function saveProduct() {
     matPrice: parseFloat(document.getElementById('pf-mat-price').value)||0,
     priceTable,
     note: document.getElementById('pf-note').value.trim(),
+    drawingUrl: document.getElementById('pf-drawing-url').value.trim(),
+    claimUrl: document.getElementById('pf-claim-url').value.trim(),
     claimPdf: document.getElementById('pf-claim-pdf').value.trim(),
     claimNote: document.getElementById('pf-claim-note').value.trim(),
     outsource: os
