@@ -139,18 +139,38 @@
   .section { display: none; }
   .section.active { display: block; }
 
+  /* Sidebar overlay (mobile) */
+  .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 99; display: none; }
+  .sidebar-overlay.open { display: block; }
+
+  /* Tablet (769–1024px) — sidebar 細め、コンテンツは残り全幅 */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .sidebar { width: 180px; }
+    .main { margin-left: 180px; padding: 20px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-grid { grid-template-columns: repeat(2, 1fr); }
+    .page-header { padding-right: 0; }
+  }
+
   /* Mobile */
   .menu-btn { display: none; background: none; border: none; color: var(--text); font-size: 22px; cursor: pointer; }
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
-    .sidebar.open { transform: translateX(0); }
-    .main { margin-left: 0; padding: 16px; }
+    .sidebar.open { transform: translateX(0); box-shadow: 0 0 24px rgba(0,0,0,0.4); }
+    .main { margin-left: 0; padding: 14px; padding-top: 60px; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
     .form-grid { grid-template-columns: 1fr; }
     .form-grid-2 { grid-template-columns: 1fr; }
-    .menu-btn { display: block; }
-    .page-header { gap: 10px; flex-wrap: wrap; }
-    .mobile-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .menu-btn { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; font-size: 26px; padding: 0; border-radius: 10px; background: var(--bg2); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .page-header { gap: 10px; flex-wrap: wrap; padding-right: 0; }
+    .page-title { font-size: 18px; }
+    /* mobile-header を画面左上に固定 */
+    .mobile-header { display: flex; align-items: center; gap: 12px; position: fixed; top: 10px; left: 10px; z-index: 98; margin: 0; }
+    .mobile-header > span { display: none; }
+    /* OneDrive クイックバーをタップしやすいサイズに */
+    #od-quick-bar { top: 14px !important; right: 10px !important; gap: 8px !important; }
+    #od-quick-save, #od-quick-load { font-size: 14px !important; padding: 10px 14px !important; min-height: 42px !important; min-width: 64px !important; }
+    #od-status, #od-lastsave { font-size: 11px !important; }
   }
   .mobile-header { display: none; }
   @media (max-width: 768px) { .mobile-header { display: flex; } }
@@ -186,6 +206,8 @@
 <body>
 
 <div class="app">
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="logo">
@@ -1279,10 +1301,14 @@ function showSection(name) {
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  var open = document.getElementById('sidebar').classList.toggle('open');
+  var ov = document.getElementById('sidebar-overlay');
+  if (ov) ov.classList.toggle('open', open);
 }
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
+  var ov = document.getElementById('sidebar-overlay');
+  if (ov) ov.classList.remove('open');
 }
 
 // ===== HELPERS =====
