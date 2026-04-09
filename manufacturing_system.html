@@ -609,6 +609,8 @@
             <label>図番 *</label>
             <input type="text" id="rf-fignum" list="fignum-list" placeholder="例：DWG-001" oninput="autoFillProduct()">
             <datalist id="fignum-list"></datalist>
+            <button type="button" class="btn btn-primary btn-sm" id="copy-last-steps-btn" onclick="copyLastSteps()" style="display:none;margin-top:8px;font-size:13px;padding:8px 14px;font-weight:700;align-self:flex-start;">📋 前回の工程をコピー</button>
+            <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-top:6px;display:none;"></div>
           </div>
           <div class="form-group">
             <label>品名（自動入力）</label>
@@ -640,11 +642,9 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <div style="font-size:13px;font-weight:700;color:var(--accent);">工程時間（最大10工程）</div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-ghost btn-sm" id="copy-last-steps-btn" onclick="copyLastSteps()" style="display:none;">📋 前回の工程をコピー</button>
             <button class="btn btn-ghost btn-sm" onclick="addProcessStep()">＋ 工程追加</button>
           </div>
         </div>
-        <div id="last-steps-hint" style="font-size:11px;color:var(--accent2);margin-bottom:10px;display:none;"></div>
         <div id="process-steps-form" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;"></div>
 
         <div style="display:flex;gap:10px;margin-top:24px;justify-content:flex-end;">
@@ -1897,19 +1897,20 @@ function copyLastSteps() {
   const fignum = document.getElementById('rf-fignum').value.trim();
   if (!fignum) return;
   const lastProd = DB.productions
-    .filter(p => p.fignum === fignum && p.steps && p.steps.length > 0)
+    .filter(p => p.fignum === fignum && Array.isArray(p.steps) && p.steps.length > 0)
     .sort((a, b) => b.date.localeCompare(a.date))[0];
   if (!lastProd) return;
 
-  // 工程ステップをリセットしてコピー
+  // 全工程を一度にレンダリングしてから値を流し込む
+  const steps = lastProd.steps.slice(0, 10); // 最大10工程
   processStepCount = 0;
   document.getElementById('process-steps-form').innerHTML = '';
-  lastProd.steps.forEach(stepVal => {
-    addProcessStep();
-    const el = document.getElementById('step-' + processStepCount);
-    if (el) el.value = stepVal;
-  });
-  showToast(`工程${lastProd.steps.length}個をコピーしました`, 'success');
+  renderProcessSteps(steps.length);
+  for (let i = 0; i < steps.length; i++) {
+    const el = document.getElementById('step-' + (i + 1));
+    if (el) el.value = steps[i];
+  }
+  showToast(`工程${steps.length}個をコピーしました`, 'success');
 }
 
 function clearProductionForm() {
