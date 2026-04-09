@@ -1799,6 +1799,15 @@ function initProductionForm() {
   renderProcessSteps(1);
 }
 
+// 全角数字・コロン・ハイフンを半角に変換
+function toHalfWidthTime(s) {
+  if (!s) return s;
+  return String(s)
+    .replace(/[０-９]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/[：﹕]/g, ':')
+    .replace(/[－ー―‐]/g, '-');
+}
+
 function renderProcessSteps(n) {
   const container = document.getElementById('process-steps-form');
   // 既存の入力値を保持
@@ -1812,11 +1821,20 @@ function renderProcessSteps(n) {
   for (let i = 1; i <= n; i++) {
     const div = document.createElement('div');
     div.className = 'form-group';
-    div.innerHTML = `<label>工程${i}（時:分:秒）</label><input type="text" id="step-${i}" placeholder="例：0:05:30" pattern="\\d+:\\d{2}:\\d{2}">`;
+    div.innerHTML = `<label>工程${i}（時:分:秒）</label><input type="text" id="step-${i}" inputmode="numeric" placeholder="例：0:05:30" pattern="\\d+:\\d{2}:\\d{2}">`;
     container.appendChild(div);
-    if (prevValues[i] != null) {
-      div.querySelector('input').value = prevValues[i];
-    }
+    const input = div.querySelector('input');
+    if (prevValues[i] != null) input.value = toHalfWidthTime(prevValues[i]);
+    // 入力中に全角→半角へ変換（カーソル位置を維持）
+    input.addEventListener('input', function(e){
+      const before = e.target.value;
+      const after = toHalfWidthTime(before);
+      if (before !== after) {
+        const pos = e.target.selectionStart;
+        e.target.value = after;
+        try { e.target.setSelectionRange(pos, pos); } catch(_) {}
+      }
+    });
   }
 }
 
