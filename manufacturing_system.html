@@ -70,6 +70,7 @@
   th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,0.5); vertical-align: middle; }
   tr:hover td { background: rgba(61,127,255,0.04); }
+  #product-tbody tr:hover td { background: rgba(61,127,255,0.10); }
   tr:last-child td { border-bottom: none; }
 
   /* Buttons */
@@ -1368,14 +1369,14 @@ function filterProducts(q) {
   });
   document.getElementById('product-count-label').textContent = `${filteredProducts.length}件（全${DB.products.length}件中）`;
   document.getElementById('product-tbody').innerHTML = filteredProducts.length ? filteredProducts.map(p=>`
-    <tr>
+    <tr onclick="showProductDetail('${p.id}')" style="cursor:pointer;">
       <td style="white-space:nowrap;"><span class="badge badge-blue">${p.fignum}</span></td>
       <td style="white-space:nowrap;">${p.name}</td>
       <td style="white-space:nowrap;min-width:160px;">${p.client||'—'}</td>
       <td class="hide-mobile" style="white-space:nowrap;min-width:100px;text-align:left;">${p.matSize||'—'}</td>
       <td style="white-space:nowrap;text-align:right;">¥${fmt(p.price)}</td>
       <td class="hide-mobile" style="white-space:nowrap;text-align:center;">${p.claimUrl?`<span class="badge badge-red">あり</span>`:'—'}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduct('${p.id}')">編集</button></td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();editProduct('${p.id}')">編集</button></td>
     </tr>
   `).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">製品なし</div></div></td></tr>';
 }
