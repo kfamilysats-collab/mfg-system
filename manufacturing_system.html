@@ -354,8 +354,8 @@
           </div>
           <div class="form-group">
             <label>受注先</label>
-            <input type="text" id="pf-client" list="client-list" placeholder="取引先を選択or入力">
-            <datalist id="client-list"></datalist>
+            <input type="text" id="pf-client" list="pf-client-list" placeholder="取引先を選択or入力">
+            <datalist id="pf-client-list"></datalist>
           </div>
           <div class="form-group">
             <label>製品単価（基本・円）</label>
@@ -395,8 +395,8 @@
         <div class="form-grid">
           <div class="form-group">
             <label>材料発注先</label>
-            <input type="text" id="pf-mat-supplier" list="mat-supplier-list" placeholder="材料の仕入先">
-            <datalist id="mat-supplier-list"></datalist>
+            <input type="text" id="pf-mat-supplier" list="pf-mat-supplier-list" placeholder="材料の仕入先">
+            <datalist id="pf-mat-supplier-list"></datalist>
           </div>
           <div class="form-group">
             <label>材料名</label>
@@ -412,7 +412,7 @@
           </div>
         </div>
 
-        <datalist id="outsource-list"></datalist>
+        <datalist id="pf-outsource-list"></datalist>
         <hr class="divider">
         <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">外注先</div>
         <div id="outsource-rows">
@@ -421,7 +421,7 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
-                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
               </div>
               <div class="form-group">
                 <label>材料</label>
@@ -445,7 +445,7 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
-                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
               </div>
               <div class="form-group">
                 <label>材料</label>
@@ -469,7 +469,7 @@
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
-                <input type="text" class="os-name" list="outsource-list" placeholder="外注会社名">
+                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
               </div>
               <div class="form-group">
                 <label>材料</label>
@@ -1185,6 +1185,7 @@ function showSection(name) {
   if (name === 'workers') renderWorkers();
   if (name === 'onedrive') initOneDriveSection();
   if (name === 'production-form') initProductionForm();
+  if (name === 'product-form') refreshProductFormLists();
 }
 
 function toggleSidebar() {
@@ -1287,20 +1288,21 @@ function renderProducts() {
   filteredProducts = [...DB.products];
   document.getElementById('product-count-label').textContent = `${DB.products.length}件の製品`;
 
-  // Client filter
-  const clients = [...new Set(DB.products.map(p=>p.client).filter(Boolean))].sort();
+  // Filters from DB.companies (typesタグ別)
+  const companies = DB.companies || [];
+  const byType = (t)=>companies.filter(c=>(c.types||[]).includes(t)).map(c=>c.name).sort();
+  const clients = byType('client');
+  const matSuppliers = byType('material');
+  const outsources = byType('other');
+
   const sel = document.getElementById('filter-supplier');
   const prev = sel.value;
   sel.innerHTML = '<option value="">全受注先</option>' + clients.map(c=>`<option value="${c}" ${c===prev?'selected':''}>${c}</option>`).join('');
 
-  // Material supplier filter
-  const matSuppliers = [...new Set(DB.products.map(p=>p.matSupplier).filter(Boolean))].sort();
   const selMat = document.getElementById('filter-mat-supplier');
   const prevMat = selMat.value;
   selMat.innerHTML = '<option value="">全材料発注先</option>' + matSuppliers.map(c=>`<option value="${c}" ${c===prevMat?'selected':''}>${c}</option>`).join('');
 
-  // Outsource filter
-  const outsources = [...new Set(DB.products.flatMap(p=>(p.outsource||[]).map(o=>o.name).filter(Boolean)))].sort();
   const selOut = document.getElementById('filter-outsource');
   const prevOut = selOut.value;
   selOut.innerHTML = '<option value="">全外注先</option>' + outsources.map(c=>`<option value="${c}" ${c===prevOut?'selected':''}>${c}</option>`).join('');
@@ -2363,15 +2365,15 @@ function updateDataLists() {
   // 材料発注先（material）タグ付きの会社のみ
   const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
 
-  const cl = document.getElementById('client-list');
+  const cl = document.getElementById('pf-client-list');
   if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
-  const ml = document.getElementById('mat-supplier-list');
+  const ml = document.getElementById('pf-mat-supplier-list');
   if (ml) ml.innerHTML = materialNames.map(n=>`<option value="${n}">`).join('');
   const fl = document.getElementById('fignum-list');
   if (fl) fl.innerHTML = DB.products.map(p=>`<option value="${p.fignum}">`).join('');
   const mc = document.getElementById('machine-list');
   if (mc) mc.innerHTML = [...new Set([...DB.machines,...DB.machineInfo.map(m=>m.name),...DB.productions.map(p=>p.machine).filter(Boolean)])].map(m=>`<option value="${m}">`).join('');
-  const ol = document.getElementById('outsource-list');
+  const ol = document.getElementById('pf-outsource-list');
   if (ol) ol.innerHTML = DB.companies.filter(c=>(c.types||[]).includes('other')).map(c=>`<option value="${c.name}">`).join('');
   const wk = document.getElementById('rf-worker');
   if (wk) {
@@ -2382,14 +2384,15 @@ function updateDataLists() {
 
 // 製品フォームの取引先datalistを再生成（取引先管理が更新されたら呼ぶ）
 function refreshProductFormLists() {
+  if (!DB.companies) return;
   const clientNames = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>c.name);
   const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
   const otherNames = DB.companies.filter(c=>(c.types||[]).includes('other')).map(c=>c.name);
-  const cl = document.getElementById('client-list');
+  const cl = document.getElementById('pf-client-list');
   if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
-  const ml = document.getElementById('mat-supplier-list');
+  const ml = document.getElementById('pf-mat-supplier-list');
   if (ml) ml.innerHTML = materialNames.map(n=>`<option value="${n}">`).join('');
-  const ol = document.getElementById('outsource-list');
+  const ol = document.getElementById('pf-outsource-list');
   if (ol) ol.innerHTML = otherNames.map(n=>`<option value="${n}">`).join('');
 }
 
@@ -3007,6 +3010,7 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 load();
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 renderDashboard();
+refreshProductFormLists();
 </script>
 <script>
 document.documentElement.style.setProperty('font-size','17px');
