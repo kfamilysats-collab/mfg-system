@@ -170,7 +170,9 @@
     /* OneDrive クイックバーをタップしやすいサイズに */
     #od-quick-bar { top: 14px !important; right: 10px !important; gap: 8px !important; }
     #od-quick-save, #od-quick-load { font-size: 14px !important; padding: 10px 14px !important; min-height: 42px !important; min-width: 64px !important; }
-    #od-status, #od-lastsave { font-size: 11px !important; }
+    #od-status { font-size: 11px !important; }
+    /* スマホでは最終保存表示は常に非表示 */
+    #od-lastsave { display: none !important; }
   }
   .mobile-header { display: none; }
   @media (max-width: 768px) { .mobile-header { display: flex; } }
