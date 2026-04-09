@@ -3138,8 +3138,8 @@ function exportHistoryExcel() {
 
 // ===== ONEDRIVE =====
 const OD_FILE_NAME = '製造管理データ.json';
-let msalInstance = null;
-let odAccount = null;
+var msalInstance = null;
+var odAccount = null;
 
 function odGetConfig() {
   return {
@@ -3222,224 +3222,94 @@ async function odGetToken() {
   }
 }
 
+// ===== シンプルな OneDrive 保存 =====
 async function odSave() {
-  console.log('[odSave] start');
-  const btn = document.getElementById('od-save-btn');
-  const status = document.getElementById('od-save-status');
-  const LOGIN_MSG = '⚠️ ログインが必要です。OneDrive連携ページからログインしてください';
-
-  // 1) 設定チェック
-  const cfg = odGetConfig();
-  console.log('[odSave] config', { hasClientId: !!cfg.clientId, hasTenantId: !!cfg.tenantId });
-  if (!cfg.clientId || !cfg.tenantId) {
-    console.warn('[odSave] missing client/tenant id');
-    showToast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
+  // 1) ログイン状態チェック
+  if (!msalInstance) { try { odInitMsal(); } catch(e){} }
+  if (!msalInstance || msalInstance.getAllAccounts().length === 0) {
+    showToast('ログインしてください', 'error');
+    return false;
   }
+  if (!odAccount) odAccount = msalInstance.getAllAccounts()[0];
 
-  // 2) MSAL 初期化
-  if (!msalInstance) {
-    console.log('[odSave] msalInstance missing → odInitMsal()');
-    try { odInitMsal(); } catch(e) { console.error('[odSave] odInitMsal threw', e); }
-  }
-  if (!msalInstance) {
-    console.error('[odSave] msalInstance still null after init');
-    showToast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
-  }
-
-  // 3) アカウント復元
-  if (!odAccount) {
-    const accs = msalInstance.getAllAccounts();
-    console.log('[odSave] restoring account, count=', accs && accs.length);
-    if (accs && accs.length) odAccount = accs[0];
-  }
-
-  // 4) トークン取得：Silent → Popup フォールバック
-  let token = null;
+  // 2) トークン取得（silent のみ）
+  let token;
   try {
-    if (!odAccount) throw new Error('no cached account');
-    console.log('[odSave] acquireTokenSilent');
     const resp = await msalInstance.acquireTokenSilent({
       scopes: ['Files.ReadWrite'],
       account: odAccount
     });
     token = resp.accessToken;
-    console.log('[odSave] silent OK');
-  } catch (eSilent) {
-    console.warn('[odSave] silent failed:', eSilent && (eSilent.errorCode || eSilent.message));
-    try {
-      console.log('[odSave] acquireTokenPopup fallback');
-      const resp = await msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite'] });
-      token = resp.accessToken;
-      if (resp.account) odAccount = resp.account;
-      console.log('[odSave] popup OK');
-    } catch (ePopup) {
-      console.error('[odSave] popup failed:', ePopup && (ePopup.errorCode || ePopup.message));
-      showToast(LOGIN_MSG, 'error');
-      return;
-    }
-  }
-  if (!token) {
-    console.error('[odSave] token is empty');
-    showToast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
+  } catch (e) {
+    showToast('ログインが切れています。OneDrive連携ページからログインしてください', 'error');
+    return false;
   }
 
-  // 5) PUT to graph.microsoft.com
-  if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
-  if (status) { status.textContent = ''; }
+  // 3) PUT to graph.microsoft.com
   try {
-    const json = JSON.stringify(DB);
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`;
-    console.log('[odSave] PUT', url, 'bytes=', json.length);
-    const resp = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: json
-    });
-    console.log('[odSave] response status=', resp.status);
-    if (!resp.ok) {
-      let body = '';
-      try { body = await resp.text(); } catch(_) {}
-      throw new Error('HTTP ' + resp.status + (body ? ' - ' + body.slice(0, 200) : ''));
-    }
-    const now = new Date().toLocaleString('ja-JP');
-    if (status) {
-      status.textContent = `✅ 保存完了: ${now}`;
-      status.style.color = 'var(--accent2)';
-    }
-    showToast('✅ OneDriveに保存しました');
-    console.log('[odSave] success');
+    const resp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
+      {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify(DB)
+      }
+    );
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    // 4) 成功 → 最終保存時刻を更新
+    localStorage.setItem('mfg_last_save', String(Date.now()));
+    if (typeof window._updateLastSaveText === 'function') window._updateLastSaveText();
+    showToast('✅ OneDriveに保存しました', 'success');
+    return true;
   } catch (e) {
-    console.error('[odSave] PUT failed:', e);
-    if (status) {
-      status.textContent = '❌ 保存失敗: ' + e.message;
-      status.style.color = 'var(--accent3)';
-    }
-    showToast('❌ 保存に失敗しました: ' + e.message, 'error');
-    throw e;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '☁️ OneDriveに保存'; }
+    showToast('❌ 保存失敗', 'error');
+    return false;
   }
 }
 
+// ===== シンプルな OneDrive 読込 =====
 async function odLoad() {
-  console.log('[odLoad] start');
-  const btn = document.getElementById('od-load-btn');
-  const status = document.getElementById('od-load-status');
-  const LOGIN_MSG = '⚠️ ログインが必要です。OneDrive連携ページからログインしてください';
-  const _toast = (msg, type) => {
-    if (typeof showToast === 'function') showToast(msg, type);
-    else if (type === 'error') alert(msg);
-  };
-
-  // 1) 設定チェック
-  const cfg = odGetConfig();
-  console.log('[odLoad] config', { hasClientId: !!cfg.clientId, hasTenantId: !!cfg.tenantId });
-  if (!cfg.clientId || !cfg.tenantId) {
-    console.warn('[odLoad] missing client/tenant id');
-    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
-    _toast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
+  // 1) ログイン状態チェック → 未ログインなら連携ページへ
+  if (!msalInstance) { try { odInitMsal(); } catch(e){} }
+  if (!msalInstance || msalInstance.getAllAccounts().length === 0) {
+    if (typeof showSection === 'function') showSection('onedrive');
+    return false;
   }
+  if (!odAccount) odAccount = msalInstance.getAllAccounts()[0];
 
-  // 2) MSAL 初期化
-  if (!msalInstance) {
-    console.log('[odLoad] msalInstance missing → odInitMsal()');
-    try { odInitMsal(); } catch(e) { console.error('[odLoad] odInitMsal threw', e); }
-  }
-  if (!msalInstance) {
-    console.error('[odLoad] msalInstance still null after init');
-    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
-    _toast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
-  }
-
-  // 3) アカウント復元
-  if (!odAccount) {
-    const accs = msalInstance.getAllAccounts();
-    console.log('[odLoad] restoring account, count=', accs && accs.length);
-    if (accs && accs.length) odAccount = accs[0];
-  }
-
-  // 4) トークン取得：Silent → Popup フォールバック
-  let token = null;
+  // 2) トークン取得（silent のみ）
+  let token;
   try {
-    if (!odAccount) throw new Error('no cached account');
-    console.log('[odLoad] acquireTokenSilent');
     const resp = await msalInstance.acquireTokenSilent({
       scopes: ['Files.ReadWrite'],
       account: odAccount
     });
     token = resp.accessToken;
-    console.log('[odLoad] silent OK');
-  } catch (eSilent) {
-    console.warn('[odLoad] silent failed:', eSilent && (eSilent.errorCode || eSilent.message));
-    try {
-      console.log('[odLoad] acquireTokenPopup fallback');
-      const resp = await msalInstance.acquireTokenPopup({ scopes: ['Files.ReadWrite'] });
-      token = resp.accessToken;
-      if (resp.account) odAccount = resp.account;
-      console.log('[odLoad] popup OK');
-    } catch (ePopup) {
-      console.error('[odLoad] popup failed:', ePopup && (ePopup.errorCode || ePopup.message));
-      if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
-      _toast(LOGIN_MSG, 'error');
-      throw new Error('not-logged-in');
-    }
-  }
-  if (!token) {
-    console.error('[odLoad] token is empty');
-    if (status) { status.textContent = '❌ ' + LOGIN_MSG; status.style.color = 'var(--accent3)'; }
-    _toast(LOGIN_MSG, 'error');
-    throw new Error('not-logged-in');
+  } catch (e) {
+    if (typeof showSection === 'function') showSection('onedrive');
+    return false;
   }
 
-  // 5) GET from graph.microsoft.com
-  if (btn) { btn.disabled = true; btn.textContent = '読み込み中...'; }
-  if (status) { status.textContent = ''; }
+  // 3) GET from graph.microsoft.com
   try {
-    const url = `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`;
-    console.log('[odLoad] GET', url);
-    const resp = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-    console.log('[odLoad] response status=', resp.status);
+    const resp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${OD_FILE_NAME}:/content`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
     if (resp.status === 404) {
-      if (status) { status.textContent = '⚠️ OneDriveにデータがまだありません'; status.style.color = 'var(--accent4)'; }
-      _toast('OneDriveにデータがまだありません', 'error');
-      return;
+      showToast('OneDriveにデータがまだありません', 'error');
+      return false;
     }
-    if (!resp.ok) {
-      let body = '';
-      try { body = await resp.text(); } catch(_) {}
-      throw new Error('HTTP ' + resp.status + (body ? ' - ' + body.slice(0, 200) : ''));
-    }
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
-    if (!confirm('OneDriveのデータを読み込みます。現在のデータは上書きされます。よろしいですか？')) {
-      console.log('[odLoad] cancelled by user');
-      if (status) { status.textContent = ''; }
-      return;
-    }
     Object.assign(DB, data);
-    save();
-    const now = new Date().toLocaleString('ja-JP');
-    if (status) {
-      status.textContent = `✅ 読み込み完了: ${now}`;
-      status.style.color = 'var(--accent2)';
-    }
-    _toast('✅ OneDriveから読み込みました');
-    console.log('[odLoad] success');
-    renderDashboard();
+    if (typeof save === 'function') save();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    showToast('✅ 読み込みました', 'success');
+    return true;
   } catch (e) {
-    console.error('[odLoad] GET failed:', e);
-    if (status) {
-      status.textContent = '❌ 読み込み失敗: ' + e.message;
-      status.style.color = 'var(--accent3)';
-    }
-    _toast('❌ 読み込みに失敗しました: ' + e.message, 'error');
-    throw e;
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = '☁️ OneDriveから読み込み'; }
+    showToast('❌ 読込失敗', 'error');
+    return false;
   }
 }
 
@@ -3564,16 +3434,14 @@ document.documentElement.style.setProperty('font-size','17px');
   var _save=window.save;
   if(_save) window.save=function(){var r=_save.apply(this,arguments);dirty=true;return r;};
 
-  // odSave をラップして成功時にフラグクリア + バックアップ + 最終保存時刻
-  // （ボタンの色・テキストは od-quick-save の click ハンドラで管理）
+  // odSave をラップ：成功 (true) のときだけ dirty フラグをクリアしてバックアップ
   var _odSave=window.odSave;
   if(_odSave) window.odSave=async function(){
     var r=await _odSave.apply(this,arguments);
-    dirty=false;
-    localStorage.setItem('mfg_last_save', String(Date.now()));
-    _updateLastSaveText();
-    // バックアップ（fire-and-forget）
-    _writeBackup().catch(function(e){console.warn('backup失敗:',e);});
+    if(r===true){
+      dirty=false;
+      _writeBackup().catch(function(e){console.warn('backup失敗:',e);});
+    }
     return r;
   };
 
@@ -3611,11 +3479,11 @@ document.documentElement.style.setProperty('font-size','17px');
     }
   }
 
-  // odLoad をラップ（読込直後はクリーン）
+  // odLoad をラップ：成功 (true) のときだけ dirty フラグをクリア
   var _odLoad=window.odLoad;
   if(_odLoad) window.odLoad=async function(){
     var r=await _odLoad.apply(this,arguments);
-    dirty=false;
+    if(r===true) dirty=false;
     return r;
   };
 
@@ -3629,77 +3497,12 @@ document.documentElement.style.setProperty('font-size','17px');
       '<button type="button" id="od-quick-save" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);transition:background 0.2s,color 0.2s;">☁️保存</button>'+
       '<button type="button" id="od-quick-load" style="font-size:12px;padding:4px 10px;border:1px solid #cbd5e1;background:#fff;border-radius:6px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,0.08);">☁️読込</button>';
     document.body.appendChild(bar);
-    document.getElementById('od-quick-save').addEventListener('click',async function(){
-      var btn=this;
-      if(btn.disabled)return;
-      if(!window.odSave){
-        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 保存失敗';
-        setTimeout(function(){btn.style.background='#fff';btn.style.color='';btn.textContent='☁️保存';},2000);
-        return;
-      }
-      // ログアウト状態（msalInstance未初期化 or アカウント0件）→ 要ログイン → OneDrive連携ページへ
-      var loggedOut=true;
-      try{
-        if(window.msalInstance&&typeof window.msalInstance.getAllAccounts==='function'){
-          loggedOut=window.msalInstance.getAllAccounts().length===0;
-        }
-      }catch(e){loggedOut=true;}
-      if(loggedOut){
-        btn.disabled=true;
-        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='要ログイン';
-        setTimeout(function(){
-          btn.style.background='#fff';
-          btn.style.color='';
-          btn.textContent='☁️保存';
-          btn.disabled=false;
-          if(typeof showSection==='function')showSection('onedrive');
-        },2000);
-        return;
-      }
-      btn.disabled=true;
-      btn.style.background='#fff';btn.style.color='#0f172a';btn.textContent='保存中...';
-      try{
-        await window.odSave();
-        // 成功 → 緑 + ✅保存
-        btn.style.background='#22c55e';btn.style.color='#fff';btn.textContent='✅保存';
-      }catch(e){
-        // 失敗 → 赤 + ⚠️ 保存失敗
-        console.warn('[od-quick-save] save failed:',e);
-        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 保存失敗';
-      }finally{
-        // どちらでも 2 秒後に元の白色 + ☁️保存 に戻す
-        setTimeout(function(){
-          btn.style.background='#fff';
-          btn.style.color='';
-          btn.textContent='☁️保存';
-          btn.disabled=false;
-        },2000);
-      }
+    // クイックバーのボタンは odSave/odLoad を呼ぶだけ（色変えなし）
+    document.getElementById('od-quick-save').addEventListener('click',function(){
+      if(window.odSave) window.odSave();
     });
-    document.getElementById('od-quick-load').addEventListener('click',async function(){
-      var btn=this;
-      if(btn.disabled)return;
-      if(!window.odLoad){
-        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 読込失敗';
-        setTimeout(function(){btn.style.background='#fff';btn.style.color='';btn.textContent='☁️読込';},2000);
-        return;
-      }
-      btn.disabled=true;
-      btn.style.background='#fff';btn.style.color='#0f172a';btn.textContent='読込中...';
-      try{
-        await window.odLoad();
-        btn.style.background='#22c55e';btn.style.color='#fff';btn.textContent='✅読込';
-      }catch(e){
-        console.warn('[od-quick-load] load failed:',e);
-        btn.style.background='#ef4444';btn.style.color='#fff';btn.textContent='⚠️ 読込失敗';
-      }finally{
-        setTimeout(function(){
-          btn.style.background='#fff';
-          btn.style.color='';
-          btn.textContent='☁️読込';
-          btn.disabled=false;
-        },2000);
-      }
+    document.getElementById('od-quick-load').addEventListener('click',function(){
+      if(window.odLoad) window.odLoad();
     });
   }
 
@@ -3938,6 +3741,7 @@ document.documentElement.style.setProperty('font-size','17px');
     el.style.cssText='position:fixed;top:88px;right:16px;z-index:9998;font-size:10px;color:#475569;background:rgba(255,255,255,0.92);padding:3px 8px;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,0.06);pointer-events:none;font-weight:600;letter-spacing:0.2px;';
     document.body.appendChild(el);
   }
+  window._updateLastSaveText=function(){return _updateLastSaveText();};
   function _updateLastSaveText(){
     var el=document.getElementById('od-lastsave');if(!el)return;
     var ts=parseInt(localStorage.getItem('mfg_last_save')||'0');
