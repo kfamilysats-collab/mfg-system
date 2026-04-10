@@ -1435,7 +1435,6 @@ function load() {
     if (!DB.workers) DB.workers = [];
     if (!DB.history) DB.history = [];
     if (!DB.estimates) DB.estimates = [];
-    if (!DB.estimateTemplates) DB.estimateTemplates = estLoadTemplates();
   }
 }
 
@@ -3970,6 +3969,8 @@ function estLoadTemplates() {
 function estSaveTemplates() {
   localStorage.setItem('est_templates_db', JSON.stringify(DB.estimateTemplates));
 }
+// Initialize estimateTemplates (must be after estLoadTemplates is defined)
+if (!DB.estimateTemplates || !DB.estimateTemplates.length) DB.estimateTemplates = estLoadTemplates();
 
 function estShowForm(id) {
   document.getElementById('est-list-section').style.display = 'none';
