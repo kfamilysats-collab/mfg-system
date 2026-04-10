@@ -259,18 +259,18 @@
   .est-preview-content .est-pv-title { text-align:center; font-size:36px; font-weight:bold; margin-bottom:24px; letter-spacing:8px; }
   .est-preview-content .est-pv-header { display:flex; justify-content:space-between; margin-bottom:20px; }
   .est-preview-content .est-pv-left { text-align:left; }
-  .est-preview-content .est-pv-client { font-size:20px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
+  .est-preview-content .est-pv-client { margin-bottom:8px; }
   .est-preview-content .est-pv-honorific { font-size:14pt; margin-bottom:12px; }
   .est-preview-content .est-pv-message { font-size:18px; margin-bottom:16px; }
-  .est-preview-content .est-pv-right { text-align:right; font-size:16px; line-height:1.9; }
-  .est-preview-content .est-pv-company { font-size:16px; font-weight:700; }
+  .est-preview-content .est-pv-right { text-align:right; font-size:14px; line-height:1.9; }
+  .est-preview-content .est-pv-company { font-size:14px; font-weight:700; }
   .est-preview-content .est-pv-table { width:100%; border-collapse:collapse; margin:16px auto; }
   .est-preview-content .est-pv-table th { background:#f0f0f0; border:1px solid #333; padding:10px 12px; font-size:18px; text-align:center; font-weight:bold; }
   .est-preview-content .est-pv-table td { border:1px solid #333; padding:10px 12px; font-size:18px; min-height:44px; }
   .est-preview-content .est-pv-memo { margin-top:4px; border:1px solid #999; padding:12px; min-height:80px; font-size:18px; white-space:pre-wrap; }
   .est-preview-content .est-pv-memo-label { font-size:18px; font-weight:600; margin-top:16px; margin-bottom:0; }
   .est-preview-content .est-pv-templates { margin-top:20px; font-size:18px; line-height:2.2; text-align:left; }
-  .est-preview-content .est-pv-footer { margin-top:24px; font-size:18px; font-weight:600; text-align:left; border-top:1px solid #999; padding-top:12px; }
+  .est-preview-content .est-pv-footer { margin-top:24px; font-size:36px; font-weight:bold; text-align:left; }
   .est-print-area { display:none; }
   @media print {
     .est-print-area { display:block !important; }
@@ -4226,15 +4226,14 @@ function estBuildPreviewHTML(est) {
   return '<div class="est-pv-title">見積書</div>' +
     '<div class="est-pv-header">' +
       '<div class="est-pv-left">' +
-        '<div class="est-pv-client">' + est.client + ' 御中</div>' +
+        '<div class="est-pv-client"><div style="display:flex;align-items:flex-end;gap:8px"><div style="border-bottom:2px solid #333;min-width:200px;font-size:20px;font-weight:bold;padding-bottom:4px">' + est.client + '</div><div style="font-size:20px;font-weight:bold;padding-bottom:4px">御中</div></div></div>' +
         '<div class="est-pv-message">下記の見積りをお願い致します。</div>' +
       '</div>' +
       '<div class="est-pv-right">' +
+        '<div style="font-size:16px">' + est.date + '</div>' +
         '<div class="est-pv-company">有限会社黒部鉄工所</div>' +
-        '<div>〒537-0012</div>' +
-        '<div>大阪市東成区大今里2-14-7</div>' +
-        '<div>TEL 06-6974-0590</div>' +
-        '<div>日付：' + est.date + '</div>' +
+        '<div>〒537-0012　大阪市東成区大今里2-14-7</div>' +
+        '<div>TEL　06-6974-0590</div>' +
       '</div>' +
     '</div>' +
     '<table class="est-pv-table">' +
@@ -4276,10 +4275,10 @@ function estBuildPrintPage(est) {
     '.title { text-align:center; font-size:36px; font-weight:bold; margin-bottom:24px; letter-spacing:6px; }' +
     '.header { display:flex; justify-content:space-between; margin-bottom:14px; }' +
     '.left { text-align:left; }' +
-    '.client { font-size:20px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:8px; }' +
+    '.client { margin-bottom:8px; }' +
     '.message { font-size:18px; margin-bottom:10px; }' +
-    '.right { text-align:right; font-size:16px; line-height:1.8; }' +
-    '.company { font-size:16px; font-weight:700; }' +
+    '.right { text-align:right; font-size:14px; line-height:1.8; }' +
+    '.company { font-size:14px; font-weight:700; }' +
     '.date { font-size:16px; }' +
     'table { width:100%; border-collapse:collapse; margin:0 auto; table-layout:fixed; }' +
     'col.c-no{width:5%} col.c-mat{width:18%} col.c-size{width:35%} col.c-qty{width:8%} col.c-del{width:12%} col.c-note{width:22%}' +
@@ -4289,21 +4288,20 @@ function estBuildPrintPage(est) {
     '.memo-label { font-size:18px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
     '.memo { margin-top:3px; border:1px solid #999; padding:10px; min-height:80px; font-size:18px; white-space:pre-wrap; word-break:break-all; }' +
     '.templates { margin-top:20px; font-size:18px; line-height:2.2; text-align:left; }' +
-    '.footer { margin-top:14px; font-size:18px; font-weight:600; text-align:left; border-top:1px solid #999; padding-top:8px; }' +
+    '.footer { margin-top:20px; font-size:36px; font-weight:bold; text-align:left; }' +
     '@media print { body { padding:0; } }' +
     '</style></head><body>' +
     '<div class="title">見積書</div>' +
     '<div class="header">' +
       '<div class="left">' +
-        '<div class="client">' + est.client + ' 御中</div>' +
+        '<div class="client"><div style="display:flex;align-items:flex-end;gap:8px"><div style="border-bottom:2px solid #333;min-width:200px;font-size:20px;font-weight:bold;padding-bottom:4px">' + est.client + '</div><div style="font-size:20px;font-weight:bold;padding-bottom:4px">御中</div></div></div>' +
         '<div class="message">下記の見積りをお願い致します。</div>' +
       '</div>' +
       '<div class="right">' +
+        '<div class="date">' + est.date + '</div>' +
         '<div class="company">有限会社黒部鉄工所</div>' +
-        '<div>〒537-0012</div>' +
-        '<div>大阪市東成区大今里2-14-7</div>' +
-        '<div>TEL 06-6974-0590</div>' +
-        '<div class="date">日付：' + est.date + '</div>' +
+        '<div>〒537-0012　大阪市東成区大今里2-14-7</div>' +
+        '<div>TEL　06-6974-0590</div>' +
       '</div>' +
     '</div>' +
     '<table>' +
