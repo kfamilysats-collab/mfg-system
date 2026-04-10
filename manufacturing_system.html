@@ -2670,18 +2670,20 @@ function exportProductionExcel() {
 function exportSalesExcel() {
   var year = salesYear;
   var yProds = DB.productions.filter(function(p) { return p.date.startsWith(year); });
-  if (yProds.length === 0) { showToast('データがありません', 'error'); return; }
 
   var wb = XLSX.utils.book_new();
 
-  // ===== Sheet 1: 月別売上 =====
-  var monthly = Array(12).fill(null).map(function() { return {sales:0, mat:0, count:0}; });
+  // ===== 月別集計データを準備 =====
+  var monthly = Array(12).fill(null).map(function() { return { sales:0, mat:0, count:0, prods:[] }; });
   yProds.forEach(function(p) {
     var mi = parseInt(p.date.slice(5,7)) - 1;
     monthly[mi].sales += (p.price||0) * (p.qty||0);
     monthly[mi].mat += (p.matPrice||0) * (p.qty||0);
     monthly[mi].count++;
+    monthly[mi].prods.push(p);
   });
+
+  // ===== Sheet 1: 年間サマリー =====
   var mRows = monthly.map(function(m, i) {
     var profit = m.sales - m.mat;
     return [MONTHS[i], m.count, m.sales, m.mat, profit, m.sales > 0 ? profit / m.sales : 0];
@@ -2690,87 +2692,168 @@ function exportSalesExcel() {
   var tm = monthly.reduce(function(a,m){return a+m.mat;},0);
   var tc = monthly.reduce(function(a,m){return a+m.count;},0);
   XLSX.utils.book_append_sheet(wb, _buildStyledSheet({
-    title: year + '年 売上集計 - 月別売上',
+    title: year + '年 売上集計 年間サマリー',
     headers: ['月','件数','売上','材料費','粗利','粗利率'],
     rows: mRows,
     colWidths: [10, 10, 16, 16, 16, 12],
     currencyCols: [2, 3, 4],
     percentCols: [5],
-    totalRow: ['合計', tc, ts, tm, ts-tm, ts > 0 ? (ts-tm)/ts : 0]
-  }), '月別売上');
+    totalRow: ['合計', tc, ts, tm, ts - tm, ts > 0 ? (ts - tm) / ts : 0]
+  }), '年間サマリー');
 
-  // ===== Sheet 2: 受注先別売上 =====
-  var a = _aggProds(yProds);
-  var cg = Object.values(a.client).reduce(function(x,v){return x+v.total;},0);
-  var cRows = Object.entries(a.client).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e) {
-    return [e[0], e[1].count, e[1].total, cg > 0 ? e[1].total/cg : 0];
-  });
-  var cTot = ['合計', cRows.reduce(function(x,r){return x+r[1];},0), cg, cg > 0 ? 1 : 0];
-  XLSX.utils.book_append_sheet(wb, _buildStyledSheet({
-    title: year + '年 売上集計 - 受注先別売上',
-    headers: ['受注先','件数','売上','割合'],
-    rows: cRows,
-    colWidths: [24, 10, 16, 12],
-    currencyCols: [2],
-    percentCols: [3],
-    totalRow: cTot
-  }), '受注先別売上');
+  // ===== Sheet 2-13: 各月シート =====
+  for (var mi = 0; mi < 12; mi++) {
+    var mData = monthly[mi];
+    var sheetName = MONTHS[mi]; // 1月, 2月, ...
 
-  // ===== Sheet 3: 製品別売上 =====
-  var pList = _enrichProducts(a.product);
-  var pRows = pList.map(function(r) {
-    return [r.fignum, r.name, r.client, r.count, r.sales, r.mat, r.gross, r.sales > 0 ? r.gross/r.sales : 0, secondsToHM(r.sec)];
-  });
-  var pts = pRows.reduce(function(x,r){return x+r[4];},0);
-  var ptm = pRows.reduce(function(x,r){return x+r[5];},0);
-  var ptg = pRows.reduce(function(x,r){return x+r[6];},0);
-  var ptc = pRows.reduce(function(x,r){return x+r[3];},0);
-  XLSX.utils.book_append_sheet(wb, _buildStyledSheet({
-    title: year + '年 売上集計 - 製品別売上',
-    headers: ['図番','品名','受注先','件数','売上','材料費','粗利','粗利率','合計工程時間'],
-    rows: pRows,
-    colWidths: [14, 22, 18, 10, 16, 16, 16, 12, 16],
-    currencyCols: [4, 5, 6],
-    percentCols: [7],
-    totalRow: ['合計', '', '', ptc, pts, ptm, ptg, pts > 0 ? ptg/pts : 0, '']
-  }), '製品別売上');
+    if (mData.count === 0) {
+      // データなしの月
+      var emptyWs = XLSX.utils.aoa_to_sheet([
+        [year + '年 ' + sheetName + ' 売上集計'],
+        [],
+        ['データなし']
+      ]);
+      emptyWs['!merges'] = [{s:{r:0,c:0},e:{r:0,c:5}}];
+      emptyWs['!cols'] = [{wch:16},{wch:16},{wch:16},{wch:16},{wch:16},{wch:16}];
+      emptyWs['!rows'] = [{hpt:26},{hpt:6},{hpt:22}];
+      var addr0 = XLSX.utils.encode_cell({r:0,c:0});
+      if (emptyWs[addr0]) emptyWs[addr0].s = _xTitleStyle;
+      XLSX.utils.book_append_sheet(wb, emptyWs, sheetName);
+      continue;
+    }
 
-  // ===== Sheet 4: 機械別稼働 =====
-  var mcRows = Object.entries(a.machine).sort(function(x,y){return y[1].sec-x[1].sec;}).map(function(e) {
-    return [e[0], e[1].count, e[1].sales, secondsToHM(e[1].sec)];
-  });
-  var mcTot = ['合計',
-    mcRows.reduce(function(x,r){return x+r[1];},0),
-    mcRows.reduce(function(x,r){return x+r[2];},0),
-    secondsToHM(Object.values(a.machine).reduce(function(x,v){return x+v.sec;},0))
-  ];
-  XLSX.utils.book_append_sheet(wb, _buildStyledSheet({
-    title: year + '年 売上集計 - 機械別稼働',
-    headers: ['機械名','件数','売上','稼働時間'],
-    rows: mcRows,
-    colWidths: [18, 10, 16, 18],
-    currencyCols: [2],
-    totalRow: mcTot
-  }), '機械別稼働');
+    // 月のデータがある場合：複数テーブルを1シートに配置
+    var aoa = [];
+    var mergesList = [];
+    var styleMap = []; // {r, c, style, zfmt}
 
-  // ===== Sheet 5: 材料発注先別支払い =====
-  var mg = Object.values(a.mat).reduce(function(x,v){return x+v.total;},0);
-  var matRows = Object.entries(a.mat).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e) {
-    return [e[0], e[1].count, e[1].total, mg > 0 ? e[1].total/mg : 0];
-  });
-  var matTot = ['合計', matRows.reduce(function(x,r){return x+r[1];},0), mg, mg > 0 ? 1 : 0];
-  XLSX.utils.book_append_sheet(wb, _buildStyledSheet({
-    title: year + '年 売上集計 - 材料発注先別支払い',
-    headers: ['材料発注先','件数','支払合計','割合'],
-    rows: matRows,
-    colWidths: [24, 10, 16, 12],
-    currencyCols: [2],
-    percentCols: [3],
-    totalRow: matTot
-  }), '材料発注先別');
+    // --- 月タイトル ---
+    aoa.push([year + '年 ' + sheetName + ' 売上集計']);
+    mergesList.push({s:{r:0,c:0},e:{r:0,c:7}});
+    styleMap.push({r:0, c:0, style: _xTitleStyle});
+
+    // --- サマリー ---
+    var mProfit = mData.sales - mData.mat;
+    aoa.push([]);
+    aoa.push(['売上合計', mData.sales, '', '件数', mData.count, '', '材料費', mData.mat]);
+    aoa.push(['粗利', mProfit, '', '粗利率', mData.sales > 0 ? mProfit / mData.sales : 0]);
+    var sumRow = aoa.length - 2;
+    styleMap.push({r:sumRow, c:0, style: _xTotalStyle});
+    styleMap.push({r:sumRow, c:1, style: _xTotalStyle, z:'¥#,##0'});
+    styleMap.push({r:sumRow, c:3, style: _xTotalStyle});
+    styleMap.push({r:sumRow, c:4, style: _xTotalStyle});
+    styleMap.push({r:sumRow, c:6, style: _xTotalStyle});
+    styleMap.push({r:sumRow, c:7, style: _xTotalStyle, z:'¥#,##0'});
+    styleMap.push({r:sumRow+1, c:0, style: _xTotalStyle});
+    styleMap.push({r:sumRow+1, c:1, style: _xTotalStyle, z:'¥#,##0'});
+    styleMap.push({r:sumRow+1, c:3, style: _xTotalStyle});
+    styleMap.push({r:sumRow+1, c:4, style: _xTotalStyle, z:'0.0%'});
+
+    // Helper: add a sub-table to aoa
+    function addTable(title, headers, rows, currCols, pctCols, totalRow) {
+      aoa.push([]);
+      var titleRow = aoa.length;
+      aoa.push([title]);
+      mergesList.push({s:{r:titleRow,c:0},e:{r:titleRow,c:headers.length-1}});
+      styleMap.push({r:titleRow, c:0, style: {font:{bold:true,sz:12,color:{rgb:'1E3A8A'}},alignment:{vertical:'center'}}});
+
+      var hRow = aoa.length;
+      aoa.push(headers);
+      for (var hc = 0; hc < headers.length; hc++) {
+        styleMap.push({r:hRow, c:hc, style: _xHStyle});
+      }
+
+      for (var ri = 0; ri < rows.length; ri++) {
+        var dRow = aoa.length;
+        aoa.push(rows[ri]);
+        var isEven = ri % 2 === 1;
+        var rowStyle = isEven ? _xEvenStyle : _xOddStyle;
+        for (var dc = 0; dc < rows[ri].length; dc++) {
+          var zf = null;
+          if (currCols && currCols.indexOf(dc) >= 0) zf = '¥#,##0';
+          if (pctCols && pctCols.indexOf(dc) >= 0) zf = '0.0%';
+          styleMap.push({r:dRow, c:dc, style: rowStyle, z:zf});
+        }
+      }
+
+      if (totalRow) {
+        var tRow = aoa.length;
+        aoa.push(totalRow);
+        for (var tc2 = 0; tc2 < totalRow.length; tc2++) {
+          var zf2 = null;
+          if (currCols && currCols.indexOf(tc2) >= 0) zf2 = '¥#,##0';
+          if (pctCols && pctCols.indexOf(tc2) >= 0) zf2 = '0.0%';
+          styleMap.push({r:tRow, c:tc2, style: _xTotalStyle, z:zf2});
+        }
+      }
+    }
+
+    // --- 受注先別売上 ---
+    var mAgg = _aggProds(mData.prods);
+    var mcg = Object.values(mAgg.client).reduce(function(x,v){return x+v.total;},0);
+    var mcRows = Object.entries(mAgg.client).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e) {
+      return [e[0], e[1].count, e[1].total, mcg > 0 ? e[1].total/mcg : 0];
+    });
+    var mcTot = ['合計', mcRows.reduce(function(x,r){return x+r[1];},0), mcg, mcg > 0 ? 1 : 0];
+    addTable('受注先別売上', ['受注先','件数','売上','割合'], mcRows, [2], [3], mcTot);
+
+    // --- 製品別売上 ---
+    var mpList = _enrichProducts(mAgg.product);
+    var mpRows = mpList.map(function(r) {
+      return [r.fignum, r.name, r.client, r.count, r.sales, r.mat, r.gross, r.sales > 0 ? r.gross/r.sales : 0];
+    });
+    var mpts = mpRows.reduce(function(x,r){return x+r[4];},0);
+    var mptm = mpRows.reduce(function(x,r){return x+r[5];},0);
+    var mptg = mpRows.reduce(function(x,r){return x+r[6];},0);
+    var mptc = mpRows.reduce(function(x,r){return x+r[3];},0);
+    addTable('製品別売上', ['図番','品名','受注先','件数','売上','材料費','粗利','粗利率'],
+      mpRows, [4,5,6], [7], ['合計','','',mptc,mpts,mptm,mptg, mpts>0?mptg/mpts:0]);
+
+    // --- 機械別稼働 ---
+    var mmcRows = Object.entries(mAgg.machine).sort(function(x,y){return y[1].sec-x[1].sec;}).map(function(e) {
+      return [e[0], e[1].count, e[1].sales, secondsToHM(e[1].sec)];
+    });
+    var mmcTot = ['合計',
+      mmcRows.reduce(function(x,r){return x+r[1];},0),
+      mmcRows.reduce(function(x,r){return x+r[2];},0),
+      secondsToHM(Object.values(mAgg.machine).reduce(function(x,v){return x+v.sec;},0))
+    ];
+    addTable('機械別稼働', ['機械名','件数','売上','稼働時間'], mmcRows, [2], null, mmcTot);
+
+    // --- 材料発注先別支払い ---
+    var mmg = Object.values(mAgg.mat).reduce(function(x,v){return x+v.total;},0);
+    var mmatRows = Object.entries(mAgg.mat).sort(function(x,y){return y[1].total-x[1].total;}).map(function(e) {
+      return [e[0], e[1].count, e[1].total];
+    });
+    var mmatTot = ['合計', mmatRows.reduce(function(x,r){return x+r[1];},0), mmg];
+    addTable('材料発注先別支払い', ['発注先','件数','支払合計'], mmatRows, [2], null, mmatTot);
+
+    // --- Build worksheet ---
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = mergesList;
+    ws['!cols'] = [{wch:16},{wch:22},{wch:18},{wch:10},{wch:16},{wch:16},{wch:16},{wch:12}];
+
+    var rowHeights = [];
+    for (var rh = 0; rh < aoa.length; rh++) {
+      if (rh === 0) rowHeights.push({hpt:26});
+      else rowHeights.push({hpt:20});
+    }
+    ws['!rows'] = rowHeights;
+
+    // Apply styles
+    for (var si = 0; si < styleMap.length; si++) {
+      var sm = styleMap[si];
+      var addr = XLSX.utils.encode_cell({r:sm.r, c:sm.c});
+      if (!ws[addr]) ws[addr] = {t:'s', v:''};
+      ws[addr].s = sm.style;
+      if (sm.z) ws[addr].z = sm.z;
+    }
+
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
 
   XLSX.writeFile(wb, '売上集計_' + year + '年.xlsx');
-  showToast('Excelをダウンロードしました');
+  showToast('Excelをダウンロードしました（' + (yProds.length > 0 ? yProds.length + '件' : 'データなし') + '）');
 }
 
 // ============ 3. 利益レポート ============
