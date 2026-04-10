@@ -4383,15 +4383,15 @@ function estSearchProducts() {
   var q = (document.getElementById('est-product-search').value || '').toLowerCase();
   var results = DB.products.filter(function(p) {
     if (!q) return true;
-    return [p.fignum, p.name, p.material, p.size].some(function(v) { return (v || '').toLowerCase().indexOf(q) >= 0; });
+    return [p.fignum, p.name, p.matName, p.matSize].some(function(v) { return (v || '').toLowerCase().indexOf(q) >= 0; });
   }).slice(0, 50);
 
   document.getElementById('est-product-results').innerHTML = results.length > 0 ? results.map(function(p) {
     return '<tr>' +
       '<td>' + (p.fignum || '') + '</td>' +
       '<td>' + (p.name || '') + '</td>' +
-      '<td>' + (p.material || '') + '</td>' +
-      '<td>' + (p.size || '') + '</td>' +
+      '<td>' + (p.matName || '') + '</td>' +
+      '<td>' + (p.matSize || '') + '</td>' +
       '<td><button class="btn btn-primary btn-xs" onclick="estSelectProduct(\'' + p.id + '\')">選択</button></td>' +
     '</tr>';
   }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);">該当する製品がありません</td></tr>';
@@ -4400,8 +4400,8 @@ function estSearchProducts() {
 function estSelectProduct(productId) {
   var p = DB.products.find(function(x) { return x.id === productId; });
   if (!p || !estSearchTargetRow) return;
-  estSearchTargetRow.querySelector('.est-mat').value = p.material || '';
-  estSearchTargetRow.querySelector('.est-size').value = p.size || '';
+  estSearchTargetRow.querySelector('.est-mat').value = p.matName || '';
+  estSearchTargetRow.querySelector('.est-size').value = p.matSize || '';
   closeModal('est-product-modal');
   showToast('製品情報を入力しました');
 }
