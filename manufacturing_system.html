@@ -207,6 +207,49 @@
   @media (max-width: 600px) {
     .hide-mobile { display: none; }
   }
+
+  /* ===== Estimate page styles ===== */
+  .est-items-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .est-items-table th { background:var(--bg3); padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .est-items-table td { padding:6px 8px; border-bottom:1px solid var(--border); }
+  .est-items-table input, .est-items-table textarea { width:100%; font-size:12px; padding:5px 8px; }
+  .est-status-badge { cursor:pointer; user-select:none; }
+  .est-status-badge:hover { opacity:0.8; }
+  .est-tpl-list label { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; cursor:pointer; }
+  .est-tpl-list label input[type="checkbox"] { width:16px; height:16px; }
+
+  /* ===== Print CSS ===== */
+  @media print {
+    body { background:#fff !important; color:#000 !important; font-size:12pt; }
+    .sidebar, .sidebar-overlay, .mobile-header, .menu-btn, .toast,
+    .nav-group, nav, .logo, .page-header .btn,
+    #est-form-actions, #est-list-section, .search-row,
+    .tabs, #od-quick-bar, .modal-overlay { display:none !important; }
+    .main { margin-left:0 !important; padding:0 !important; }
+    .app { display:block !important; }
+    .section { display:none !important; }
+    .section.print-active { display:block !important; }
+    .card { border:none !important; box-shadow:none !important; padding:0 !important; }
+
+    .est-print-header { display:flex !important; justify-content:space-between; margin-bottom:24pt; }
+    .est-print-left { text-align:left; }
+    .est-print-left .est-print-client { font-size:16pt; font-weight:700; margin-bottom:4pt; }
+    .est-print-left .est-print-honorific { font-size:14pt; }
+    .est-print-right { text-align:right; font-size:10pt; line-height:1.8; }
+    .est-print-right .est-print-company { font-size:13pt; font-weight:700; }
+    .est-print-title { text-align:center; font-size:14pt; font-weight:700; margin:16pt 0; border-bottom:2pt solid #000; padding-bottom:8pt; }
+    .est-print-message { font-size:11pt; margin-bottom:12pt; }
+    .est-print-table { width:100%; border-collapse:collapse; margin-bottom:16pt; }
+    .est-print-table th { background:#eee !important; border:1px solid #333; padding:6pt 8pt; font-size:10pt; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .est-print-table td { border:1px solid #333; padding:5pt 8pt; font-size:10pt; }
+    .est-print-templates { margin-top:16pt; font-size:10pt; line-height:2; }
+    .est-print-memo { margin-top:12pt; font-size:10pt; white-space:pre-wrap; }
+    .est-print-date { font-size:11pt; margin-bottom:8pt; }
+
+    .no-print { display:none !important; }
+  }
+  .est-print-area { display:none; }
+  @media print { .est-print-area { display:block !important; } .est-form-area { display:none !important; } }
 </style>
 </head>
 <body>
@@ -255,6 +298,15 @@
         </div>
         <div class="nav-item" onclick="showSection('material-order')">
           <span class="nav-icon">📦</span>材料発注
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">発注・見積</div>
+        <div class="nav-item" onclick="showSection('estimate')">
+          <span class="nav-icon">📋</span>見積書
+        </div>
+        <div class="nav-item" onclick="showSection('order')">
+          <span class="nav-icon">📦</span>発注書
         </div>
       </div>
       <div class="nav-group">
@@ -965,6 +1017,149 @@
       </div>
     </section>
 
+
+    <!-- ===== ESTIMATE (見積書) ===== -->
+    <section class="section" id="sec-estimate">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📋 見積書</div>
+          <div class="page-subtitle">見積書の作成・管理</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="estShowForm()">＋ 新規見積書</button>
+      </div>
+
+      <!-- 見積書一覧 -->
+      <div id="est-list-section">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">🔍 検索・フィルター</div>
+          <div class="search-row" style="flex-wrap:wrap;gap:10px;">
+            <div class="form-group" style="min-width:140px;">
+              <label>日付（From）</label>
+              <input type="date" id="est-search-from" onchange="estFilterList()">
+            </div>
+            <div class="form-group" style="min-width:140px;">
+              <label>日付（To）</label>
+              <input type="date" id="est-search-to" onchange="estFilterList()">
+            </div>
+            <div class="form-group" style="min-width:180px;">
+              <label>宛先名</label>
+              <input type="text" id="est-search-client" placeholder="宛先で検索..." oninput="estFilterList()">
+            </div>
+            <div class="form-group" style="min-width:180px;">
+              <label>材質・寸法キーワード</label>
+              <input type="text" id="est-search-keyword" placeholder="材質・寸法で検索..." oninput="estFilterList()">
+            </div>
+            <div class="form-group" style="min-width:140px;">
+              <label>状態</label>
+              <select id="est-search-status" onchange="estFilterList()">
+                <option value="">すべて</option>
+                <option value="draft">下書き 🟡</option>
+                <option value="sent">送信済み ✅</option>
+                <option value="waiting">回答待ち 🔵</option>
+                <option value="done">完了 ✔</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>日付</th><th>宛先</th><th>件数</th><th>状態</th><th>操作</th>
+              </tr></thead>
+              <tbody id="est-list-tbody"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="est-empty" style="display:none;">
+            <div class="empty-icon">📋</div>
+            <div class="empty-text">見積書がありません</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 見積書作成フォーム -->
+      <div id="est-form-section" style="display:none;" class="est-form-area">
+        <div style="margin-bottom:16px;">
+          <button class="btn btn-ghost btn-sm" onclick="estShowList()">← 一覧へ</button>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">基本情報</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+            <div class="form-group">
+              <label>宛先会社 *</label>
+              <select id="est-client">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>日付</label>
+              <input type="date" id="est-date">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">材料リスト（最大20行）</div>
+          <div class="table-wrap">
+            <table class="est-items-table" id="est-items-table">
+              <thead><tr>
+                <th style="width:40px;">No.</th>
+                <th style="width:160px;">材質</th>
+                <th style="width:160px;">寸法</th>
+                <th style="width:80px;">数量</th>
+                <th>備考</th>
+                <th style="width:80px;">検索</th>
+                <th style="width:40px;">削除</th>
+              </tr></thead>
+              <tbody id="est-items-tbody"></tbody>
+            </table>
+          </div>
+          <div style="margin-top:10px;">
+            <button class="btn btn-ghost btn-sm" onclick="estAddRow()">＋ 行追加</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">文言テンプレート</div>
+          <div class="est-tpl-list" id="est-tpl-list"></div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <input type="text" id="est-new-tpl" placeholder="新しいテンプレート文言を入力..." style="flex:1;">
+            <button class="btn btn-ghost btn-sm" onclick="estAddTemplate()">＋ テンプレート追加</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">備考</div>
+          <textarea id="est-memo" rows="3" placeholder="備考（自由記述）"></textarea>
+        </div>
+
+        <div id="est-form-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-ghost" onclick="estSaveDraft()">💾 下書き保存</button>
+          <button class="btn btn-primary" onclick="estSaveAndPrint()">🖨 保存して印刷</button>
+          <button class="btn btn-success" onclick="estMarkSent()">📠 FAX送信済みにする</button>
+          <button class="btn btn-ghost" onclick="estRegisterProducts()" style="border-color:var(--accent4);color:var(--accent4);">📦 製品登録する</button>
+        </div>
+      </div>
+
+      <!-- 印刷用エリア -->
+      <div class="est-print-area" id="est-print-area"></div>
+    </section>
+
+    <!-- ===== ORDER (発注書) ===== -->
+    <section class="section" id="sec-order">
+      <div class="page-header">
+        <div>
+          <div class="page-title">📦 発注書</div>
+          <div class="page-subtitle">発注書の作成・管理（準備中）</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="empty-state">
+          <div class="empty-icon">🚧</div>
+          <div class="empty-text">発注書機能は準備中です</div>
+        </div>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -1114,6 +1309,36 @@
 
 <div class="toast" id="toast"></div>
 
+
+<!-- Estimate product search modal -->
+<div class="modal-overlay" id="est-product-modal">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header">
+      <div class="modal-title">🔍 製品検索</div>
+      <button class="modal-close" onclick="closeModal('est-product-modal')">✕</button>
+    </div>
+    <div class="search-row">
+      <div class="search-input"><input type="text" id="est-product-search" placeholder="図番・品名・材質・寸法で検索..." oninput="estSearchProducts()"></div>
+    </div>
+    <div class="table-wrap" style="max-height:400px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>図番</th><th>品名</th><th>材質</th><th>寸法</th><th>選択</th></tr></thead>
+        <tbody id="est-product-results"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Estimate status change modal -->
+<div class="modal-overlay" id="est-status-modal">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <div class="modal-title">状態変更</div>
+      <button class="modal-close" onclick="closeModal('est-status-modal')">✕</button>
+    </div>
+    <div id="est-status-options" style="display:flex;flex-direction:column;gap:8px;"></div>
+  </div>
+</div>
 <script>
 // ===== DATA STORE =====
 const DB = {
@@ -1124,7 +1349,8 @@ const DB = {
   machines: [],
   machineInfo: [],
   workers: [],
-  history: [] // 変更履歴（最大500件）
+  history: [], // 変更履歴（最大500件）
+  estimates: [] // 見積書データ
 };
 
 function save() {
@@ -1161,6 +1387,7 @@ function load() {
     if (!DB.machineInfo) DB.machineInfo = [];
     if (!DB.workers) DB.workers = [];
     if (!DB.history) DB.history = [];
+    if (!DB.estimates) DB.estimates = [];
   }
 }
 
@@ -1224,6 +1451,8 @@ function showSection(name) {
   if (name === 'onedrive') initOneDriveSection();
   if (name === 'production-form') initProductionForm();
   if (name === 'product-form') refreshProductFormLists();
+  if (name === 'estimate') estRenderList();
+  if (name === 'order') {}
 }
 
 function toggleSidebar() {
@@ -3674,5 +3903,403 @@ document.documentElement.style.setProperty('font-size','17px');
     };
   }
 })();
+
+
+// ===== ESTIMATE (見積書) =====
+let estEditId = null;
+let estItemRows = 0;
+const EST_DEFAULT_TEMPLATES = [
+  { text: 'お手数ですが、納期回答をお願い致します。', required: true },
+  { text: 'いつもお世話になっております。ご多忙のところ申し訳ございませんが、下記の見積りをお願い致します。', required: false },
+  { text: '請求は〇月にして頂きますようお願い致します。', required: false },
+  { text: '※キズ・打痕・サビ注意', required: false }
+];
+let estCustomTemplates = JSON.parse(localStorage.getItem('est_custom_templates') || '[]');
+
+function estShowForm(id) {
+  document.getElementById('est-list-section').style.display = 'none';
+  document.getElementById('est-form-section').style.display = 'block';
+  estEditId = id || null;
+  estInitForm();
+}
+
+function estShowList() {
+  document.getElementById('est-list-section').style.display = 'block';
+  document.getElementById('est-form-section').style.display = 'none';
+  estEditId = null;
+  estRenderList();
+}
+
+function estInitForm() {
+  var sel = document.getElementById('est-client');
+  sel.innerHTML = '<option value="">選択してください</option>';
+  var added = {};
+  (DB.companies || []).forEach(function(c) {
+    if (!added[c.name]) { sel.innerHTML += '<option value="' + c.name + '">' + c.name + '</option>'; added[c.name] = true; }
+  });
+  (DB.suppliers.clients || []).forEach(function(s) {
+    var name = typeof s === 'string' ? s : (s.name || '');
+    if (name && !added[name]) { sel.innerHTML += '<option value="' + name + '">' + name + '</option>'; added[name] = true; }
+  });
+
+  document.getElementById('est-date').value = new Date().toISOString().slice(0, 10);
+
+  document.getElementById('est-items-tbody').innerHTML = '';
+  estItemRows = 0;
+  for (var i = 0; i < 3; i++) estAddRow();
+
+  estRenderTemplates();
+  document.getElementById('est-memo').value = '';
+
+  if (estEditId) {
+    var est = DB.estimates.find(function(e) { return e.id === estEditId; });
+    if (est) {
+      sel.value = est.client;
+      document.getElementById('est-date').value = est.date;
+      document.getElementById('est-memo').value = est.memo || '';
+      document.getElementById('est-items-tbody').innerHTML = '';
+      estItemRows = 0;
+      (est.items || []).forEach(function(item) {
+        estAddRow();
+        var row = document.getElementById('est-items-tbody').lastElementChild;
+        row.querySelector('.est-mat').value = item.mat || '';
+        row.querySelector('.est-size').value = item.size || '';
+        row.querySelector('.est-qty').value = item.qty || '';
+        row.querySelector('.est-note').value = item.note || '';
+      });
+      if (est.items.length === 0) { for (var j = 0; j < 3; j++) estAddRow(); }
+      setTimeout(function() {
+        var checks = document.querySelectorAll('#est-tpl-list input[type="checkbox"]');
+        checks.forEach(function(chk) {
+          if (chk.disabled) return;
+          var tplText = chk.parentElement.textContent.trim().replace(/✕$/, '').trim();
+          chk.checked = (est.templates || []).indexOf(tplText) >= 0;
+        });
+      }, 50);
+    }
+  }
+}
+
+function estAddRow() {
+  if (estItemRows >= 20) { showToast('最大20行までです', 'error'); return; }
+  estItemRows++;
+  var tbody = document.getElementById('est-items-tbody');
+  var tr = document.createElement('tr');
+  tr.innerHTML = '<td style="text-align:center;font-weight:600;">' + estItemRows + '</td>' +
+    '<td><input type="text" class="est-mat" placeholder="材質"></td>' +
+    '<td><input type="text" class="est-size" placeholder="寸法"></td>' +
+    '<td><input type="number" class="est-qty" placeholder="数量" min="1"></td>' +
+    '<td><input type="text" class="est-note" placeholder="備考"></td>' +
+    '<td><button class="btn btn-ghost btn-xs" onclick="estOpenProductSearch(this)">🔍検索</button></td>' +
+    '<td><button class="btn btn-xs" style="color:var(--danger);" onclick="estRemoveRow(this)">✕</button></td>';
+  tbody.appendChild(tr);
+}
+
+function estRemoveRow(btn) {
+  var tbody = document.getElementById('est-items-tbody');
+  if (tbody.rows.length <= 1) { showToast('最低1行は必要です', 'error'); return; }
+  btn.closest('tr').remove();
+  estItemRows--;
+  Array.from(tbody.rows).forEach(function(r, i) { r.cells[0].textContent = i + 1; });
+}
+
+function estRenderTemplates() {
+  var container = document.getElementById('est-tpl-list');
+  var allTpls = EST_DEFAULT_TEMPLATES.concat(estCustomTemplates.map(function(t) { return { text: t, required: false }; }));
+  container.innerHTML = allTpls.map(function(tpl, i) {
+    var isCustom = i >= EST_DEFAULT_TEMPLATES.length;
+    var delBtn = (!tpl.required && isCustom) ? '<button class="btn btn-xs" style="color:var(--danger);margin-left:8px;" onclick="estRemoveTemplate(' + (i - EST_DEFAULT_TEMPLATES.length) + ', event)">✕</button>' : '';
+    return '<label><input type="checkbox" ' + (tpl.required ? 'checked disabled' : 'checked') + ' data-tpl-idx="' + i + '"> ' + tpl.text + delBtn + '</label>';
+  }).join('');
+}
+
+function estAddTemplate() {
+  var input = document.getElementById('est-new-tpl');
+  var text = input.value.trim();
+  if (!text) return;
+  estCustomTemplates.push(text);
+  localStorage.setItem('est_custom_templates', JSON.stringify(estCustomTemplates));
+  input.value = '';
+  estRenderTemplates();
+  showToast('テンプレートを追加しました');
+}
+
+function estRemoveTemplate(idx, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  estCustomTemplates.splice(idx, 1);
+  localStorage.setItem('est_custom_templates', JSON.stringify(estCustomTemplates));
+  estRenderTemplates();
+}
+
+function estCollectFormData() {
+  var client = document.getElementById('est-client').value;
+  var date = document.getElementById('est-date').value;
+  var memo = document.getElementById('est-memo').value;
+  if (!client) { showToast('宛先会社を選択してください', 'error'); return null; }
+  if (!date) { showToast('日付を入力してください', 'error'); return null; }
+
+  var items = [];
+  var rows = document.getElementById('est-items-tbody').rows;
+  for (var ri = 0; ri < rows.length; ri++) {
+    var r = rows[ri];
+    var mat = r.querySelector('.est-mat').value.trim();
+    var size = r.querySelector('.est-size').value.trim();
+    var qty = r.querySelector('.est-qty').value;
+    var note = r.querySelector('.est-note').value.trim();
+    if (mat || size || qty) {
+      items.push({ no: items.length + 1, mat: mat, size: size, qty: qty ? parseInt(qty) : 0, note: note });
+    }
+  }
+  if (items.length === 0) { showToast('材料を1つ以上入力してください', 'error'); return null; }
+
+  var templates = [];
+  document.querySelectorAll('#est-tpl-list input[type="checkbox"]:checked').forEach(function(chk) {
+    templates.push(chk.parentElement.textContent.trim().replace(/✕$/, '').trim());
+  });
+
+  return { client: client, date: date, items: items, templates: templates, memo: memo };
+}
+
+function estSave(status) {
+  var data = estCollectFormData();
+  if (!data) return null;
+
+  var now = new Date().toISOString();
+  if (estEditId) {
+    var idx = DB.estimates.findIndex(function(e) { return e.id === estEditId; });
+    if (idx >= 0) {
+      Object.assign(DB.estimates[idx], data, { status: status || DB.estimates[idx].status, updatedAt: now });
+    }
+  } else {
+    var est = Object.assign({ id: genId() }, data, { status: status || 'draft', createdAt: now, updatedAt: now });
+    DB.estimates.push(est);
+    estEditId = est.id;
+  }
+  save();
+  return estEditId;
+}
+
+function estSaveDraft() {
+  if (estSave('draft')) {
+    showToast('下書きを保存しました');
+    estShowList();
+  }
+}
+
+function estSaveAndPrint() {
+  if (estSave('draft')) {
+    showToast('保存しました。印刷プレビューを表示します...');
+    setTimeout(function() { estPrint(); }, 300);
+  }
+}
+
+function estMarkSent() {
+  if (estSave('sent')) {
+    showToast('FAX送信済みにしました ✅');
+    estShowList();
+  }
+}
+
+function estPrint() {
+  var est = DB.estimates.find(function(e) { return e.id === estEditId; });
+  if (!est) return;
+
+  var printArea = document.getElementById('est-print-area');
+  var tplHtml = (est.templates || []).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
+  var itemsHtml = (est.items || []).map(function(item) {
+    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + item.mat + '</td><td>' + item.size + '</td><td style="text-align:center;">' + item.qty + '</td><td>' + (item.note || '') + '</td></tr>';
+  }).join('');
+
+  printArea.innerHTML = '<div class="est-print-header">' +
+    '<div class="est-print-left">' +
+      '<div class="est-print-client">' + est.client + '</div>' +
+      '<div class="est-print-honorific">御中</div>' +
+      '<div class="est-print-date" style="margin-top:12pt;">日付：' + est.date + '</div>' +
+    '</div>' +
+    '<div class="est-print-right">' +
+      '<div class="est-print-company">有限会社黒部鉄工所</div>' +
+      '<div>〒939-0732</div>' +
+      '<div>富山県下新川郡朝日町平柳505</div>' +
+      '<div>TEL: 0765-83-3088</div>' +
+      '<div>FAX: 0765-83-3089</div>' +
+    '</div>' +
+  '</div>' +
+  '<div class="est-print-title">見積依頼書</div>' +
+  '<div class="est-print-message">下記の見積りをお願い致します。</div>' +
+  '<table class="est-print-table">' +
+    '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>備考</th></tr></thead>' +
+    '<tbody>' + itemsHtml + '</tbody>' +
+  '</table>' +
+  '<div class="est-print-templates">' + tplHtml + '</div>' +
+  (est.memo ? '<div class="est-print-memo">備考：' + est.memo + '</div>' : '');
+
+  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('print-active'); });
+  document.getElementById('sec-estimate').classList.add('print-active');
+  window.print();
+}
+
+function estRenderList() {
+  estFilterList();
+}
+
+function estFilterList() {
+  var from = document.getElementById('est-search-from').value;
+  var to = document.getElementById('est-search-to').value;
+  var client = document.getElementById('est-search-client').value.toLowerCase();
+  var keyword = document.getElementById('est-search-keyword').value.toLowerCase();
+  var status = document.getElementById('est-search-status').value;
+
+  var list = (DB.estimates || []).slice();
+
+  if (from) list = list.filter(function(e) { return e.date >= from; });
+  if (to) list = list.filter(function(e) { return e.date <= to; });
+  if (client) list = list.filter(function(e) { return (e.client || '').toLowerCase().indexOf(client) >= 0; });
+  if (status) list = list.filter(function(e) { return e.status === status; });
+  if (keyword) {
+    list = list.filter(function(e) {
+      return (e.items || []).some(function(item) {
+        return (item.mat || '').toLowerCase().indexOf(keyword) >= 0 ||
+               (item.size || '').toLowerCase().indexOf(keyword) >= 0;
+      });
+    });
+  }
+
+  list.sort(function(a, b) { return (b.date || '').localeCompare(a.date || ''); });
+
+  var tbody = document.getElementById('est-list-tbody');
+  var empty = document.getElementById('est-empty');
+
+  if (list.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  var statusMap = { draft: '🟡 下書き', sent: '✅ 送信済み', waiting: '🔵 回答待ち', done: '✔ 完了' };
+  var badgeMap = { draft: 'yellow', sent: 'green', waiting: 'blue', done: 'green' };
+
+  tbody.innerHTML = list.map(function(est) {
+    var statusLabel = statusMap[est.status] || est.status;
+    var badgeColor = badgeMap[est.status] || 'yellow';
+    return '<tr>' +
+      '<td>' + est.date + '</td>' +
+      '<td>' + est.client + '</td>' +
+      '<td>' + (est.items || []).length + '件</td>' +
+      '<td><span class="est-status-badge badge badge-' + badgeColor + '" onclick="estChangeStatus(\'' + est.id + '\')">' + statusLabel + '</span></td>' +
+      '<td>' +
+        '<button class="btn btn-ghost btn-xs" onclick="estShowForm(\'' + est.id + '\')">編集</button> ' +
+        '<button class="btn btn-ghost btn-xs" onclick="estDuplicate(\'' + est.id + '\')">複製</button> ' +
+        '<button class="btn btn-xs" style="color:var(--danger);" onclick="estDelete(\'' + est.id + '\')">削除</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function estChangeStatus(id) {
+  var est = DB.estimates.find(function(e) { return e.id === id; });
+  if (!est) return;
+  var statuses = [
+    { key: 'draft', label: '🟡 下書き' },
+    { key: 'sent', label: '✅ 送信済み' },
+    { key: 'waiting', label: '🔵 回答待ち' },
+    { key: 'done', label: '✔ 完了' }
+  ];
+  var container = document.getElementById('est-status-options');
+  container.innerHTML = statuses.map(function(s) {
+    return '<button class="btn ' + (s.key === est.status ? 'btn-primary' : 'btn-ghost') + '" style="width:100%;" onclick="estSetStatus(\'' + id + '\',\'' + s.key + '\')">' + s.label + '</button>';
+  }).join('');
+  document.getElementById('est-status-modal').classList.add('open');
+}
+
+function estSetStatus(id, status) {
+  var est = DB.estimates.find(function(e) { return e.id === id; });
+  if (est) {
+    est.status = status;
+    est.updatedAt = new Date().toISOString();
+    save();
+    showToast('状態を変更しました');
+  }
+  closeModal('est-status-modal');
+  estRenderList();
+}
+
+function estDuplicate(id) {
+  var est = DB.estimates.find(function(e) { return e.id === id; });
+  if (!est) return;
+  var now = new Date().toISOString();
+  var dup = JSON.parse(JSON.stringify(est));
+  dup.id = genId();
+  dup.status = 'draft';
+  dup.date = new Date().toISOString().slice(0, 10);
+  dup.createdAt = now;
+  dup.updatedAt = now;
+  DB.estimates.push(dup);
+  save();
+  showToast('見積書を複製しました');
+  estRenderList();
+}
+
+function estDelete(id) {
+  if (!confirm('この見積書を削除しますか？')) return;
+  DB.estimates = DB.estimates.filter(function(e) { return e.id !== id; });
+  save();
+  showToast('見積書を削除しました');
+  estRenderList();
+}
+
+// Product search for estimate
+var estSearchTargetRow = null;
+function estOpenProductSearch(btn) {
+  estSearchTargetRow = btn.closest('tr');
+  document.getElementById('est-product-search').value = '';
+  estSearchProducts();
+  document.getElementById('est-product-modal').classList.add('open');
+}
+
+function estSearchProducts() {
+  var q = (document.getElementById('est-product-search').value || '').toLowerCase();
+  var results = DB.products.filter(function(p) {
+    if (!q) return true;
+    return [p.fignum, p.name, p.material, p.size].some(function(v) { return (v || '').toLowerCase().indexOf(q) >= 0; });
+  }).slice(0, 50);
+
+  document.getElementById('est-product-results').innerHTML = results.length > 0 ? results.map(function(p) {
+    return '<tr>' +
+      '<td>' + (p.fignum || '') + '</td>' +
+      '<td>' + (p.name || '') + '</td>' +
+      '<td>' + (p.material || '') + '</td>' +
+      '<td>' + (p.size || '') + '</td>' +
+      '<td><button class="btn btn-primary btn-xs" onclick="estSelectProduct(\'' + p.id + '\')">選択</button></td>' +
+    '</tr>';
+  }).join('') : '<tr><td colspan="5" style="text-align:center;color:var(--text3);">該当する製品がありません</td></tr>';
+}
+
+function estSelectProduct(productId) {
+  var p = DB.products.find(function(x) { return x.id === productId; });
+  if (!p || !estSearchTargetRow) return;
+  estSearchTargetRow.querySelector('.est-mat').value = p.material || '';
+  estSearchTargetRow.querySelector('.est-size').value = p.size || '';
+  closeModal('est-product-modal');
+  showToast('製品情報を入力しました');
+}
+
+function estRegisterProducts() {
+  var data = estCollectFormData();
+  if (!data) return;
+  estSave('draft');
+  if (data.items.length > 0) {
+    showSection('product-form');
+    setTimeout(function() {
+      var matInput = document.getElementById('material');
+      var sizeInput = document.getElementById('size');
+      if (matInput) matInput.value = data.items[0].mat || '';
+      if (sizeInput) sizeInput.value = data.items[0].size || '';
+      showToast('材料リスト1件目の情報を製品登録フォームに反映しました（' + data.items.length + '件中）');
+    }, 100);
+  }
+}
+
 </script></body>
 </html>
