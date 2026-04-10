@@ -209,14 +209,16 @@
   }
 
   /* ===== Estimate page styles ===== */
-  .est-items-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .est-items-table { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
   .est-items-table th { background:var(--bg3); padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); white-space:nowrap; }
   .est-items-table td { padding:6px 8px; border-bottom:1px solid var(--border); }
   .est-items-table input, .est-items-table textarea { width:100%; font-size:12px; padding:5px 8px; }
   .est-status-badge { cursor:pointer; user-select:none; }
   .est-status-badge:hover { opacity:0.8; }
-  .est-tpl-list label { display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13px; cursor:pointer; }
-  .est-tpl-list label input[type="checkbox"] { width:16px; height:16px; }
+  .est-tpl-list label { display:flex; align-items:center; gap:8px; padding:0; font-size:13px; cursor:pointer; flex:1; }
+  .est-tpl-list label input[type="checkbox"] { width:16px; height:16px; min-width:16px; }
+  .est-tpl-item { display:flex; align-items:center; gap:4px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .est-tpl-actions { display:flex; align-items:center; gap:2px; white-space:nowrap; }
 
   /* ===== Print CSS ===== */
   @media print {
@@ -1132,12 +1134,12 @@
             <table class="est-items-table" id="est-items-table">
               <thead><tr>
                 <th style="width:40px;">No.</th>
-                <th style="width:160px;">材質</th>
-                <th style="width:160px;">寸法</th>
-                <th style="width:80px;">数量</th>
-                <th style="width:120px;">納期</th>
-                <th>備考</th>
-                <th style="width:80px;">検索</th>
+                <th style="width:180px;">材質</th>
+                <th style="width:280px;">寸法</th>
+                <th style="width:60px;">数量</th>
+                <th style="width:80px;">納期</th>
+                <th style="width:180px;">備考</th>
+                <th style="width:60px;">検索</th>
                 <th style="width:40px;">削除</th>
               </tr></thead>
               <tbody id="est-items-tbody"></tbody>
@@ -1433,6 +1435,7 @@ function load() {
     if (!DB.workers) DB.workers = [];
     if (!DB.history) DB.history = [];
     if (!DB.estimates) DB.estimates = [];
+    if (!DB.estimateTemplates) DB.estimateTemplates = estLoadTemplates();
   }
 }
 
@@ -3953,13 +3956,20 @@ document.documentElement.style.setProperty('font-size','17px');
 // ===== ESTIMATE (見積書) =====
 let estEditId = null;
 let estItemRows = 0;
-const EST_DEFAULT_TEMPLATES = [
+const EST_INITIAL_TEMPLATES = [
   { text: 'お手数ですが、納期回答をお願い致します。', required: true },
   { text: 'いつもお世話になっております。ご多忙のところ申し訳ございませんが、下記の見積りをお願い致します。', required: false },
   { text: '請求は〇月にして頂きますようお願い致します。', required: false },
   { text: '※キズ・打痕・サビ注意', required: false }
 ];
-let estCustomTemplates = JSON.parse(localStorage.getItem('est_custom_templates') || '[]');
+function estLoadTemplates() {
+  var saved = JSON.parse(localStorage.getItem('est_templates_db') || 'null');
+  if (saved && Array.isArray(saved)) return saved;
+  return EST_INITIAL_TEMPLATES.map(function(t) { return { text: t.text, required: !!t.required }; });
+}
+function estSaveTemplates() {
+  localStorage.setItem('est_templates_db', JSON.stringify(DB.estimateTemplates));
+}
 
 function estShowForm(id) {
   document.getElementById('est-list-section').style.display = 'none';
@@ -4018,7 +4028,9 @@ function estInitForm() {
         var checks = document.querySelectorAll('#est-tpl-list input[type="checkbox"]');
         checks.forEach(function(chk) {
           if (chk.disabled) return;
-          var tplText = chk.parentElement.textContent.trim().replace(/✕$/, '').trim();
+          var label = chk.closest('label');
+          if (!label) return;
+          var tplText = label.textContent.trim();
           chk.checked = (est.templates || []).indexOf(tplText) >= 0;
         });
       }, 50);
@@ -4052,11 +4064,13 @@ function estRemoveRow(btn) {
 
 function estRenderTemplates() {
   var container = document.getElementById('est-tpl-list');
-  var allTpls = EST_DEFAULT_TEMPLATES.concat(estCustomTemplates.map(function(t) { return { text: t, required: false }; }));
-  container.innerHTML = allTpls.map(function(tpl, i) {
-    var isCustom = i >= EST_DEFAULT_TEMPLATES.length;
-    var delBtn = (!tpl.required && isCustom) ? '<button class="btn btn-xs" style="color:var(--danger);margin-left:8px;" onclick="estRemoveTemplate(' + (i - EST_DEFAULT_TEMPLATES.length) + ', event)">✕</button>' : '';
-    return '<label><input type="checkbox" ' + (tpl.required ? 'checked disabled' : 'checked') + ' data-tpl-idx="' + i + '"> ' + tpl.text + delBtn + '</label>';
+  var tpls = DB.estimateTemplates || [];
+  container.innerHTML = tpls.map(function(tpl, i) {
+    var editBtn = '<button class="btn btn-xs btn-ghost" style="margin-left:4px;" onclick="estEditTemplate(' + i + ', event)">✏編集</button>';
+    var delBtn = !tpl.required ? '<button class="btn btn-xs" style="color:var(--danger);margin-left:4px;" onclick="estRemoveTemplate(' + i + ', event)">✕</button>' : '';
+    var upBtn = i > 0 ? '<button class="btn btn-xs btn-ghost" style="margin-left:2px;padding:2px 4px;" onclick="estMoveTemplate(' + i + ', -1, event)">▲</button>' : '';
+    var downBtn = i < tpls.length - 1 ? '<button class="btn btn-xs btn-ghost" style="padding:2px 4px;" onclick="estMoveTemplate(' + i + ', 1, event)">▼</button>' : '';
+    return '<div class="est-tpl-item" data-tpl-idx="' + i + '"><label style="flex:1;"><input type="checkbox" ' + (tpl.required ? 'checked disabled' : 'checked') + '> ' + tpl.text + '</label><span class="est-tpl-actions">' + upBtn + downBtn + editBtn + delBtn + '</span></div>';
   }).join('');
 }
 
@@ -4064,8 +4078,8 @@ function estAddTemplate() {
   var input = document.getElementById('est-new-tpl');
   var text = input.value.trim();
   if (!text) return;
-  estCustomTemplates.push(text);
-  localStorage.setItem('est_custom_templates', JSON.stringify(estCustomTemplates));
+  DB.estimateTemplates.push({ text: text, required: false });
+  estSaveTemplates();
   input.value = '';
   estRenderTemplates();
   showToast('テンプレートを追加しました');
@@ -4074,8 +4088,53 @@ function estAddTemplate() {
 function estRemoveTemplate(idx, e) {
   e.preventDefault();
   e.stopPropagation();
-  estCustomTemplates.splice(idx, 1);
-  localStorage.setItem('est_custom_templates', JSON.stringify(estCustomTemplates));
+  if (DB.estimateTemplates[idx] && DB.estimateTemplates[idx].required) return;
+  DB.estimateTemplates.splice(idx, 1);
+  estSaveTemplates();
+  estRenderTemplates();
+}
+
+function estEditTemplate(idx, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  var container = document.getElementById('est-tpl-list');
+  var item = container.querySelectorAll('.est-tpl-item')[idx];
+  if (!item) return;
+  var tpl = DB.estimateTemplates[idx];
+  var escapedText = (tpl.text || '').replace(/"/g, '&quot;');
+  item.innerHTML = '<input type="text" class="est-tpl-edit-input" value="' + escapedText + '" style="flex:1;font-size:13px;padding:4px 8px;"> ' +
+    '<button class="btn btn-primary btn-xs" onclick="estSaveEditTemplate(' + idx + ', event)">保存</button> ' +
+    '<button class="btn btn-ghost btn-xs" onclick="estRenderTemplates()">キャンセル</button>';
+  var inp = item.querySelector('input');
+  inp.focus();
+  inp.addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') estSaveEditTemplate(idx, ev);
+    if (ev.key === 'Escape') estRenderTemplates();
+  });
+}
+
+function estSaveEditTemplate(idx, e) {
+  e.preventDefault();
+  var container = document.getElementById('est-tpl-list');
+  var input = container.querySelector('.est-tpl-edit-input');
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) { showToast('テキストを入力してください', 'error'); return; }
+  DB.estimateTemplates[idx].text = text;
+  estSaveTemplates();
+  estRenderTemplates();
+  showToast('テンプレートを更新しました');
+}
+
+function estMoveTemplate(idx, dir, e) {
+  e.preventDefault();
+  e.stopPropagation();
+  var newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= DB.estimateTemplates.length) return;
+  var tmp = DB.estimateTemplates[idx];
+  DB.estimateTemplates[idx] = DB.estimateTemplates[newIdx];
+  DB.estimateTemplates[newIdx] = tmp;
+  estSaveTemplates();
   estRenderTemplates();
 }
 
@@ -4103,7 +4162,8 @@ function estCollectFormData() {
 
   var templates = [];
   document.querySelectorAll('#est-tpl-list input[type="checkbox"]:checked').forEach(function(chk) {
-    templates.push(chk.parentElement.textContent.trim().replace(/✕$/, '').trim());
+    var label = chk.closest('label');
+    if (label) templates.push(label.textContent.trim());
   });
 
   return { client: client, date: date, items: items, templates: templates, memo: memo };
