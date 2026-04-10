@@ -1168,6 +1168,7 @@
           <button class="btn btn-ghost" onclick="estSaveDraft()">💾 下書き保存</button>
           <button class="btn btn-primary" onclick="estShowPreview()">👁 プレビュー</button>
           <button class="btn btn-primary" onclick="estSaveAndPrint()">🖨 保存して印刷</button>
+          <button class="btn btn-success" onclick="estExportExcel()">📊 Excelで出力</button>
           <button class="btn btn-success" onclick="estMarkSent()">📠 FAX送信済みにする</button>
           <button class="btn btn-ghost" onclick="estRegisterProducts()" style="border-color:var(--accent4);color:var(--accent4);">📦 製品登録する</button>
         </div>
@@ -4335,6 +4336,175 @@ function estPrint() {
   var est = DB.estimates.find(function(e) { return e.id === estEditId; });
   if (!est) return;
   estOpenPrintWindow(est);
+}
+
+function estExportExcel() {
+  var savedId = estSave('draft');
+  if (!savedId) return;
+  var est = DB.estimates.find(function(e) { return e.id === savedId; });
+  if (!est) return;
+
+  var wb = XLSX.utils.book_new();
+  var aoa = [];
+  var merges = [];
+  var styles = {};
+
+  var border = {top:{style:'thin',color:{rgb:'333333'}},bottom:{style:'thin',color:{rgb:'333333'}},left:{style:'thin',color:{rgb:'333333'}},right:{style:'thin',color:{rgb:'333333'}}};
+  var titleStyle = {font:{bold:true,sz:20},alignment:{horizontal:'center',vertical:'center'}};
+  var clientStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
+  var gotyuStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
+  var dateStyle = {font:{sz:11},alignment:{horizontal:'right',vertical:'center'}};
+  var dateLabelStyle = {font:{sz:11},alignment:{horizontal:'right',vertical:'center'}};
+  var msgStyle = {font:{sz:12},alignment:{vertical:'center'}};
+  var companyStyle = {font:{sz:10},alignment:{horizontal:'right',vertical:'center'}};
+  var headerStyle = {font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'1E3A8A'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:border};
+  var dataStyle = {font:{sz:11},alignment:{vertical:'center',wrapText:true},border:border};
+  var dataStyleCenter = {font:{sz:11},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:border};
+  var memoLabelStyle = {font:{bold:true,sz:11},alignment:{vertical:'center'}};
+  var memoStyle = {font:{sz:11},alignment:{vertical:'top',wrapText:true},border:border};
+  var tplStyle = {font:{sz:11},alignment:{vertical:'center',wrapText:true}};
+  var footerStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
+
+  // Row 0: 見積書 (A1, merged A1:G1)
+  aoa.push(['見積書','','','','','','']);
+  merges.push({s:{r:0,c:0},e:{r:0,c:6}});
+
+  // Row 1: empty
+  aoa.push(['','','','','','','']);
+
+  // Row 2: B3=client, C3=御中, F3=日付label, G3=date
+  aoa.push(['', est.client, '御中', '', '', '日付', est.date]);
+
+  // Row 3: company info right side (F4:G4)
+  aoa.push(['', '', '', '', '', '', '有限会社黒部鉄工所']);
+
+  // Row 4: B5=message, G5=address
+  aoa.push(['', '下記の見積りをお願い致します', '', '', '', '', '〒537-0012 大阪市東成区大今里2-14-7']);
+  merges.push({s:{r:4,c:1},e:{r:4,c:4}});
+
+  // Row 5: TEL
+  aoa.push(['', '', '', '', '', '', 'TEL 06-6974-0590']);
+
+  // Row 6: header row (B7:G7)
+  aoa.push(['', 'No.', '材質', '寸法', '数量', '納期', '備考']);
+
+  // Data rows (row 7+)
+  var items = est.items || [];
+  var dataStartRow = 7;
+  for (var i = 0; i < items.length; i++) {
+    aoa.push(['', items[i].no || (i+1), items[i].mat || '', items[i].size || '', items[i].qty || '', items[i].delivery || '', items[i].note || '']);
+  }
+  // Fill empty rows up to 10
+  for (var j = items.length; j < 10; j++) {
+    aoa.push(['', '', '', '', '', '', '']);
+  }
+  var dataEndRow = dataStartRow + Math.max(items.length, 10) - 1;
+
+  // Blank row
+  var memoLabelRow = dataEndRow + 1;
+  aoa.push(['', '備考', '', '', '', '', '']);
+
+  // Memo row
+  var memoRow = memoLabelRow + 1;
+  aoa.push(['', est.memo || '', '', '', '', '', '']);
+  merges.push({s:{r:memoRow,c:1},e:{r:memoRow,c:6}});
+
+  // Templates
+  var tplTexts = (est.templates || []).filter(function(t) {
+    return t.indexOf('納期回答をお願い') < 0;
+  });
+  var tplStartRow = memoRow + 1;
+  if (tplTexts.length > 0) {
+    // blank row
+    aoa.push(['','','','','','','']);
+    tplStartRow = memoRow + 2;
+    for (var k = 0; k < tplTexts.length; k++) {
+      aoa.push(['', '・' + tplTexts[k], '', '', '', '', '']);
+      merges.push({s:{r:tplStartRow+k,c:1},e:{r:tplStartRow+k,c:6}});
+    }
+  }
+
+  // Footer: お手数ですが...
+  var footerRow = aoa.length;
+  aoa.push(['','','','','','','']);
+  footerRow = aoa.length;
+  aoa.push(['', 'お手数ですが、納期回答をお願い致します。', '', '', '', '', '']);
+  merges.push({s:{r:footerRow,c:1},e:{r:footerRow,c:6}});
+
+  // Create worksheet
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
+
+  // Column widths: A=2, B=8, C=18, D=30, E=10, F=14, G=22
+  ws['!cols'] = [{wch:2},{wch:8},{wch:18},{wch:30},{wch:10},{wch:14},{wch:22}];
+
+  // Row heights
+  var rowHeights = [];
+  for (var rr = 0; rr < aoa.length; rr++) {
+    if (rr === 0) rowHeights.push({hpt:32}); // title
+    else if (rr === memoRow) rowHeights.push({hpt:60}); // memo
+    else if (rr >= 6 && rr <= dataEndRow) rowHeights.push({hpt:24}); // data
+    else rowHeights.push({hpt:20});
+  }
+  ws['!rows'] = rowHeights;
+
+  // Apply styles
+  function setS(r, col, style) {
+    var addr = XLSX.utils.encode_cell({r:r,c:col});
+    if (!ws[addr]) ws[addr] = {t:'s',v:''};
+    ws[addr].s = style;
+  }
+
+  // Title
+  setS(0, 0, titleStyle);
+
+  // Client + 御中
+  setS(2, 1, clientStyle);
+  setS(2, 2, gotyuStyle);
+  setS(2, 5, dateLabelStyle);
+  setS(2, 6, dateStyle);
+
+  // Company info
+  setS(3, 6, companyStyle);
+  setS(4, 6, companyStyle);
+  setS(5, 6, companyStyle);
+
+  // Message
+  setS(4, 1, msgStyle);
+
+  // Header row (row 6)
+  for (var hc = 1; hc <= 6; hc++) setS(6, hc, headerStyle);
+
+  // Data rows
+  for (var dr = dataStartRow; dr <= dataEndRow; dr++) {
+    setS(dr, 1, dataStyleCenter); // No.
+    setS(dr, 2, dataStyle);       // 材質
+    setS(dr, 3, dataStyle);       // 寸法
+    setS(dr, 4, dataStyleCenter); // 数量
+    setS(dr, 5, dataStyle);       // 納期
+    setS(dr, 6, dataStyle);       // 備考
+  }
+
+  // Memo
+  setS(memoLabelRow, 1, memoLabelStyle);
+  setS(memoRow, 1, memoStyle);
+
+  // Templates
+  if (tplTexts.length > 0) {
+    for (var tk = 0; tk < tplTexts.length; tk++) {
+      setS(tplStartRow + tk, 1, tplStyle);
+    }
+  }
+
+  // Footer
+  setS(footerRow, 1, footerStyle);
+
+  XLSX.utils.book_append_sheet(wb, ws, '見積書');
+
+  var dateStr = (est.date || new Date().toLocaleDateString('ja-JP')).replace(/[\/:]/g, '');
+  var clientStr = (est.client || '').replace(/[\\/:*?"<>|]/g, '');
+  XLSX.writeFile(wb, '見積書_' + dateStr + '_' + clientStr + '.xlsx');
+  showToast('見積書Excelをダウンロードしました');
 }
 
 function estRenderList() {
