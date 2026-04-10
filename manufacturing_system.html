@@ -4271,7 +4271,7 @@ function estBuildPrintPage(est) {
 
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>見積書</title>' +
     '<style>' +
-    '@page { size:A4; margin:12mm; }' +
+    '@page { size:A4 portrait; margin:15mm; }' +
     'body { margin:0; padding:16px 20px; font-family:"Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:13px; color:#000; line-height:1.8; width:100%; box-sizing:border-box; }' +
     '.title { text-align:center; font-size:26px; font-weight:700; margin-bottom:16px; letter-spacing:6px; }' +
     '.header { display:flex; justify-content:space-between; margin-bottom:14px; }' +
@@ -4281,9 +4281,9 @@ function estBuildPrintPage(est) {
     '.right { text-align:right; font-size:12px; line-height:1.8; }' +
     '.company { font-size:15px; font-weight:700; }' +
     'table { width:100%; border-collapse:collapse; margin:10px 0; table-layout:fixed; }' +
-    'col.c-no{width:30px} col.c-mat{width:120px} col.c-size{width:220px} col.c-qty{width:50px} col.c-del{width:70px} col.c-note{width:auto}' +
-    'th { background:#f0f0f0; border:1px solid #333; padding:6px 8px; font-size:12px; text-align:center; font-weight:600; word-break:break-all; }' +
-    'td { border:1px solid #333; padding:6px 8px; font-size:12px; word-break:break-all; }' +
+    'col.c-no{width:5%} col.c-mat{width:20%} col.c-size{width:38%} col.c-qty{width:7%} col.c-del{width:10%} col.c-note{width:20%}' +
+    'th { background:#f0f0f0; border:1px solid #333; padding:5px 6px; font-size:12px; text-align:center; font-weight:600; word-break:break-all; }' +
+    'td { border:1px solid #333; padding:5px 6px; font-size:12px; word-break:break-all; }' +
     '.memo-label { font-size:12px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
     '.memo { margin-top:3px; border:1px solid #999; padding:10px; min-height:80px; font-size:12px; white-space:pre-wrap; word-break:break-all; }' +
     '.templates { margin-top:10px; font-size:12px; line-height:2.0; }' +
