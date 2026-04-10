@@ -4271,23 +4271,23 @@ function estBuildPrintPage(est) {
 
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>見積書</title>' +
     '<style>' +
-    '@page { size:A4; margin:15mm; }' +
-    'body { margin:0; padding:20px 24px; font-family:"Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:11px; color:#000; line-height:1.6; width:100%; box-sizing:border-box; }' +
-    '.title { text-align:center; font-size:20px; font-weight:700; margin-bottom:14px; letter-spacing:6px; }' +
-    '.header { display:flex; justify-content:space-between; margin-bottom:12px; }' +
+    '@page { size:A4; margin:12mm; }' +
+    'body { margin:0; padding:16px 20px; font-family:"Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:13px; color:#000; line-height:1.8; width:100%; box-sizing:border-box; }' +
+    '.title { text-align:center; font-size:26px; font-weight:700; margin-bottom:16px; letter-spacing:6px; }' +
+    '.header { display:flex; justify-content:space-between; margin-bottom:14px; }' +
     '.left { text-align:left; }' +
-    '.client { font-size:15px; font-weight:700; border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:8px; }' +
-    '.message { font-size:11px; margin-bottom:10px; }' +
-    '.right { text-align:right; font-size:10px; line-height:1.7; }' +
-    '.company { font-size:12px; font-weight:700; }' +
+    '.client { font-size:17px; font-weight:700; border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:8px; }' +
+    '.message { font-size:13px; margin-bottom:10px; }' +
+    '.right { text-align:right; font-size:12px; line-height:1.8; }' +
+    '.company { font-size:15px; font-weight:700; }' +
     'table { width:100%; border-collapse:collapse; margin:10px 0; table-layout:fixed; }' +
-    'col.c-no{width:25px} col.c-mat{width:100px} col.c-size{width:200px} col.c-qty{width:40px} col.c-del{width:60px} col.c-note{width:auto}' +
-    'th { background:#f0f0f0; border:1px solid #333; padding:3px 4px; font-size:10px; text-align:center; font-weight:600; word-break:break-all; }' +
-    'td { border:1px solid #333; padding:3px 4px; font-size:10px; word-break:break-all; }' +
-    '.memo-label { font-size:10px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
-    '.memo { margin-top:3px; border:1px solid #999; padding:8px; min-height:60px; font-size:10px; white-space:pre-wrap; word-break:break-all; }' +
-    '.templates { margin-top:10px; font-size:10px; line-height:1.7; }' +
-    '.footer { margin-top:14px; font-size:11px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:8px; }' +
+    'col.c-no{width:30px} col.c-mat{width:120px} col.c-size{width:220px} col.c-qty{width:50px} col.c-del{width:70px} col.c-note{width:auto}' +
+    'th { background:#f0f0f0; border:1px solid #333; padding:6px 8px; font-size:12px; text-align:center; font-weight:600; word-break:break-all; }' +
+    'td { border:1px solid #333; padding:6px 8px; font-size:12px; word-break:break-all; }' +
+    '.memo-label { font-size:12px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
+    '.memo { margin-top:3px; border:1px solid #999; padding:10px; min-height:80px; font-size:12px; white-space:pre-wrap; word-break:break-all; }' +
+    '.templates { margin-top:10px; font-size:12px; line-height:2.0; }' +
+    '.footer { margin-top:14px; font-size:13px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:8px; }' +
     '@media print { body { padding:0; } }' +
     '</style></head><body>' +
     '<div class="title">見積書</div>' +
