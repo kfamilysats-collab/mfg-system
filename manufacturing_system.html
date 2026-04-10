@@ -4347,66 +4347,76 @@ function estExportExcel() {
   var wb = XLSX.utils.book_new();
   var aoa = [];
   var merges = [];
-  var styles = {};
 
-  var border = {top:{style:'thin',color:{rgb:'333333'}},bottom:{style:'thin',color:{rgb:'333333'}},left:{style:'thin',color:{rgb:'333333'}},right:{style:'thin',color:{rgb:'333333'}}};
-  var titleStyle = {font:{bold:true,sz:20},alignment:{horizontal:'center',vertical:'center'}};
-  var clientStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
-  var gotyuStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
-  var dateStyle = {font:{sz:11},alignment:{horizontal:'right',vertical:'center'}};
+  var thinBorder = {style:'thin',color:{rgb:'000000'}};
+  var border = {top:thinBorder,bottom:thinBorder,left:thinBorder,right:thinBorder};
+  var noBorder = {};
+
+  // Styles
+  var titleStyle = {font:{bold:true,sz:24},alignment:{horizontal:'center',vertical:'center'}};
+  var clientStyle = {font:{bold:true,sz:16},alignment:{vertical:'center'}};
+  var gotyuStyle = {font:{sz:16},alignment:{vertical:'center'}};
   var dateLabelStyle = {font:{sz:11},alignment:{horizontal:'right',vertical:'center'}};
-  var msgStyle = {font:{sz:12},alignment:{vertical:'center'}};
+  var dateValStyle = {font:{sz:11},alignment:{horizontal:'left',vertical:'center'}};
+  var msgStyle = {font:{sz:11},alignment:{vertical:'center'}};
   var companyStyle = {font:{sz:10},alignment:{horizontal:'right',vertical:'center'}};
-  var headerStyle = {font:{bold:true,sz:11,color:{rgb:'FFFFFF'}},fill:{patternType:'solid',fgColor:{rgb:'1E3A8A'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:border};
+  var headerStyle = {font:{bold:true,sz:11},fill:{patternType:'solid',fgColor:{rgb:'D9D9D9'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:border};
   var dataStyle = {font:{sz:11},alignment:{vertical:'center',wrapText:true},border:border};
   var dataStyleCenter = {font:{sz:11},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:border};
+  var emptyBorder = {font:{sz:11},alignment:{vertical:'center'},border:border};
   var memoLabelStyle = {font:{bold:true,sz:11},alignment:{vertical:'center'}};
   var memoStyle = {font:{sz:11},alignment:{vertical:'top',wrapText:true},border:border};
   var tplStyle = {font:{sz:11},alignment:{vertical:'center',wrapText:true}};
-  var footerStyle = {font:{bold:true,sz:14},alignment:{vertical:'center'}};
+  var footerStyle = {font:{bold:true,sz:11},alignment:{vertical:'center'}};
 
-  // Row 0: 見積書 (A1, merged A1:G1)
-  aoa.push(['見積書','','','','','','']);
-  merges.push({s:{r:0,c:0},e:{r:0,c:6}});
+  // Row 0 (row1): 見積書 title in B1, merged B1:F1
+  // Columns: A(spacer), B(No.), C(材質), D(寸法), E(数量), F(納期), G(単価記入欄), H-J(company info)
+  aoa.push(['', '見積書', '', '', '', '', '', '有限会社黒部鉄工所', '', '']);
+  merges.push({s:{r:0,c:1},e:{r:0,c:5}}); // B1:F1
+  merges.push({s:{r:0,c:7},e:{r:0,c:9}}); // H1:J1
 
-  // Row 1: empty
-  aoa.push(['','','','','','','']);
+  // Row 1 (row2): empty + address
+  aoa.push(['', '', '', '', '', '', '', '〒537-0012 大阪市東成区大今里2-14-7', '', '']);
+  merges.push({s:{r:1,c:7},e:{r:1,c:9}});
 
-  // Row 2: B3=client, C3=御中, F3=日付label, G3=date
-  aoa.push(['', est.client, '御中', '', '', '日付', est.date]);
+  // Row 2 (row3): B3=client, C3=御中, F3=日付, G3=date, H3=TEL
+  aoa.push(['', est.client, '御中', '', '', '日付', est.date, 'TEL 06-6974-0590', '', '']);
+  merges.push({s:{r:2,c:7},e:{r:2,c:9}});
 
-  // Row 3: company info right side (F4:G4)
-  aoa.push(['', '', '', '', '', '', '有限会社黒部鉄工所']);
+  // Row 3 (row4): B4=message
+  aoa.push(['', '下記の見積りをお願い致します', '', '', '', '', '', '', '', '']);
+  merges.push({s:{r:3,c:1},e:{r:3,c:5}});
 
-  // Row 4: B5=message, G5=address
-  aoa.push(['', '下記の見積りをお願い致します', '', '', '', '', '〒537-0012 大阪市東成区大今里2-14-7']);
-  merges.push({s:{r:4,c:1},e:{r:4,c:4}});
+  // Row 4 (row5): empty (発注書なら注意書きだが見積書は空)
+  aoa.push(['', '', '', '', '', '', '', '', '', '']);
 
-  // Row 5: TEL
-  aoa.push(['', '', '', '', '', '', 'TEL 06-6974-0590']);
+  // Row 5 (row6): empty
+  aoa.push(['', '', '', '', '', '', '', '', '', '']);
 
-  // Row 6: header row (B7:G7)
-  aoa.push(['', 'No.', '材質', '寸法', '数量', '納期', '備考']);
+  // Row 6 (row7): Header
+  aoa.push(['', 'No.', '材質', '寸法', '数量', '納期', '単価記入欄', '', '', '']);
 
-  // Data rows (row 7+)
+  // Data rows (row 7 = row8 in Excel)
   var items = est.items || [];
   var dataStartRow = 7;
-  for (var i = 0; i < items.length; i++) {
-    aoa.push(['', items[i].no || (i+1), items[i].mat || '', items[i].size || '', items[i].qty || '', items[i].delivery || '', items[i].note || '']);
+  var maxRows = 20;
+  var circleNums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+  for (var i = 0; i < items.length && i < maxRows; i++) {
+    aoa.push(['', circleNums[i] || (i+1), items[i].mat || '', items[i].size || '', items[i].qty || '', items[i].delivery || '', '', '', '', '']);
   }
-  // Fill empty rows up to 10
-  for (var j = items.length; j < 10; j++) {
-    aoa.push(['', '', '', '', '', '', '']);
+  // Fill empty rows up to maxRows
+  for (var j = Math.min(items.length, maxRows); j < maxRows; j++) {
+    aoa.push(['', '', '', '', '', '', '', '', '', '']);
   }
-  var dataEndRow = dataStartRow + Math.max(items.length, 10) - 1;
+  var dataEndRow = dataStartRow + maxRows - 1;
 
-  // Blank row
+  // Memo label row
   var memoLabelRow = dataEndRow + 1;
-  aoa.push(['', '備考', '', '', '', '', '']);
+  aoa.push(['', '備考', '', '', '', '', '', '', '', '']);
 
-  // Memo row
+  // Memo content row (merged B:G)
   var memoRow = memoLabelRow + 1;
-  aoa.push(['', est.memo || '', '', '', '', '', '']);
+  aoa.push(['', est.memo || '', '', '', '', '', '', '', '', '']);
   merges.push({s:{r:memoRow,c:1},e:{r:memoRow,c:6}});
 
   // Templates
@@ -4415,74 +4425,73 @@ function estExportExcel() {
   });
   var tplStartRow = memoRow + 1;
   if (tplTexts.length > 0) {
-    // blank row
-    aoa.push(['','','','','','','']);
+    aoa.push(['', '', '', '', '', '', '', '', '', '']); // blank row
     tplStartRow = memoRow + 2;
     for (var k = 0; k < tplTexts.length; k++) {
-      aoa.push(['', '・' + tplTexts[k], '', '', '', '', '']);
+      aoa.push(['', '・' + tplTexts[k], '', '', '', '', '', '', '', '']);
       merges.push({s:{r:tplStartRow+k,c:1},e:{r:tplStartRow+k,c:6}});
     }
   }
 
-  // Footer: お手数ですが...
+  // Footer
+  aoa.push(['', '', '', '', '', '', '', '', '', '']); // blank row
   var footerRow = aoa.length;
-  aoa.push(['','','','','','','']);
-  footerRow = aoa.length;
-  aoa.push(['', 'お手数ですが、納期回答をお願い致します。', '', '', '', '', '']);
+  aoa.push(['', 'お手数ですが、納期回答を宜しくお願い致します。', '', '', '', '', '', '', '', '']);
   merges.push({s:{r:footerRow,c:1},e:{r:footerRow,c:6}});
 
   // Create worksheet
   var ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!merges'] = merges;
 
-  // Column widths: A=2, B=8, C=18, D=30, E=10, F=14, G=22
-  ws['!cols'] = [{wch:2},{wch:8},{wch:18},{wch:30},{wch:10},{wch:14},{wch:22}];
+  // Column widths: A=2, B=5(No), C=18(材質), D=30(寸法), E=8(数量), F=10(納期), G=12(単価), H-J for company
+  ws['!cols'] = [{wch:2},{wch:5},{wch:18},{wch:30},{wch:8},{wch:10},{wch:12},{wch:16},{wch:8},{wch:8}];
 
   // Row heights
   var rowHeights = [];
   for (var rr = 0; rr < aoa.length; rr++) {
-    if (rr === 0) rowHeights.push({hpt:32}); // title
-    else if (rr === memoRow) rowHeights.push({hpt:60}); // memo
-    else if (rr >= 6 && rr <= dataEndRow) rowHeights.push({hpt:24}); // data
-    else rowHeights.push({hpt:20});
+    if (rr === 0) rowHeights.push({hpt:30});           // title row
+    else if (rr === 6) rowHeights.push({hpt:20});       // header
+    else if (rr >= dataStartRow && rr <= dataEndRow) rowHeights.push({hpt:25}); // data
+    else if (rr === memoRow) rowHeights.push({hpt:50}); // memo
+    else rowHeights.push({hpt:18});
   }
   ws['!rows'] = rowHeights;
 
-  // Apply styles
+  // Apply styles helper
   function setS(r, col, style) {
     var addr = XLSX.utils.encode_cell({r:r,c:col});
     if (!ws[addr]) ws[addr] = {t:'s',v:''};
     ws[addr].s = style;
   }
 
-  // Title
-  setS(0, 0, titleStyle);
+  // Title (row 0, col 1)
+  setS(0, 1, titleStyle);
 
-  // Client + 御中
+  // Company info (right side)
+  setS(0, 7, companyStyle);
+  setS(1, 7, companyStyle);
+  setS(2, 7, companyStyle);
+
+  // Client + 御中 (row 2)
   setS(2, 1, clientStyle);
   setS(2, 2, gotyuStyle);
   setS(2, 5, dateLabelStyle);
-  setS(2, 6, dateStyle);
+  setS(2, 6, dateValStyle);
 
-  // Company info
-  setS(3, 6, companyStyle);
-  setS(4, 6, companyStyle);
-  setS(5, 6, companyStyle);
+  // Message (row 3)
+  setS(3, 1, msgStyle);
 
-  // Message
-  setS(4, 1, msgStyle);
-
-  // Header row (row 6)
+  // Header row (row 6, cols 1-6)
   for (var hc = 1; hc <= 6; hc++) setS(6, hc, headerStyle);
 
-  // Data rows
+  // Data rows (rows 7-26)
   for (var dr = dataStartRow; dr <= dataEndRow; dr++) {
     setS(dr, 1, dataStyleCenter); // No.
     setS(dr, 2, dataStyle);       // 材質
     setS(dr, 3, dataStyle);       // 寸法
     setS(dr, 4, dataStyleCenter); // 数量
     setS(dr, 5, dataStyle);       // 納期
-    setS(dr, 6, dataStyle);       // 備考
+    setS(dr, 6, emptyBorder);     // 単価記入欄（空欄、罫線のみ）
   }
 
   // Memo
