@@ -4226,8 +4226,7 @@ function estBuildPreviewHTML(est) {
   return '<div class="est-pv-title">見積書</div>' +
     '<div class="est-pv-header">' +
       '<div class="est-pv-left">' +
-        '<div class="est-pv-client">' + est.client + '</div>' +
-        '<div class="est-pv-honorific">御中</div>' +
+        '<div class="est-pv-client">' + est.client + ' 御中</div>' +
         '<div class="est-pv-message">下記の見積りをお願い致します。</div>' +
       '</div>' +
       '<div class="est-pv-right">' +
@@ -4257,48 +4256,82 @@ function estShowPreview() {
   document.getElementById('est-preview-modal').classList.add('open');
 }
 
+function estBuildPrintPage(est) {
+  var tplHtml = (est.templates || []).filter(function(t) {
+    return t.indexOf('納期回答をお願い') < 0;
+  }).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
+
+  var itemsHtml = (est.items || []).map(function(item) {
+    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + (item.mat || '') + '</td><td>' + (item.size || '') + '</td><td style="text-align:center;">' + (item.qty || '') + '</td><td>' + (item.delivery || '') + '</td><td>' + (item.note || '') + '</td></tr>';
+  }).join('');
+  var rowCount = (est.items || []).length;
+  for (var ei = rowCount; ei < 10; ei++) {
+    itemsHtml += '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>';
+  }
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>見積書</title>' +
+    '<style>' +
+    'body { margin:0; padding:30px 40px; font-family: "Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:11pt; color:#000; line-height:1.8; }' +
+    '.title { text-align:center; font-size:22pt; font-weight:700; margin-bottom:24px; letter-spacing:8px; }' +
+    '.header { display:flex; justify-content:space-between; margin-bottom:20px; }' +
+    '.left { text-align:left; }' +
+    '.client { font-size:16pt; font-weight:700; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:12px; }' +
+    '.message { font-size:11pt; margin-bottom:16px; }' +
+    '.right { text-align:right; font-size:10pt; line-height:1.9; }' +
+    '.company { font-size:13pt; font-weight:700; }' +
+    'table { width:100%; border-collapse:collapse; margin:16px 0; }' +
+    'th { background:#f0f0f0; border:1px solid #333; padding:6px 8px; font-size:10pt; text-align:center; font-weight:600; }' +
+    'td { border:1px solid #333; padding:5px 8px; font-size:10pt; }' +
+    '.memo-label { font-size:10pt; font-weight:600; margin-top:16px; margin-bottom:0; }' +
+    '.memo { margin-top:4px; border:1px solid #999; padding:12px; min-height:80px; font-size:10pt; white-space:pre-wrap; }' +
+    '.templates { margin-top:16px; font-size:10pt; line-height:2; }' +
+    '.footer { margin-top:24px; font-size:11pt; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:12px; }' +
+    '@media print { body { padding:0; } }' +
+    '</style></head><body>' +
+    '<div class="title">見積書</div>' +
+    '<div class="header">' +
+      '<div class="left">' +
+        '<div class="client">' + est.client + ' 御中</div>' +
+        '<div class="message">下記の見積りをお願い致します。</div>' +
+      '</div>' +
+      '<div class="right">' +
+        '<div class="company">有限会社黒部鉄工所</div>' +
+        '<div>〒537-0012</div>' +
+        '<div>大阪市東成区大今里2-14-7</div>' +
+        '<div>TEL 06-6974-0590</div>' +
+        '<div>日付：' + est.date + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<table>' +
+      '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>納期</th><th>備考</th></tr></thead>' +
+      '<tbody>' + itemsHtml + '</tbody>' +
+    '</table>' +
+    (tplHtml ? '<div class="templates">' + tplHtml + '</div>' : '') +
+    '<div class="memo-label">備考</div>' +
+    '<div class="memo">' + (est.memo || '') + '</div>' +
+    '<div class="footer">お手数ですが、納期回答をお願い致します。</div>' +
+    '</body></html>';
+}
+
+function estOpenPrintWindow(est) {
+  var w = window.open('', '_blank');
+  if (!w) { showToast('ポップアップがブロックされました。許可してください。', 'error'); return; }
+  w.document.write(estBuildPrintPage(est));
+  w.document.close();
+  w.focus();
+  setTimeout(function() { w.print(); }, 300);
+}
+
 function estPrintFromPreview() {
-  window.print();
+  var est = DB.estimates.find(function(e) { return e.id === estEditId; });
+  if (!est) return;
+  estOpenPrintWindow(est);
 }
 
 function estPrint() {
   var est = DB.estimates.find(function(e) { return e.id === estEditId; });
   if (!est) return;
-
-  var printArea = document.getElementById('est-print-area');
-  var tplHtml = (est.templates || []).filter(function(t) {
-    return t.indexOf('納期回答をお願い') < 0;
-  }).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
-  var itemsHtml = (est.items || []).map(function(item) {
-    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + item.mat + '</td><td>' + item.size + '</td><td style="text-align:center;">' + item.qty + '</td><td>' + (item.delivery || '') + '</td><td>' + (item.note || '') + '</td></tr>';
-  }).join('');
-
-  printArea.innerHTML = '<div class="est-print-header">' +
-    '<div class="est-print-left">' +
-      '<div class="est-print-client">' + est.client + '</div>' +
-      '<div class="est-print-honorific">御中</div>' +
-      '<div class="est-print-date" style="margin-top:12pt;">日付：' + est.date + '</div>' +
-    '</div>' +
-    '<div class="est-print-right">' +
-      '<div class="est-print-company">有限会社黒部鉄工所</div>' +
-      '<div>〒537-0012</div>' +
-      '<div>大阪市東成区大今里2-14-7</div>' +
-      '<div>TEL 06-6974-0590</div>' +
-    '</div>' +
-  '</div>' +
-  '<div class="est-print-title">見積書</div>' +
-  '<div class="est-print-message">下記の見積りをお願い致します。</div>' +
-  '<table class="est-print-table">' +
-    '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>納期</th><th>備考</th></tr></thead>' +
-    '<tbody>' + itemsHtml + '</tbody>' +
-  '</table>' +
-  (tplHtml ? '<div class="est-print-templates">' + tplHtml + '</div>' : '') +
-  (est.memo ? '<div class="est-print-memo">備考：' + est.memo + '</div>' : '') +
-  '<div style="margin-top:24pt;text-align:center;font-weight:700;font-size:11pt;border-top:1px solid #999;padding-top:12pt;">お手数ですが、納期回答をお願い致します。</div>';
-
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('print-active'); });
-  document.getElementById('sec-estimate').classList.add('print-active');
-  window.print();
+  estOpenPrintWindow(est);
 }
 
 function estRenderList() {
