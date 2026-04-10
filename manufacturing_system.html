@@ -256,21 +256,21 @@
     font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
     font-size: 11pt; line-height: 1.8;
   }
-  .est-preview-content .est-pv-title { text-align:center; font-size:32px; font-weight:bold; margin-bottom:20px; letter-spacing:8px; }
+  .est-preview-content .est-pv-title { text-align:center; font-size:36px; font-weight:bold; margin-bottom:24px; letter-spacing:8px; }
   .est-preview-content .est-pv-header { display:flex; justify-content:space-between; margin-bottom:20px; }
   .est-preview-content .est-pv-left { text-align:left; }
-  .est-preview-content .est-pv-client { font-size:16px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
+  .est-preview-content .est-pv-client { font-size:18px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
   .est-preview-content .est-pv-honorific { font-size:14pt; margin-bottom:12px; }
-  .est-preview-content .est-pv-message { font-size:14px; margin-bottom:16px; }
-  .est-preview-content .est-pv-right { text-align:right; font-size:13px; line-height:1.9; }
-  .est-preview-content .est-pv-company { font-size:13px; font-weight:700; }
+  .est-preview-content .est-pv-message { font-size:15px; margin-bottom:16px; }
+  .est-preview-content .est-pv-right { text-align:right; font-size:14px; line-height:1.9; }
+  .est-preview-content .est-pv-company { font-size:14px; font-weight:700; }
   .est-preview-content .est-pv-table { width:100%; border-collapse:collapse; margin:16px auto; }
-  .est-preview-content .est-pv-table th { background:#f0f0f0; border:1px solid #333; padding:8px 10px; font-size:13px; text-align:center; font-weight:bold; }
-  .est-preview-content .est-pv-table td { border:1px solid #333; padding:8px 10px; font-size:13px; min-height:36px; }
-  .est-preview-content .est-pv-memo { margin-top:4px; border:1px solid #999; padding:12px; min-height:80px; font-size:13px; white-space:pre-wrap; }
-  .est-preview-content .est-pv-memo-label { font-size:13px; font-weight:600; margin-top:16px; margin-bottom:0; }
-  .est-preview-content .est-pv-templates { margin-top:16px; font-size:13px; line-height:2.2; text-align:center; }
-  .est-preview-content .est-pv-footer { margin-top:24px; font-size:13px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:12px; }
+  .est-preview-content .est-pv-table th { background:#f0f0f0; border:1px solid #333; padding:8px 10px; font-size:14px; text-align:center; font-weight:bold; }
+  .est-preview-content .est-pv-table td { border:1px solid #333; padding:8px 10px; font-size:14px; min-height:40px; }
+  .est-preview-content .est-pv-memo { margin-top:4px; border:1px solid #999; padding:12px; min-height:80px; font-size:14px; white-space:pre-wrap; }
+  .est-preview-content .est-pv-memo-label { font-size:14px; font-weight:600; margin-top:16px; margin-bottom:0; }
+  .est-preview-content .est-pv-templates { margin-top:20px; font-size:14px; line-height:2.2; text-align:left; }
+  .est-preview-content .est-pv-footer { margin-top:24px; font-size:14px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:12px; }
   .est-print-area { display:none; }
   @media print {
     .est-print-area { display:block !important; }
@@ -4272,24 +4272,24 @@ function estBuildPrintPage(est) {
   return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>見積書</title>' +
     '<style>' +
     '@page { size:A4 portrait; margin:12mm; }' +
-    'body { margin:0; padding:0; font-family:"Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:13px; color:#000; line-height:1.8; width:176mm; max-width:176mm; }' +
-    '.title { text-align:center; font-size:32px; font-weight:bold; margin-bottom:20px; letter-spacing:6px; }' +
+    'body { margin:0; padding:0; font-family:"Yu Mincho","Hiragino Mincho ProN","MS PMincho",serif; font-size:15px; color:#000; line-height:1.8; width:176mm; max-width:176mm; }' +
+    '.title { text-align:center; font-size:36px; font-weight:bold; margin-bottom:24px; letter-spacing:6px; }' +
     '.header { display:flex; justify-content:space-between; margin-bottom:14px; }' +
     '.left { text-align:left; }' +
-    '.client { font-size:16px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:8px; }' +
-    '.message { font-size:14px; margin-bottom:10px; }' +
-    '.right { text-align:right; font-size:13px; line-height:1.8; }' +
-    '.company { font-size:13px; font-weight:700; }' +
-    '.date { font-size:14px; }' +
+    '.client { font-size:18px; font-weight:bold; border-bottom:2px solid #000; padding-bottom:3px; margin-bottom:8px; }' +
+    '.message { font-size:15px; margin-bottom:10px; }' +
+    '.right { text-align:right; font-size:14px; line-height:1.8; }' +
+    '.company { font-size:14px; font-weight:700; }' +
+    '.date { font-size:15px; }' +
     'table { width:100%; border-collapse:collapse; margin:0 auto; table-layout:fixed; }' +
     'col.c-no{width:5%} col.c-mat{width:18%} col.c-size{width:35%} col.c-qty{width:8%} col.c-del{width:12%} col.c-note{width:22%}' +
-    'th { background:#f0f0f0; border:1px solid #333; padding:8px 10px; font-size:13px; text-align:center; font-weight:bold; word-break:break-all; }' +
-    'td { border:1px solid #333; padding:8px 10px; font-size:13px; word-break:break-all; min-height:36px; }' +
-    'tr { min-height:36px; }' +
-    '.memo-label { font-size:13px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
-    '.memo { margin-top:3px; border:1px solid #999; padding:10px; min-height:80px; font-size:13px; white-space:pre-wrap; word-break:break-all; }' +
-    '.templates { margin-top:16px; font-size:13px; line-height:2.2; text-align:center; }' +
-    '.footer { margin-top:14px; font-size:13px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:8px; }' +
+    'th { background:#f0f0f0; border:1px solid #333; padding:8px 10px; font-size:14px; text-align:center; font-weight:bold; word-break:break-all; }' +
+    'td { border:1px solid #333; padding:8px 10px; font-size:14px; word-break:break-all; min-height:40px; }' +
+    'tr { min-height:40px; }' +
+    '.memo-label { font-size:14px; font-weight:600; margin-top:10px; margin-bottom:0; }' +
+    '.memo { margin-top:3px; border:1px solid #999; padding:10px; min-height:80px; font-size:14px; white-space:pre-wrap; word-break:break-all; }' +
+    '.templates { margin-top:20px; font-size:14px; line-height:2.2; text-align:left; }' +
+    '.footer { margin-top:14px; font-size:14px; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:8px; }' +
     '@media print { body { padding:0; } }' +
     '</style></head><body>' +
     '<div class="title">見積書</div>' +
