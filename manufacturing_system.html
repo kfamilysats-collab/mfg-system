@@ -248,8 +248,36 @@
 
     .no-print { display:none !important; }
   }
+  /* ===== Estimate Preview Modal CSS ====== */
+  .est-preview-content {
+    background: #fff; color: #000; padding: 40px 36px;
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
+    font-size: 11pt; line-height: 1.8;
+  }
+  .est-preview-content .est-pv-title { text-align:center; font-size:22pt; font-weight:700; margin-bottom:24px; letter-spacing:8px; }
+  .est-preview-content .est-pv-header { display:flex; justify-content:space-between; margin-bottom:20px; }
+  .est-preview-content .est-pv-left { text-align:left; }
+  .est-preview-content .est-pv-client { font-size:16pt; font-weight:700; border-bottom:2px solid #000; padding-bottom:4px; margin-bottom:4px; }
+  .est-preview-content .est-pv-honorific { font-size:14pt; margin-bottom:12px; }
+  .est-preview-content .est-pv-message { font-size:11pt; margin-bottom:16px; }
+  .est-preview-content .est-pv-right { text-align:right; font-size:10pt; line-height:1.9; }
+  .est-preview-content .est-pv-company { font-size:13pt; font-weight:700; }
+  .est-preview-content .est-pv-table { width:100%; border-collapse:collapse; margin:16px 0; }
+  .est-preview-content .est-pv-table th { background:#f0f0f0; border:1px solid #333; padding:6px 8px; font-size:10pt; text-align:center; font-weight:600; }
+  .est-preview-content .est-pv-table td { border:1px solid #333; padding:5px 8px; font-size:10pt; }
+  .est-preview-content .est-pv-memo { margin-top:4px; border:1px solid #999; padding:12px; min-height:80px; font-size:10pt; white-space:pre-wrap; }
+  .est-preview-content .est-pv-memo-label { font-size:10pt; font-weight:600; margin-top:16px; margin-bottom:0; }
+  .est-preview-content .est-pv-templates { margin-top:16px; font-size:10pt; line-height:2; }
+  .est-preview-content .est-pv-footer { margin-top:24px; font-size:11pt; font-weight:600; text-align:center; border-top:1px solid #999; padding-top:12px; }
   .est-print-area { display:none; }
-  @media print { .est-print-area { display:block !important; } .est-form-area { display:none !important; } }
+  @media print {
+    .est-print-area { display:block !important; }
+    .est-form-area { display:none !important; }
+    #est-preview-modal.open { position:static !important; background:none !important; }
+    #est-preview-modal.open .modal { box-shadow:none !important; max-width:100% !important; max-height:none !important; overflow:visible !important; position:static !important; transform:none !important; }
+    #est-preview-modal.open .modal-header { display:none !important; }
+    #est-preview-modal.open .est-preview-content { padding:0 !important; }
+  }
 </style>
 </head>
 <body>
@@ -1107,6 +1135,7 @@
                 <th style="width:160px;">材質</th>
                 <th style="width:160px;">寸法</th>
                 <th style="width:80px;">数量</th>
+                <th style="width:120px;">納期</th>
                 <th>備考</th>
                 <th style="width:80px;">検索</th>
                 <th style="width:40px;">削除</th>
@@ -1135,6 +1164,7 @@
 
         <div id="est-form-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-ghost" onclick="estSaveDraft()">💾 下書き保存</button>
+          <button class="btn btn-primary" onclick="estShowPreview()">👁 プレビュー</button>
           <button class="btn btn-primary" onclick="estSaveAndPrint()">🖨 保存して印刷</button>
           <button class="btn btn-success" onclick="estMarkSent()">📠 FAX送信済みにする</button>
           <button class="btn btn-ghost" onclick="estRegisterProducts()" style="border-color:var(--accent4);color:var(--accent4);">📦 製品登録する</button>
@@ -1339,6 +1369,21 @@
     <div id="est-status-options" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 </div>
+
+<!-- Estimate preview modal -->
+<div class="modal-overlay" id="est-preview-modal">
+  <div class="modal" style="max-width:820px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-header no-print">
+      <div class="modal-title">印刷プレビュー</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="estPrintFromPreview()">🖨 印刷</button>
+        <button class="modal-close" onclick="closeModal('est-preview-modal')">✕</button>
+      </div>
+    </div>
+    <div id="est-preview-body" class="est-preview-content"></div>
+  </div>
+</div>
+
 <script>
 // ===== DATA STORE =====
 const DB = {
@@ -3965,6 +4010,7 @@ function estInitForm() {
         row.querySelector('.est-mat').value = item.mat || '';
         row.querySelector('.est-size').value = item.size || '';
         row.querySelector('.est-qty').value = item.qty || '';
+        row.querySelector('.est-delivery').value = item.delivery || '';
         row.querySelector('.est-note').value = item.note || '';
       });
       if (est.items.length === 0) { for (var j = 0; j < 3; j++) estAddRow(); }
@@ -3989,6 +4035,7 @@ function estAddRow() {
     '<td><input type="text" class="est-mat" placeholder="材質"></td>' +
     '<td><input type="text" class="est-size" placeholder="寸法"></td>' +
     '<td><input type="number" class="est-qty" placeholder="数量" min="1"></td>' +
+    '<td><input type="text" class="est-delivery" placeholder="納期"></td>' +
     '<td><input type="text" class="est-note" placeholder="備考"></td>' +
     '<td><button class="btn btn-ghost btn-xs" onclick="estOpenProductSearch(this)">🔍検索</button></td>' +
     '<td><button class="btn btn-xs" style="color:var(--danger);" onclick="estRemoveRow(this)">✕</button></td>';
@@ -4046,9 +4093,10 @@ function estCollectFormData() {
     var mat = r.querySelector('.est-mat').value.trim();
     var size = r.querySelector('.est-size').value.trim();
     var qty = r.querySelector('.est-qty').value;
+    var delivery = r.querySelector('.est-delivery').value.trim();
     var note = r.querySelector('.est-note').value.trim();
     if (mat || size || qty) {
-      items.push({ no: items.length + 1, mat: mat, size: size, qty: qty ? parseInt(qty) : 0, note: note });
+      items.push({ no: items.length + 1, mat: mat, size: size, qty: qty ? parseInt(qty) : 0, delivery: delivery, note: note });
     }
   }
   if (items.length === 0) { showToast('材料を1つ以上入力してください', 'error'); return null; }
@@ -4101,14 +4149,67 @@ function estMarkSent() {
   }
 }
 
+function estBuildPreviewHTML(est) {
+  var tplHtml = (est.templates || []).filter(function(t) {
+    return t.indexOf('納期回答をお願い') < 0;
+  }).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
+
+  var itemsHtml = (est.items || []).map(function(item) {
+    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + (item.mat || '') + '</td><td>' + (item.size || '') + '</td><td style="text-align:center;">' + (item.qty || '') + '</td><td>' + (item.delivery || '') + '</td><td>' + (item.note || '') + '</td></tr>';
+  }).join('');
+  var rowCount = (est.items || []).length;
+  for (var ei = rowCount; ei < 10; ei++) {
+    itemsHtml += '<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>';
+  }
+
+  return '<div class="est-pv-title">見積書</div>' +
+    '<div class="est-pv-header">' +
+      '<div class="est-pv-left">' +
+        '<div class="est-pv-client">' + est.client + '</div>' +
+        '<div class="est-pv-honorific">御中</div>' +
+        '<div class="est-pv-message">下記の見積りをお願い致します。</div>' +
+      '</div>' +
+      '<div class="est-pv-right">' +
+        '<div class="est-pv-company">有限会社黒部鉄工所</div>' +
+        '<div>〒537-0012</div>' +
+        '<div>大阪市東成区大今里2-14-7</div>' +
+        '<div>TEL 06-6974-0590</div>' +
+        '<div>日付：' + est.date + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<table class="est-pv-table">' +
+      '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>納期</th><th>備考</th></tr></thead>' +
+      '<tbody>' + itemsHtml + '</tbody>' +
+    '</table>' +
+    (tplHtml ? '<div class="est-pv-templates">' + tplHtml + '</div>' : '') +
+    '<div class="est-pv-memo-label">備考</div>' +
+    '<div class="est-pv-memo">' + (est.memo || '') + '</div>' +
+    '<div class="est-pv-footer">お手数ですが、納期回答をお願い致します。</div>';
+}
+
+function estShowPreview() {
+  var savedId = estSave('draft');
+  if (!savedId) return;
+  var est = DB.estimates.find(function(e) { return e.id === savedId; });
+  if (!est) return;
+  document.getElementById('est-preview-body').innerHTML = estBuildPreviewHTML(est);
+  document.getElementById('est-preview-modal').classList.add('open');
+}
+
+function estPrintFromPreview() {
+  window.print();
+}
+
 function estPrint() {
   var est = DB.estimates.find(function(e) { return e.id === estEditId; });
   if (!est) return;
 
   var printArea = document.getElementById('est-print-area');
-  var tplHtml = (est.templates || []).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
+  var tplHtml = (est.templates || []).filter(function(t) {
+    return t.indexOf('納期回答をお願い') < 0;
+  }).map(function(t) { return '<div>・' + t + '</div>'; }).join('');
   var itemsHtml = (est.items || []).map(function(item) {
-    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + item.mat + '</td><td>' + item.size + '</td><td style="text-align:center;">' + item.qty + '</td><td>' + (item.note || '') + '</td></tr>';
+    return '<tr><td style="text-align:center;">' + item.no + '</td><td>' + item.mat + '</td><td>' + item.size + '</td><td style="text-align:center;">' + item.qty + '</td><td>' + (item.delivery || '') + '</td><td>' + (item.note || '') + '</td></tr>';
   }).join('');
 
   printArea.innerHTML = '<div class="est-print-header">' +
@@ -4119,20 +4220,20 @@ function estPrint() {
     '</div>' +
     '<div class="est-print-right">' +
       '<div class="est-print-company">有限会社黒部鉄工所</div>' +
-      '<div>〒939-0732</div>' +
-      '<div>富山県下新川郡朝日町平柳505</div>' +
-      '<div>TEL: 0765-83-3088</div>' +
-      '<div>FAX: 0765-83-3089</div>' +
+      '<div>〒537-0012</div>' +
+      '<div>大阪市東成区大今里2-14-7</div>' +
+      '<div>TEL 06-6974-0590</div>' +
     '</div>' +
   '</div>' +
-  '<div class="est-print-title">見積依頼書</div>' +
+  '<div class="est-print-title">見積書</div>' +
   '<div class="est-print-message">下記の見積りをお願い致します。</div>' +
   '<table class="est-print-table">' +
-    '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>備考</th></tr></thead>' +
+    '<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th><th>納期</th><th>備考</th></tr></thead>' +
     '<tbody>' + itemsHtml + '</tbody>' +
   '</table>' +
-  '<div class="est-print-templates">' + tplHtml + '</div>' +
-  (est.memo ? '<div class="est-print-memo">備考：' + est.memo + '</div>' : '');
+  (tplHtml ? '<div class="est-print-templates">' + tplHtml + '</div>' : '') +
+  (est.memo ? '<div class="est-print-memo">備考：' + est.memo + '</div>' : '') +
+  '<div style="margin-top:24pt;text-align:center;font-weight:700;font-size:11pt;border-top:1px solid #999;padding-top:12pt;">お手数ですが、納期回答をお願い致します。</div>';
 
   document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('print-active'); });
   document.getElementById('sec-estimate').classList.add('print-active');
@@ -4144,23 +4245,43 @@ function estRenderList() {
 }
 
 function estFilterList() {
-  var from = document.getElementById('est-search-from').value;
-  var to = document.getElementById('est-search-to').value;
-  var client = document.getElementById('est-search-client').value.toLowerCase();
-  var keyword = document.getElementById('est-search-keyword').value.toLowerCase();
-  var status = document.getElementById('est-search-status').value;
+  var fromEl = document.getElementById('est-search-from');
+  var toEl = document.getElementById('est-search-to');
+  var clientEl = document.getElementById('est-search-client');
+  var keywordEl = document.getElementById('est-search-keyword');
+  var statusEl = document.getElementById('est-search-status');
+  if (!fromEl || !toEl || !clientEl || !keywordEl || !statusEl) return;
+
+  var from = fromEl.value || '';
+  var to = toEl.value || '';
+  var client = (clientEl.value || '').trim().toLowerCase();
+  var keyword = (keywordEl.value || '').trim().toLowerCase();
+  var status = statusEl.value || '';
 
   var list = (DB.estimates || []).slice();
 
-  if (from) list = list.filter(function(e) { return e.date >= from; });
-  if (to) list = list.filter(function(e) { return e.date <= to; });
-  if (client) list = list.filter(function(e) { return (e.client || '').toLowerCase().indexOf(client) >= 0; });
-  if (status) list = list.filter(function(e) { return e.status === status; });
-  if (keyword) {
+  if (from) {
+    list = list.filter(function(e) { return e.date >= from; });
+  }
+  if (to) {
+    list = list.filter(function(e) { return e.date <= to; });
+  }
+  if (client) {
     list = list.filter(function(e) {
-      return (e.items || []).some(function(item) {
-        return (item.mat || '').toLowerCase().indexOf(keyword) >= 0 ||
-               (item.size || '').toLowerCase().indexOf(keyword) >= 0;
+      return (e.client || '').toLowerCase().indexOf(client) >= 0;
+    });
+  }
+  if (status) {
+    list = list.filter(function(e) { return e.status === status; });
+  }
+  if (keyword) {
+    var keywords = keyword.split(/\s+/);
+    list = list.filter(function(e) {
+      return keywords.every(function(kw) {
+        return (e.items || []).some(function(item) {
+          return (item.mat || '').toLowerCase().indexOf(kw) >= 0 ||
+                 (item.size || '').toLowerCase().indexOf(kw) >= 0;
+        });
       });
     });
   }
