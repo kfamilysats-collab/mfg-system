@@ -3838,7 +3838,7 @@ function _renderEstTemplateCheckboxes() {
   const selected = new Set(_currentEstimate.templateIds || []);
   const rows = templates.map((t, i) => `
     <div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-      <input type="checkbox" data-tid="${t.id}" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;flex-shrink:0;">
+      <input type="checkbox" id="tpl-cb-${t.id}" data-tid="${t.id}" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;flex-shrink:0;">
       <input type="text" value="${_escHtml(t.text)}" oninput="updateEstTemplate('${t.id}',this.value)" style="flex:1;font-size:13px;">
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',-1)" ${i===0?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↑</button>
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',1)" ${i===templates.length-1?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↓</button>
@@ -3886,8 +3886,13 @@ function _collectEstEditForm() {
 async function saveEstimate() {
   const e = _collectEstEditForm();
   if (!e) return;
+  _currentEstimate.templateIds =
+    [...document.querySelectorAll('#est-template-list input[type=checkbox]')]
+    .filter(cb => cb.checked)
+    .map(cb => cb.getAttribute('data-tid'))
+    .filter(id => id && id !== 'undefined');
+  e.templateIds = _currentEstimate.templateIds;
   console.log('templateIds:', e.templateIds);
-  e.templateIds = _currentEstimate.templateIds || [];
   if (!e.client) { showToast('宛先を入力してください', 'error'); return; }
   // 空行削除
   e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
