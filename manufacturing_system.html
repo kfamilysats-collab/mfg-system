@@ -3844,9 +3844,10 @@ function _renderEstTemplateCheckboxes() {
     const checked = selected.has(txt) ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" ${checked} data-txt="${_escHtml(txt)}" style="width:auto;">
-      <input type="text" value="${_escHtml(txt)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--bg2);" onchange="estUpdateTplText(${i}, this.value)">
+      <span style="flex:1;">${_escHtml(txt)}</span>
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},-1)">↑</button>
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},1)">↓</button>
+      <button class="btn btn-ghost btn-xs" type="button" onclick="estEditTpl(${i}, this)">✏️</button>
       <button class="btn btn-danger btn-xs" type="button" onclick="estDeleteTpl(${i})">削除</button>
     </label>`;
   }).join('');
@@ -3878,22 +3879,32 @@ function estDeleteTpl(i) {
   save();
   _renderEstTemplateCheckboxes();
 }
-function estUpdateTplText(i, newText) {
-  if (!newText.trim()) return;
-  const t = DB.estimateTemplates[i];
-  if (!t) return;
-  const oldText = typeof t === 'string' ? t : t.text;
-  if (typeof t === 'string') {
-    DB.estimateTemplates[i] = { text: newText };
-  } else {
-    t.text = newText;
-  }
-  if (_currentEstimate && _currentEstimate.selectedTemplateTexts) {
-    const idx = _currentEstimate.selectedTemplateTexts.indexOf(oldText);
-    if (idx >= 0) _currentEstimate.selectedTemplateTexts[idx] = newText;
-  }
-  save();
-  showToast('更新しました', 'success');
+function estEditTpl(i, btn) {
+  const label = btn.closest('label');
+  const span = label.querySelector('span');
+  if (!span) return;
+  const oldText = span.textContent;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = oldText;
+  input.style = 'flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;';
+  span.replaceWith(input);
+  input.focus();
+  btn.textContent = '✅';
+  btn.onclick = function() {
+    const newText = input.value.trim();
+    if (!newText) return;
+    const t = DB.estimateTemplates[i];
+    if (typeof t === 'string') DB.estimateTemplates[i] = { text: newText };
+    else t.text = newText;
+    if (_currentEstimate && _currentEstimate.selectedTemplateTexts) {
+      const idx = _currentEstimate.selectedTemplateTexts.indexOf(oldText);
+      if (idx >= 0) _currentEstimate.selectedTemplateTexts[idx] = newText;
+    }
+    save();
+    _renderEstTemplateCheckboxes();
+    showToast('更新しました', 'success');
+  };
 }
 
 function _collectEstEditForm() {
