@@ -4238,13 +4238,13 @@ async function printEstimateById(id) {
 async function _generateEstimatePdf(est) {
   const html = _buildEstPrintHtml(est);
   const now = new Date();
-  const ts = now.getFullYear()
+  const _ts = now.getFullYear()
     + String(now.getMonth()+1).padStart(2,'0')
     + String(now.getDate()).padStart(2,'0')
     + '_'
     + String(now.getHours()).padStart(2,'0')
     + String(now.getMinutes()).padStart(2,'0');
-  const title = '見積依頼書_' + (est.client||'') + '_' + ts;
+  const _printTitle = '見積依頼書_' + (est.client||'未設定') + '_' + _ts;
   const printWin = window.open('', '_blank', 'width=1200,height=900');
   if (!printWin) {
     showToast('ポップアップがブロックされました。ブラウザのポップアップ許可が必要です', 'error');
@@ -4254,7 +4254,7 @@ async function _generateEstimatePdf(est) {
 <html>
 <head>
 <meta charset="UTF-8">
-<title>${title}</title>
+<title>${_printTitle}</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif; background:#fff; color:#000; }
