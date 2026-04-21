@@ -517,8 +517,8 @@
               <input type="date" id="est-date">
             </div>
             <div class="form-group">
-              <label>宛先（取引先）</label>
-              <input type="text" id="est-client" list="est-client-list" placeholder="取引先を選択または入力">
+              <label>材料発注先</label>
+              <input type="text" id="est-client" list="est-client-list" placeholder="材料発注先を選択または入力">
               <datalist id="est-client-list"></datalist>
             </div>
             <div class="form-group">
@@ -3680,14 +3680,17 @@ function initEstimateSection() {
 function refreshEstClientList() {
   const dl = document.getElementById('est-client-list');
   if (!dl) return;
-  const names = (DB.companies||[]).map(c=>c.name).filter(Boolean);
-  dl.innerHTML = [...new Set(names)].sort().map(n=>`<option value="${_escHtml(n)}">`).join('');
+  const names = (DB.companies||[])
+    .filter(c => c.type === '材料発注先')
+    .map(c => c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort()
+    .map(n => `<option value="${_escHtml(n)}">`).join('');
 }
 function refreshEstRequesterList() {
   const dl = document.getElementById('est-requester-list');
   if (!dl) return;
   const names = (DB.companies||[])
-    .filter(c => c.type === '受注先' || !c.type)
+    .filter(c => c.type === '受注先')
     .map(c => c.name).filter(Boolean);
   dl.innerHTML = [...new Set(names)].sort()
     .map(n => `<option value="${_escHtml(n)}">`).join('');
