@@ -4307,7 +4307,10 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
   printWin.document.close();
   await new Promise(resolve => setTimeout(resolve, 1500));
   printWin.onload = function() {
-    setTimeout(() => { printWin.print(); }, 500);
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+    }, 500);
   };
 }
 
