@@ -4244,6 +4244,9 @@ async function _generateEstimatePdf(est) {
   if (!root) { showToast('印刷用要素がありません','error'); return; }
   root.innerHTML = _buildEstPrintHtml(est);
 
+  // DOMの描画完了を待つ
+  await new Promise(resolve => setTimeout(resolve, 500));
+
   // PDF生成中は画面内（ただし z-index:-1 で裏）に配置しないと
   // html2canvas が幅0で描画して真っ白PDFになる。
   const _savedStyle = root.getAttribute('style') || '';
@@ -4256,7 +4259,7 @@ async function _generateEstimatePdf(est) {
     margin: 0,
     filename: filename,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: true, backgroundColor: '#ffffff', width: 1122, height: 794 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
     pagebreak: { mode: ['css', 'legacy'] },
   };
