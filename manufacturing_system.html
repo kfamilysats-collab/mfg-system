@@ -4243,6 +4243,14 @@ async function _generateEstimatePdf(est) {
   const root = document.getElementById('est-print-root');
   if (!root) { showToast('印刷用要素がありません','error'); return; }
   root.innerHTML = _buildEstPrintHtml(est);
+
+  // PDF生成中は画面内（ただし z-index:-1 で裏）に配置しないと
+  // html2canvas が幅0で描画して真っ白PDFになる。
+  const _savedStyle = root.getAttribute('style') || '';
+  root.setAttribute('style',
+    'position:fixed;left:0;top:0;width:297mm;z-index:-1;' +
+    'background:#fff;opacity:1;pointer-events:none;');
+
   const filename = '見積依頼書_' + (est.client||'') + '_' + (est.date||'') + '.pdf';
   const opt = {
     margin: 0,
@@ -4259,8 +4267,10 @@ async function _generateEstimatePdf(est) {
   } catch (e) {
     showToast('PDF生成失敗: ' + e.message, 'error');
   } finally {
-    // 印刷用HTMLは残しておいてもレイアウト外なので問題ないが、念のため空に
-    setTimeout(()=>{ root.innerHTML = ''; }, 1000);
+    // 元のオフスクリーン配置に戻す
+    if (_savedStyle) root.setAttribute('style', _savedStyle);
+    else root.removeAttribute('style');
+    root.innerHTML = '';
   }
 }
 
