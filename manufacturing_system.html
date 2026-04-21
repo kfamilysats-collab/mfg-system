@@ -3706,7 +3706,7 @@ function renderEstimateList() {
   }
   tbody.innerHTML = filtered.map(e => {
     const m = EST_STATUS_META[e.status] || EST_STATUS_META.draft;
-    return `<tr>
+    return `<tr style="cursor:pointer;" onclick="editEstimate('${e.id}')">
       <td>${_escHtml(fmtDate(e.date))}</td>
       <td style="font-family:monospace;">${_escHtml(e.number||'')}</td>
       <td>${_escHtml(e.client||'')}</td>
@@ -3714,7 +3714,7 @@ function renderEstimateList() {
       <td>
         <span class="badge ${m.cls}" onclick="openEstStatusModal('${e.id}')" style="cursor:pointer;">${m.icon} ${m.label}</span>
       </td>
-      <td style="white-space:nowrap;">
+      <td style="white-space:nowrap;" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-xs" onclick="editEstimate('${e.id}')">編集</button>
         <button class="btn btn-ghost btn-xs" onclick="printEstimateById('${e.id}')">🖨 印刷</button>
         <button class="btn btn-ghost btn-xs" onclick="duplicateEstimate('${e.id}')">複製</button>
