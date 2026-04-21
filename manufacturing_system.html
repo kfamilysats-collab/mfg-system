@@ -4248,8 +4248,8 @@ async function _generateEstimatePdf(est) {
   // html2canvas が幅0で描画して真っ白PDFになる。
   const _savedStyle = root.getAttribute('style') || '';
   root.setAttribute('style',
-    'position:fixed;left:0;top:0;width:297mm;z-index:-1;' +
-    'background:#fff;opacity:1;pointer-events:none;');
+    'position:fixed;left:0;top:0;width:297mm;height:210mm;' +
+    'z-index:9999;opacity:0;pointer-events:none;overflow:hidden;background:#fff;');
 
   const filename = '見積依頼書_' + (est.client||'') + '_' + (est.date||'') + '.pdf';
   const opt = {
