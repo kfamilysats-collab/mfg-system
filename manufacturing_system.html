@@ -3844,7 +3844,7 @@ function _renderEstTemplateCheckboxes() {
     const checked = selected.has(txt) ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" ${checked} data-txt="${_escHtml(txt)}" style="width:auto;">
-      <input type="text" value="${_escHtml(txt)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--bg2);" onchange="estUpdateTplText(${i}, '${_escHtml(txt)}', this.value)">
+      <input type="text" value="${_escHtml(txt)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--bg2);" oninput="estUpdateTplText(${i}, '${_escHtml(txt)}', this.value)">
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},-1)">↑</button>
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},1)">↓</button>
       <button class="btn btn-danger btn-xs" type="button" onclick="estDeleteTpl(${i})">削除</button>
@@ -3901,7 +3901,12 @@ function _collectEstEditForm() {
   _currentEstimate.updatedAt = new Date().toISOString();
   _currentEstimate.selectedTemplateTexts =
     [...document.querySelectorAll('#est-template-list input[type=checkbox]:checked')]
-    .map(cb => cb.getAttribute('data-txt'));
+    .map(cb => {
+      const label = cb.closest('label');
+      const textInput = label ? label.querySelector('input[type=text]') : null;
+      return textInput ? textInput.value.trim() : cb.getAttribute('data-txt');
+    })
+    .filter(t => t);
   return _currentEstimate;
 }
 
