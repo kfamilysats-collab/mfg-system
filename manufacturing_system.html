@@ -6,6 +6,7 @@
 <title>製造管理システム</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <style>
   :root {
     --bg: #f5f7fa;
@@ -210,8 +211,19 @@
 
   /* ===== Estimate page styles ===== */
   .est-tpl-item { display:flex; align-items:center; gap:4px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .est-status-draft { background:#fef3c7; color:#92400e; }
+  .est-status-sent { background:#dcfce7; color:#166534; }
+  .est-status-pending { background:#dbeafe; color:#1e40af; }
+  .est-status-done { background:#e5e7eb; color:#374151; }
+  .est-row-input { width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:#fff; font-size:13px; }
+  .est-row-input:focus { border-color: var(--accent); outline:none; }
+  .est-item-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .est-item-table th { background:var(--bg3); padding:8px; border:1px solid var(--border); font-size:11px; text-align:left; }
+  .est-item-table td { padding:4px; border:1px solid var(--border); vertical-align:top; }
+  .est-hist-row { cursor:pointer; }
+  .est-hist-row:hover td { background: rgba(61,127,255,0.08); }
 
-  /* ===== Print CSS ===== */
+  /* ===== Print CSS (general) ===== */
   @media print {
     body { background:#fff !important; color:#000 !important; font-size:12pt; }
     .sidebar, .sidebar-overlay, .mobile-header, .menu-btn, .toast,
@@ -222,16 +234,101 @@
     .section { display:none !important; }
     .section.print-active { display:block !important; }
     .card { border:none !important; box-shadow:none !important; padding:0 !important; }
-
-
     .no-print { display:none !important; }
   }
-  /* ===== Estimate Preview Modal CSS ====== */
-    background: #fff; color: #000; padding: 40px 36px;
-    font-family: "Yu Mincho", "Hiragino Mincho ProN", "MS PMincho", serif;
-    font-size: 11pt; line-height: 1.8;
+
+  /* ===== Estimate Print Template (A4 landscape, monochrome, FAX) ===== */
+  #est-print-root { position:absolute; left:-10000px; top:0; }
+  .est-print-root, .est-print-root * {
+    font-family: 'Yu Gothic', 'Yu Gothic UI', 'Noto Sans JP', 'Meiryo', sans-serif !important;
+    color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
+  .est-page {
+    width: 297mm;
+    height: 210mm;
+    padding: 10mm 12mm;
+    background: #fff;
+    box-sizing: border-box;
+    position: relative;
+    font-size: 15px;
+    line-height: 1.5;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .est-page:last-child { page-break-after: auto; }
+  .est-page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm; }
+  .est-page-header .est-title {
+    font-size: 32px; font-weight: 900; letter-spacing: 0.6em;
+    border-bottom: 2px solid #000; padding: 0 8px 2px 8px;
+  }
+  .est-page-header .est-company { font-size: 13px; text-align: right; line-height: 1.55; }
+  .est-page-header .est-company .c-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+
+  .est-meta-row { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:3mm; gap: 10mm; }
+  .est-meta-row .est-to {
+    font-size: 18px; font-weight: 700;
+    border-bottom: 1px solid #000; padding: 2px 6px 4px 2px; min-width: 220px;
+  }
+  .est-meta-row .est-to-note { font-size: 14px; margin-top: 2mm; font-weight: 600; }
+  .est-meta-row .est-date { font-size: 14px; text-align:right; }
+
+  .est-print-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+  .est-print-table th, .est-print-table td {
+    border: 1.2px solid #000; padding: 6px 6px; vertical-align: middle;
+    font-size: 15px; word-break: break-all; line-height: 1.35;
+  }
+  .est-print-table th { background: #fff; font-weight: 700; font-size: 13px; text-align: center; }
+  .est-print-table col.c-no    { width: 38px; }
+  .est-print-table col.c-mat   { width: 160px; }
+  .est-print-table col.c-size  { width: auto; }
+  .est-print-table col.c-qty   { width: 52px; }
+  .est-print-table col.c-cham  { width: 140px; }
+  .est-print-table col.c-due   { width: 65px; }
+  .est-print-table col.c-price { width: 72px; }
+  .est-print-table td.c-no    { text-align:center; }
+  .est-print-table td.c-mat   { font-size:16px; font-weight:700; }
+  .est-print-table td.c-qty   { text-align:center; }
+  .est-print-table td.c-due   { text-align:center; }
+  .est-print-table td.c-price { background:#fff; }
+
+  .est-footer-row { display:flex; gap:6mm; margin-top:4mm; align-items:flex-start; }
+  .est-footer-row .est-notes {
+    flex: 1;
+    border: 1.2px solid #000;
+    padding: 4mm 5mm;
+    min-height: 36mm;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+  }
+  .est-footer-row .est-notes-title {
+    font-weight: 700; font-size: 13px; margin-bottom: 2mm;
+    border-bottom: 1px solid #000; padding-bottom: 1mm;
+  }
+  .est-footer-row .est-chamfer-ref {
+    width: 78mm;
+    border: 1.2px solid #000;
+    padding: 3mm;
+    text-align: center;
+  }
+  .est-footer-row .est-chamfer-ref .est-cref-title {
+    font-size: 12px; font-weight: 700; margin-bottom: 2mm;
+  }
+  .est-closing-msg {
+    margin-top: 3mm;
+    border: 1.5px solid #000;
+    padding: 3mm 5mm;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
   @media print {
+    @page { size: A4 landscape; margin: 0; }
+    .est-page { margin: 0; }
   }
 </style>
 </head>
@@ -260,6 +357,12 @@
         </div>
         <div class="nav-item" onclick="showSection('product-form')">
           <span class="nav-icon">➕</span>製品登録
+        </div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">見積</div>
+        <div class="nav-item" onclick="showSection('estimate')">
+          <span class="nav-icon">📋</span>見積依頼書
         </div>
       </div>
       <div class="nav-group">
@@ -344,6 +447,126 @@
             <thead><tr><th>日付</th><th>機械</th><th>図番</th><th>品名</th><th>数量</th><th>金額</th></tr></thead>
             <tbody id="recent-tbody"></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ESTIMATE ===== -->
+    <section class="section" id="sec-estimate">
+      <!-- List view -->
+      <div id="est-list-view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">📋 見積依頼書</div>
+            <div class="page-subtitle" id="est-count-label"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="openEstTemplateManager()">📝 文言テンプレート</button>
+            <button class="btn btn-primary btn-sm" onclick="newEstimate()">＋ 新規作成</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="search-row">
+            <div class="search-input"><input type="text" id="est-search" placeholder="🔍 宛先・番号・材質で検索..." oninput="renderEstimateList()"></div>
+            <select id="est-status-filter" onchange="renderEstimateList()" style="width:160px;">
+              <option value="">全状態</option>
+              <option value="draft">🟡 下書き</option>
+              <option value="sent">✅ 送信済み</option>
+              <option value="pending">🔵 回答待ち</option>
+              <option value="done">✔ 完了</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日付</th><th>番号</th><th>宛先</th><th>行数</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="est-list-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit form view -->
+      <div id="est-edit-view" style="display:none;">
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="est-edit-title">見積依頼書 作成</div>
+            <div class="page-subtitle" id="est-edit-subtitle"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="backToEstList()">← 一覧へ</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>日付</label>
+              <input type="date" id="est-date">
+            </div>
+            <div class="form-group">
+              <label>宛先（取引先）</label>
+              <input type="text" id="est-client" list="est-client-list" placeholder="取引先を選択または入力">
+              <datalist id="est-client-list"></datalist>
+            </div>
+            <div class="form-group">
+              <label>状態</label>
+              <select id="est-status">
+                <option value="draft">🟡 下書き</option>
+                <option value="sent">✅ 送信済み</option>
+                <option value="pending">🔵 回答待ち</option>
+                <option value="done">✔ 完了</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">明細（行数分だけ表示されます・1ページ最大10行）</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="estPickFromHistory()">📋 過去見積から選択</button>
+              <button class="btn btn-ghost btn-sm" onclick="estPickFromProducts()">🔍 製品から選択</button>
+              <button class="btn btn-primary btn-sm" onclick="estAddRow()">＋ 行追加</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="est-item-table">
+              <thead>
+                <tr>
+                  <th style="width:38px;">No.</th>
+                  <th style="width:160px;">材質</th>
+                  <th>寸法</th>
+                  <th style="width:70px;">数量</th>
+                  <th style="width:150px;">面取り指示</th>
+                  <th style="width:80px;">納期</th>
+                  <th style="width:1%;white-space:nowrap;"></th>
+                </tr>
+              </thead>
+              <tbody id="est-items-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">備考欄（印刷用・複数選択可）</div>
+          <div id="est-template-list" style="margin-bottom:12px;"></div>
+          <div class="form-group">
+            <label>追加メモ（任意・テンプレートと重ね合わせ）</label>
+            <textarea id="est-extra-notes" rows="3" placeholder="その他自由記入"></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">操作</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="saveEstimate()">💾 保存</button>
+            <button class="btn btn-success btn-sm" onclick="printEstimate()">🖨 印刷（PDF出力）</button>
+            <button class="btn btn-ghost btn-sm" onclick="markEstimateSent()">📠 FAX送信済み</button>
+            <button class="btn btn-ghost btn-sm" onclick="registerEstimateAsProducts()">📝 製品登録</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteEstimate()" style="margin-left:auto;">🗑 削除</button>
+          </div>
         </div>
       </div>
     </section>
@@ -1173,6 +1396,46 @@
   </div>
 </div>
 
+<!-- Estimate template manager modal -->
+<div class="modal-overlay" id="est-template-modal">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">📝 備考文言テンプレート</div>
+      <button class="modal-close" onclick="closeModal('est-template-modal')">✕</button>
+    </div>
+    <div id="est-template-edit-list" style="margin-bottom:16px;"></div>
+    <div class="form-group">
+      <label>新しいテンプレートを追加</label>
+      <textarea id="est-template-new" rows="2" placeholder="例：いつもお世話になっております。"></textarea>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-primary btn-sm" onclick="addEstTemplate()">＋ 追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- Estimate history picker modal -->
+<div class="modal-overlay" id="est-history-modal">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 過去の見積履歴から選択</div>
+      <button class="modal-close" onclick="closeModal('est-history-modal')">✕</button>
+    </div>
+    <div class="search-row">
+      <div class="search-input"><input type="text" id="est-history-search" placeholder="材質・寸法で検索..." oninput="renderEstHistoryList()"></div>
+    </div>
+    <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>日付</th><th>宛先</th><th>材質</th><th>寸法</th><th>数量</th><th>面取り</th><th>納期</th><th style="width:1%;"></th></tr></thead>
+        <tbody id="est-history-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Estimate print root (hidden source for html2pdf) -->
+<div id="est-print-root" class="est-print-root"></div>
+
 
 <script>
 // ===== DATA STORE =====
@@ -1185,7 +1448,16 @@ const DB = {
   machineInfo: [],
   workers: [],
   history: [], // 変更履歴（最大500件）
+  estimates: [], // 見積依頼書
+  estimateTemplates: [], // 備考文言テンプレート
 };
+
+const EST_DEFAULT_TEMPLATES = [
+  'お手数ですが、納期回答を宜しくお願い致します。',
+  '請求は〇月にして頂きますようお願い致します。',
+  'いつもお世話になっております。',
+  '※キズ・打痕・サビ注意',
+];
 
 function save() {
   localStorage.setItem('mfg_db', JSON.stringify(DB));
@@ -1221,6 +1493,12 @@ function load() {
     if (!DB.machineInfo) DB.machineInfo = [];
     if (!DB.workers) DB.workers = [];
     if (!DB.history) DB.history = [];
+    if (!DB.estimates) DB.estimates = [];
+    if (!DB.estimateTemplates) DB.estimateTemplates = [];
+  }
+  // デフォルトのテンプレートが1つも無い場合は投入
+  if (!DB.estimateTemplates || DB.estimateTemplates.length === 0) {
+    DB.estimateTemplates = EST_DEFAULT_TEMPLATES.map(t => ({ id: genId(), text: t }));
   }
 }
 
@@ -1284,6 +1562,7 @@ function showSection(name) {
   if (name === 'onedrive') initOneDriveSection();
   if (name === 'production-form') initProductionForm();
   if (name === 'product-form') { initProductForm(); refreshProductFormLists(); }
+  if (name === 'estimate') initEstimateSection();
 }
 
 function toggleSidebar() {
@@ -3357,6 +3636,633 @@ function initOneDriveSection() {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); }));
+
+// ===== ESTIMATE (見積依頼書) =====
+let _currentEstimate = null; // 編集中の見積（null = 一覧表示）
+
+const EST_STATUS_META = {
+  draft:   { icon: '🟡', label: '下書き',   cls: 'est-status-draft' },
+  sent:    { icon: '✅', label: '送信済み', cls: 'est-status-sent' },
+  pending: { icon: '🔵', label: '回答待ち', cls: 'est-status-pending' },
+  done:    { icon: '✔',  label: '完了',     cls: 'est-status-done' },
+};
+
+function _escHtml(s) {
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function initEstimateSection() {
+  backToEstList();
+  renderEstimateList();
+  refreshEstClientList();
+}
+
+function refreshEstClientList() {
+  const dl = document.getElementById('est-client-list');
+  if (!dl) return;
+  const names = (DB.companies||[]).map(c=>c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort().map(n=>`<option value="${_escHtml(n)}">`).join('');
+}
+
+function backToEstList() {
+  _currentEstimate = null;
+  const lv = document.getElementById('est-list-view');
+  const ev = document.getElementById('est-edit-view');
+  if (lv) lv.style.display = '';
+  if (ev) ev.style.display = 'none';
+}
+
+function renderEstimateList() {
+  const tbody = document.getElementById('est-list-tbody');
+  if (!tbody) return;
+  const q = (document.getElementById('est-search').value||'').toLowerCase().trim();
+  const statusFilter = document.getElementById('est-status-filter').value || '';
+  const list = (DB.estimates||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const filtered = list.filter(e => {
+    if (statusFilter && e.status !== statusFilter) return false;
+    if (!q) return true;
+    const hay = [e.number, e.client, ...(e.items||[]).map(i=>(i.material||'')+' '+(i.size||''))].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  document.getElementById('est-count-label').textContent = `${filtered.length}件の見積依頼書（全${list.length}件）`;
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">見積依頼書はまだありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => {
+    const m = EST_STATUS_META[e.status] || EST_STATUS_META.draft;
+    return `<tr>
+      <td>${_escHtml(fmtDate(e.date))}</td>
+      <td style="font-family:monospace;">${_escHtml(e.number||'')}</td>
+      <td>${_escHtml(e.client||'')}</td>
+      <td style="text-align:right;">${(e.items||[]).length}</td>
+      <td>
+        <span class="badge ${m.cls}" onclick="openEstStatusModal('${e.id}')" style="cursor:pointer;">${m.icon} ${m.label}</span>
+      </td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="editEstimate('${e.id}')">編集</button>
+        <button class="btn btn-ghost btn-xs" onclick="printEstimateById('${e.id}')">🖨 印刷</button>
+        <button class="btn btn-ghost btn-xs" onclick="duplicateEstimate('${e.id}')">複製</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function newEstimate() {
+  const today = new Date();
+  const dateStr = today.toISOString().slice(0,10);
+  const yearSeq = (DB.estimates||[]).filter(e=>(e.number||'').startsWith('E'+today.getFullYear())).length + 1;
+  _currentEstimate = {
+    id: genId(),
+    number: 'E' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0'),
+    date: dateStr,
+    client: '',
+    items: [],
+    templateIds: (DB.estimateTemplates||[]).filter(t=>t.text.includes('納期回答')).map(t=>t.id),
+    extraNotes: '',
+    status: 'draft',
+    isNew: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  estAddRow(); // 空の1行を用意
+  _renderEstEditView();
+}
+
+function editEstimate(id) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) { showToast('見積が見つかりません', 'error'); return; }
+  _currentEstimate = _deepClone(e);
+  _currentEstimate.isNew = false;
+  _renderEstEditView();
+}
+
+function duplicateEstimate(id) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) return;
+  const today = new Date();
+  const yearSeq = (DB.estimates||[]).filter(x=>(x.number||'').startsWith('E'+today.getFullYear())).length + 1;
+  _currentEstimate = _deepClone(e);
+  _currentEstimate.id = genId();
+  _currentEstimate.number = 'E' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0');
+  _currentEstimate.date = today.toISOString().slice(0,10);
+  _currentEstimate.status = 'draft';
+  _currentEstimate.isNew = true;
+  _currentEstimate.createdAt = new Date().toISOString();
+  _currentEstimate.updatedAt = new Date().toISOString();
+  _renderEstEditView();
+}
+
+function _renderEstEditView() {
+  if (!_currentEstimate) return;
+  document.getElementById('est-list-view').style.display = 'none';
+  document.getElementById('est-edit-view').style.display = '';
+  document.getElementById('est-edit-title').textContent = _currentEstimate.isNew ? '見積依頼書 作成' : '見積依頼書 編集';
+  document.getElementById('est-edit-subtitle').textContent = _currentEstimate.number || '';
+  document.getElementById('est-date').value = _currentEstimate.date || '';
+  document.getElementById('est-client').value = _currentEstimate.client || '';
+  document.getElementById('est-status').value = _currentEstimate.status || 'draft';
+  document.getElementById('est-extra-notes').value = _currentEstimate.extraNotes || '';
+  refreshEstClientList();
+  _renderEstItems();
+  _renderEstTemplateCheckboxes();
+}
+
+function _renderEstItems() {
+  const tbody = document.getElementById('est-items-tbody');
+  if (!tbody || !_currentEstimate) return;
+  const items = _currentEstimate.items || [];
+  if (items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = items.map((it,i) => `
+    <tr>
+      <td style="text-align:center;font-weight:600;">${i+1}</td>
+      <td><input class="est-row-input" value="${_escHtml(it.material||'')}" oninput="estRowUpdate(${i},'material',this.value)" placeholder="例：SS400"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.size||'')}" oninput="estRowUpdate(${i},'size',this.value)" placeholder="例：t12×100×200"></td>
+      <td><input class="est-row-input" type="text" value="${_escHtml(it.qty||'')}" oninput="estRowUpdate(${i},'qty',this.value)" placeholder="1"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.chamfer||'')}" oninput="estRowUpdate(${i},'chamfer',this.value)" placeholder="例：C2 全周"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.delivery||'')}" oninput="estRowUpdate(${i},'delivery',this.value)" placeholder="例：5日"></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="estMoveRow(${i},-1)" title="上へ">↑</button>
+        <button class="btn btn-ghost btn-xs" onclick="estMoveRow(${i},1)" title="下へ">↓</button>
+        <button class="btn btn-danger btn-xs" onclick="estRemoveRow(${i})">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function estAddRow() {
+  if (!_currentEstimate) return;
+  _currentEstimate.items = _currentEstimate.items || [];
+  _currentEstimate.items.push({ material:'', size:'', qty:'', chamfer:'', delivery:'' });
+  _renderEstItems();
+}
+function estRemoveRow(i) {
+  if (!_currentEstimate) return;
+  _currentEstimate.items.splice(i,1);
+  _renderEstItems();
+}
+function estMoveRow(i, dir) {
+  if (!_currentEstimate) return;
+  const items = _currentEstimate.items;
+  const j = i + dir;
+  if (j < 0 || j >= items.length) return;
+  [items[i], items[j]] = [items[j], items[i]];
+  _renderEstItems();
+}
+function estRowUpdate(i, key, val) {
+  if (!_currentEstimate) return;
+  if (!_currentEstimate.items[i]) return;
+  _currentEstimate.items[i][key] = val;
+}
+
+function _renderEstTemplateCheckboxes() {
+  const container = document.getElementById('est-template-list');
+  if (!container || !_currentEstimate) return;
+  const templates = DB.estimateTemplates || [];
+  const selected = new Set(_currentEstimate.templateIds || []);
+  if (templates.length === 0) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:12px;">テンプレートがありません。「📝 文言テンプレート」から追加してください。</div>';
+    return;
+  }
+  container.innerHTML = templates.map(t=>`
+    <label class="est-tpl-item" style="cursor:pointer;">
+      <input type="checkbox" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;margin-right:6px;">
+      <span>${_escHtml(t.text)}</span>
+    </label>
+  `).join('');
+}
+
+function estToggleTemplate(id, checked) {
+  if (!_currentEstimate) return;
+  _currentEstimate.templateIds = _currentEstimate.templateIds || [];
+  const s = new Set(_currentEstimate.templateIds);
+  if (checked) s.add(id); else s.delete(id);
+  _currentEstimate.templateIds = [...s];
+}
+
+function _collectEstEditForm() {
+  if (!_currentEstimate) return null;
+  _currentEstimate.date = document.getElementById('est-date').value || new Date().toISOString().slice(0,10);
+  _currentEstimate.client = document.getElementById('est-client').value.trim();
+  _currentEstimate.status = document.getElementById('est-status').value || 'draft';
+  _currentEstimate.extraNotes = document.getElementById('est-extra-notes').value || '';
+  _currentEstimate.updatedAt = new Date().toISOString();
+  return _currentEstimate;
+}
+
+async function saveEstimate() {
+  const e = _collectEstEditForm();
+  if (!e) return;
+  if (!e.client) { showToast('宛先を入力してください', 'error'); return; }
+  // 空行削除
+  e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
+  if (e.items.length === 0) { showToast('明細を1行以上入力してください', 'error'); return; }
+
+  DB.estimates = DB.estimates || [];
+  const idx = DB.estimates.findIndex(x=>x.id===e.id);
+  const before = idx >= 0 ? _deepClone(DB.estimates[idx]) : null;
+  if (idx >= 0) DB.estimates[idx] = _deepClone(e);
+  else DB.estimates.push(_deepClone(e));
+  recordHistory(idx>=0?'update':'create', 'estimate', e.number+' '+e.client, before, _deepClone(e));
+  save();
+  _currentEstimate.isNew = false;
+  showToast('✅ 見積を保存しました', 'success');
+  renderEstimateList();
+}
+
+function deleteEstimate() {
+  if (!_currentEstimate) return;
+  if (!confirm('この見積を削除しますか？')) return;
+  const idx = (DB.estimates||[]).findIndex(x=>x.id===_currentEstimate.id);
+  if (idx >= 0) {
+    const before = _deepClone(DB.estimates[idx]);
+    DB.estimates.splice(idx,1);
+    recordHistory('delete', 'estimate', before.number+' '+before.client, before, null);
+  }
+  save();
+  showToast('削除しました', 'success');
+  backToEstList();
+  renderEstimateList();
+}
+
+function markEstimateSent() {
+  const e = _collectEstEditForm();
+  if (!e) return;
+  e.status = 'sent';
+  document.getElementById('est-status').value = 'sent';
+  saveEstimate();
+}
+
+function openEstStatusModal(id) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) return;
+  const opts = document.getElementById('est-status-options');
+  opts.innerHTML = Object.entries(EST_STATUS_META).map(([k,m])=>`
+    <button class="btn btn-ghost" style="justify-content:flex-start;" onclick="setEstStatus('${id}','${k}')">${m.icon} ${m.label}</button>
+  `).join('');
+  openModal('est-status-modal');
+}
+function setEstStatus(id, status) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) return;
+  const before = _deepClone(e);
+  e.status = status;
+  e.updatedAt = new Date().toISOString();
+  recordHistory('update','estimate',e.number+' 状態変更→'+EST_STATUS_META[status].label, before, _deepClone(e));
+  save();
+  closeModal('est-status-modal');
+  renderEstimateList();
+  showToast('状態を変更しました', 'success');
+}
+
+// ===== 製品登録連携 =====
+function registerEstimateAsProducts() {
+  const e = _collectEstEditForm();
+  if (!e) return;
+  if (!e.client) { showToast('先に宛先を入力してください','error'); return; }
+  const items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim());
+  if (items.length === 0) { showToast('明細がありません','error'); return; }
+  if (!confirm(`${items.length}件の明細を製品マスタに登録しますか？`)) return;
+  let added = 0;
+  items.forEach(it => {
+    const fignum = 'EST-'+e.number+'-'+(added+1);
+    DB.products.push({
+      id: genId(),
+      fignum: fignum,
+      name: (it.material||'') + ' ' + (it.size||''),
+      client: e.client,
+      unitPrice: 0,
+      matSupplier: '',
+      matName: it.material||'',
+      matSize: it.size||'',
+      matPrice: 0,
+      outsource: [],
+      processes: [],
+      memo: '見積 '+e.number+' より登録 / 面取り:'+(it.chamfer||'')+' 納期:'+(it.delivery||''),
+    });
+    added++;
+  });
+  save();
+  showToast(`✅ ${added}件を製品登録しました`, 'success');
+}
+
+// ===== 履歴選択 =====
+function estPickFromHistory() {
+  renderEstHistoryList();
+  openModal('est-history-modal');
+}
+function renderEstHistoryList() {
+  const tbody = document.getElementById('est-history-tbody');
+  if (!tbody) return;
+  const q = (document.getElementById('est-history-search').value||'').toLowerCase().trim();
+  const rows = [];
+  (DB.estimates||[]).forEach(e => {
+    (e.items||[]).forEach(it => {
+      rows.push({ date: e.date, client: e.client, item: it });
+    });
+  });
+  const filtered = rows.filter(r => {
+    if (!q) return true;
+    return ((r.item.material||'')+' '+(r.item.size||'')+' '+(r.client||'')).toLowerCase().includes(q);
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,200);
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);">履歴がありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((r,i)=>`
+    <tr class="est-hist-row">
+      <td>${_escHtml(fmtDate(r.date))}</td>
+      <td>${_escHtml(r.client||'')}</td>
+      <td>${_escHtml(r.item.material||'')}</td>
+      <td>${_escHtml(r.item.size||'')}</td>
+      <td style="text-align:center;">${_escHtml(r.item.qty||'')}</td>
+      <td>${_escHtml(r.item.chamfer||'')}</td>
+      <td>${_escHtml(r.item.delivery||'')}</td>
+      <td><button class="btn btn-primary btn-xs" onclick='estAddFromHistory(${JSON.stringify(r.item).replace(/'/g,"&#39;")})'>追加</button></td>
+    </tr>
+  `).join('');
+}
+function estAddFromHistory(item) {
+  if (!_currentEstimate) return;
+  _currentEstimate.items = _currentEstimate.items || [];
+  _currentEstimate.items.push({
+    material: item.material||'', size: item.size||'', qty: item.qty||'',
+    chamfer: item.chamfer||'', delivery: item.delivery||'',
+  });
+  _renderEstItems();
+  showToast('明細を追加しました','success');
+}
+
+// ===== 製品マスタから選択 =====
+function estPickFromProducts() {
+  const tbody = document.getElementById('est-product-results');
+  document.getElementById('est-product-search').value = '';
+  _renderEstProductResults('');
+  openModal('est-product-modal');
+}
+function estSearchProducts() {
+  _renderEstProductResults(document.getElementById('est-product-search').value||'');
+}
+function _renderEstProductResults(q) {
+  const tbody = document.getElementById('est-product-results');
+  if (!tbody) return;
+  const needle = q.toLowerCase().trim();
+  const list = (DB.products||[]).filter(p => {
+    if (!needle) return true;
+    return ((p.fignum||'')+' '+(p.name||'')+' '+(p.matName||'')+' '+(p.matSize||'')).toLowerCase().includes(needle);
+  }).slice(0, 200);
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);">製品がありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(p => `
+    <tr>
+      <td>${_escHtml(p.fignum||'')}</td>
+      <td>${_escHtml(p.name||'')}</td>
+      <td>${_escHtml(p.matName||'')}</td>
+      <td>${_escHtml(p.matSize||'')}</td>
+      <td><button class="btn btn-primary btn-xs" onclick="estAddFromProduct('${p.id}')">追加</button></td>
+    </tr>
+  `).join('');
+}
+function estAddFromProduct(id) {
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if (!p || !_currentEstimate) return;
+  _currentEstimate.items.push({
+    material: p.matName||'', size: p.matSize||'', qty:'1',
+    chamfer:'', delivery:'',
+  });
+  _renderEstItems();
+  closeModal('est-product-modal');
+  showToast('製品を明細に追加しました','success');
+}
+
+// ===== テンプレート管理 =====
+function openEstTemplateManager() {
+  _renderEstTemplateEditList();
+  document.getElementById('est-template-new').value = '';
+  openModal('est-template-modal');
+}
+function _renderEstTemplateEditList() {
+  const c = document.getElementById('est-template-edit-list');
+  const list = DB.estimateTemplates || [];
+  if (list.length === 0) {
+    c.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px;">テンプレートがありません</div>';
+    return;
+  }
+  c.innerHTML = list.map(t => `
+    <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);">
+      <textarea rows="2" style="flex:1;" oninput="updateEstTemplate('${t.id}',this.value)">${_escHtml(t.text)}</textarea>
+      <button class="btn btn-danger btn-xs" onclick="deleteEstTemplate('${t.id}')">削除</button>
+    </div>
+  `).join('');
+}
+function addEstTemplate() {
+  const text = (document.getElementById('est-template-new').value||'').trim();
+  if (!text) return;
+  DB.estimateTemplates = DB.estimateTemplates || [];
+  DB.estimateTemplates.push({ id: genId(), text });
+  save();
+  _renderEstTemplateEditList();
+  document.getElementById('est-template-new').value = '';
+  if (_currentEstimate) _renderEstTemplateCheckboxes();
+  showToast('テンプレートを追加しました','success');
+}
+function updateEstTemplate(id, text) {
+  const t = (DB.estimateTemplates||[]).find(x=>x.id===id);
+  if (!t) return;
+  t.text = text;
+  save();
+  if (_currentEstimate) _renderEstTemplateCheckboxes();
+}
+function deleteEstTemplate(id) {
+  if (!confirm('このテンプレートを削除しますか？')) return;
+  DB.estimateTemplates = (DB.estimateTemplates||[]).filter(t=>t.id!==id);
+  save();
+  _renderEstTemplateEditList();
+  if (_currentEstimate) _renderEstTemplateCheckboxes();
+  showToast('削除しました','success');
+}
+
+// ===== 印刷（html2pdf.js）=====
+const EST_ROWS_PER_PAGE = 10;
+
+function _buildEstChamferSvg() {
+  // 直方体に①〜⑫の面取り位置番号。角12辺に対応。
+  return `
+    <svg viewBox="0 0 260 150" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit;">
+      <g fill="none" stroke="#000" stroke-width="1.4">
+        <!-- front face -->
+        <polygon points="30,110 170,110 170,30 30,30" />
+        <!-- back face offset -->
+        <polygon points="90,150 230,150 230,70 90,70" stroke-dasharray="3,3" />
+        <!-- connecting edges -->
+        <line x1="30" y1="30" x2="90" y2="70" />
+        <line x1="170" y1="30" x2="230" y2="70" />
+        <line x1="170" y1="110" x2="230" y2="150" />
+        <line x1="30" y1="110" x2="90" y2="150" stroke-dasharray="3,3" />
+      </g>
+      <g font-size="11" font-weight="700" fill="#000" text-anchor="middle">
+        <!-- front face edges: ①top ②right ③bottom ④left -->
+        <text x="100" y="26">①</text>
+        <text x="178" y="72">②</text>
+        <text x="100" y="125">③</text>
+        <text x="22" y="72">④</text>
+        <!-- back face edges: ⑤top ⑥right ⑦bottom ⑧left -->
+        <text x="160" y="66">⑤</text>
+        <text x="238" y="112">⑥</text>
+        <text x="160" y="148">⑦</text>
+        <text x="82" y="112">⑧</text>
+        <!-- connecting (depth) edges: ⑨TL ⑩TR ⑪BR ⑫BL -->
+        <text x="54" y="46">⑨</text>
+        <text x="204" y="46">⑩</text>
+        <text x="204" y="136">⑪</text>
+        <text x="54" y="136">⑫</text>
+      </g>
+    </svg>
+  `;
+}
+
+function _buildEstNotesText(est) {
+  const tplIds = new Set(est.templateIds||[]);
+  const tplTexts = (DB.estimateTemplates||[]).filter(t=>tplIds.has(t.id)).map(t=>t.text);
+  const extra = (est.extraNotes||'').trim();
+  const all = [...tplTexts];
+  if (extra) all.push(extra);
+  return all.join('\n');
+}
+
+function _buildEstPageHtml(est, pageRows, pageIdx, totalPages, isLastPage) {
+  const dateStr = (est.date||'').replace(/-/g,'/');
+  const notesText = _buildEstNotesText(est);
+  const hasNotes = notesText.trim().length > 0;
+
+  const rowsHtml = pageRows.map((it,idx) => {
+    const no = pageIdx * EST_ROWS_PER_PAGE + idx + 1;
+    return `<tr>
+      <td class="c-no">${no}</td>
+      <td class="c-mat">${_escHtml(it.material||'')}</td>
+      <td class="c-size">${_escHtml(it.size||'')}</td>
+      <td class="c-qty">${_escHtml(it.qty||'')}</td>
+      <td class="c-cham">${_escHtml(it.chamfer||'')}</td>
+      <td class="c-due">${_escHtml(it.delivery||'')}</td>
+      <td class="c-price"></td>
+    </tr>`;
+  }).join('');
+
+  const footer = isLastPage ? `
+    <div class="est-footer-row">
+      <div class="est-notes">
+        <div class="est-notes-title">備考</div>
+        <div>${_escHtml(notesText || '　')}</div>
+      </div>
+      <div class="est-chamfer-ref">
+        <div class="est-cref-title">面取り位置 参照図</div>
+        ${_buildEstChamferSvg()}
+      </div>
+    </div>
+    <div class="est-closing-msg">お手数ですが、納期回答を宜しくお願い致します。</div>
+  ` : '';
+
+  return `
+    <div class="est-page">
+      <div class="est-page-header">
+        <div class="est-title">見　積　書</div>
+        <div class="est-company">
+          <div class="c-name">有限会社黒部鉄工所</div>
+          <div>〒537-0012　大阪市東成区大今里2-14-7</div>
+          <div>TEL 06-6974-0590　／　FAX 06-6972-6906</div>
+        </div>
+      </div>
+      <div class="est-meta-row">
+        <div>
+          <div class="est-to">${_escHtml(est.client||'')} 御中</div>
+          <div class="est-to-note">下記の見積りをお願い致します</div>
+        </div>
+        <div class="est-date">
+          <div>${_escHtml(dateStr)}</div>
+          <div style="font-size:11px;margin-top:2px;">${_escHtml(est.number||'')}</div>
+          ${totalPages>1 ? `<div style="font-size:11px;margin-top:2px;">${pageIdx+1} / ${totalPages}</div>` : ''}
+        </div>
+      </div>
+      <table class="est-print-table">
+        <colgroup>
+          <col class="c-no"><col class="c-mat"><col class="c-size">
+          <col class="c-qty"><col class="c-cham"><col class="c-due"><col class="c-price">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>No.</th><th>材質</th><th>寸法</th><th>数量</th>
+            <th>面取り指示</th><th>納期</th><th>単価</th>
+          </tr>
+        </thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      ${footer}
+    </div>
+  `;
+}
+
+function _buildEstPrintHtml(est) {
+  const items = (est.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
+  const pages = [];
+  if (items.length === 0) {
+    pages.push([]);
+  } else {
+    for (let i=0; i<items.length; i+=EST_ROWS_PER_PAGE) {
+      pages.push(items.slice(i, i+EST_ROWS_PER_PAGE));
+    }
+  }
+  const total = pages.length;
+  return pages.map((pageRows, idx) => _buildEstPageHtml(est, pageRows, idx, total, idx===total-1)).join('');
+}
+
+async function printEstimate() {
+  const e = _collectEstEditForm();
+  if (!e) return;
+  if (!e.client) { showToast('宛先を入力してください','error'); return; }
+  const items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
+  if (items.length === 0) { showToast('明細を入力してください','error'); return; }
+  await _generateEstimatePdf(e);
+}
+
+async function printEstimateById(id) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) return;
+  await _generateEstimatePdf(e);
+}
+
+async function _generateEstimatePdf(est) {
+  if (typeof html2pdf === 'undefined') {
+    showToast('html2pdf.js が読み込まれていません','error');
+    return;
+  }
+  const root = document.getElementById('est-print-root');
+  if (!root) { showToast('印刷用要素がありません','error'); return; }
+  root.innerHTML = _buildEstPrintHtml(est);
+  const filename = '見積依頼書_' + (est.client||'') + '_' + (est.date||'') + '.pdf';
+  const opt = {
+    margin: 0,
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['css', 'legacy'] },
+  };
+  try {
+    showToast('PDFを生成中...', 'success');
+    await html2pdf().set(opt).from(root).save();
+    showToast('✅ PDFを出力しました','success');
+  } catch (e) {
+    showToast('PDF生成失敗: ' + e.message, 'error');
+  } finally {
+    // 印刷用HTMLは残しておいてもレイアウト外なので問題ないが、念のため空に
+    setTimeout(()=>{ root.innerHTML = ''; }, 1000);
+  }
+}
 
 // ===== INIT =====
 load();
