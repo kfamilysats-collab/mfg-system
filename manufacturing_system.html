@@ -4238,6 +4238,10 @@ async function printEstimateById(id) {
 async function _generateEstimatePdf(est) {
   const html = _buildEstPrintHtml(est);
   const printWin = window.open('', '_blank', 'width=1200,height=900');
+  if (!printWin) {
+    showToast('ポップアップがブロックされました。ブラウザのポップアップ許可が必要です', 'error');
+    return;
+  }
   printWin.document.write(`<!DOCTYPE html>
 <html>
 <head>
@@ -4292,9 +4296,10 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
 <body>${html}</body>
 </html>`);
   printWin.document.close();
-  await new Promise(resolve => setTimeout(resolve, 800));
-  printWin.print();
-  printWin.close();
+  await new Promise(resolve => setTimeout(resolve, 1500));
+  printWin.onload = function() {
+    setTimeout(() => { printWin.print(); }, 500);
+  };
 }
 
 // ===== INIT =====
