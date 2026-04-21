@@ -3681,7 +3681,7 @@ function refreshEstClientList() {
   const dl = document.getElementById('est-client-list');
   if (!dl) return;
   const names = (DB.companies||[])
-    .filter(c => c.type === '材料発注先')
+    .filter(c => (c.types||[]).includes('material'))
     .map(c => c.name).filter(Boolean);
   dl.innerHTML = [...new Set(names)].sort()
     .map(n => `<option value="${_escHtml(n)}">`).join('');
@@ -3690,7 +3690,7 @@ function refreshEstRequesterList() {
   const dl = document.getElementById('est-requester-list');
   if (!dl) return;
   const names = (DB.companies||[])
-    .filter(c => c.type === '受注先')
+    .filter(c => (c.types||[]).includes('client'))
     .map(c => c.name).filter(Boolean);
   dl.innerHTML = [...new Set(names)].sort()
     .map(n => `<option value="${_escHtml(n)}">`).join('');
