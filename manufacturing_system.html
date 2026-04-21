@@ -551,6 +551,7 @@
             <table class="est-item-table">
               <thead>
                 <tr>
+                  <th style="width:30px;">登録</th>
                   <th style="width:38px;">No.</th>
                   <th style="width:160px;">材質</th>
                   <th>寸法</th>
@@ -3810,11 +3811,14 @@ function _renderEstItems() {
   if (!tbody || !_currentEstimate) return;
   const items = _currentEstimate.items || [];
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>`;
     return;
   }
   tbody.innerHTML = items.map((it,i) => `
     <tr>
+      <td style="text-align:center;">
+        <input type="checkbox" class="est-reg-check" style="width:auto;">
+      </td>
       <td style="text-align:center;font-weight:600;">${i+1}</td>
       <td><input class="est-row-input" value="${_escHtml(it.material||'')}" oninput="estRowUpdate(${i},'material',this.value)" placeholder="例：SS400"></td>
       <td><input class="est-row-input" value="${_escHtml(it.size||'')}" oninput="estRowUpdate(${i},'size',this.value)" placeholder="例：t12×100×200"></td>
@@ -4002,31 +4006,35 @@ function setEstStatus(id, status) {
 function registerEstimateAsProducts() {
   const e = _collectEstEditForm();
   if (!e) return;
-  if (!e.client) { showToast('先に宛先を入力してください','error'); return; }
-  const items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim());
-  if (items.length === 0) { showToast('明細がありません','error'); return; }
-  if (!confirm(`${items.length}件の明細を製品マスタに登録しますか？`)) return;
+  if (!e.client) { showToast('先に材料発注先を入力してください','error'); return; }
+  const checked = [...document.querySelectorAll('#est-items-tbody .est-reg-check:checked')];
+  if (checked.length === 0) { showToast('登録する行にチェックを入れてください','error'); return; }
+  if (!confirm(`${checked.length}件を製品マスタに登録しますか？`)) return;
   let added = 0;
-  items.forEach(it => {
-    const fignum = 'EST-'+e.number+'-'+(added+1);
+  checked.forEach(cb => {
+    const row = cb.closest('tr');
+    const idx = [...row.parentElement.children].indexOf(row);
+    const it = e.items[idx];
+    if (!it) return;
     DB.products.push({
       id: genId(),
-      fignum: fignum,
+      fignum: 'EST-' + e.number + '-' + (added+1),
       name: (it.material||'') + ' ' + (it.size||''),
-      client: e.client,
+      client: e.requester || e.client || '',
       unitPrice: 0,
-      matSupplier: '',
-      matName: it.material||'',
-      matSize: it.size||'',
+      matSupplier: e.client || '',
+      matName: it.material || '',
+      matSize: it.size || '',
       matPrice: 0,
       outsource: [],
       processes: [],
-      memo: '見積 '+e.number+' より登録 / 面取り:'+(it.chamfer||'')+' 納期:'+(it.delivery||''),
+      memo: '見積 ' + e.number + ' より登録 / 面取り:' + (it.chamfer||'') + ' 納期:' + (it.delivery||''),
     });
     added++;
   });
   save();
-  showToast(`✅ ${added}件を製品登録しました`, 'success');
+  if (typeof odSave === 'function') { try { odSave(); } catch(_) {} }
+  showToast('✅ ' + added + '件を製品登録しました', 'success');
 }
 
 // ===== 履歴選択 =====
