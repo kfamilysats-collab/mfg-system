@@ -3878,15 +3878,13 @@ function _collectEstEditForm() {
   _currentEstimate.status = document.getElementById('est-status').value || 'draft';
   _currentEstimate.extraNotes = document.getElementById('est-extra-notes').value || '';
   _currentEstimate.updatedAt = new Date().toISOString();
-  _currentEstimate.templateIds =
-    [...document.querySelectorAll('#est-template-list input[type=checkbox]:checked')]
-    .map(cb => cb.dataset.tid);
   return _currentEstimate;
 }
 
 async function saveEstimate() {
   const e = _collectEstEditForm();
   if (!e) return;
+  console.log('templateIds:', e.templateIds);
   if (!e.client) { showToast('宛先を入力してください', 'error'); return; }
   // 空行削除
   e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
@@ -4153,11 +4151,11 @@ function _buildEstChamferSvg() {
         <line x1="80" y1="150" x2="40" y2="190" stroke-dasharray="4,3"/>
       </g>
       <line x1="100" y1="36" x2="360" y2="36" stroke="#000" stroke-width="1.5" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
-      <text x="230" y="30" font-size="13" text-anchor="middle" fill="#000" font-weight="700">(L) 長手方向</text>
+      <text x="230" y="30" font-size="15" text-anchor="middle" fill="#000" font-weight="700">(L) 長手方向</text>
       <line x1="415" y1="78" x2="415" y2="135" stroke="#000" stroke-width="1.5" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
-      <text x="430" y="103" font-size="13" fill="#000" font-weight="700" text-anchor="start">(T) 厚み方向</text>
+      <text x="430" y="103" font-size="15" fill="#000" font-weight="700" text-anchor="start">(T) 厚み方向</text>
       <line x1="355" y1="215" x2="405" y2="168" stroke="#000" stroke-width="1.5" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
-      <text x="408" y="215" font-size="13" fill="#000" font-weight="700">(W) 幅方向</text>
+      <text x="408" y="215" font-size="15" fill="#000" font-weight="700">(W) 幅方向</text>
       <circle cx="80" cy="123" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="80" y="129" font-size="14" text-anchor="middle" font-weight="700" fill="#000">1</text>
       <circle cx="40" cy="145" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="40" y="151" font-size="14" text-anchor="middle" font-weight="700" fill="#000">2</text>
       <circle cx="380" cy="105" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="380" y="111" font-size="14" text-anchor="middle" font-weight="700" fill="#000">3</text>
