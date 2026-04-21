@@ -4032,13 +4032,16 @@ function registerEstimateAsProducts() {
 
 function _estRegNext() {
   if (!window._estRegQueue || window._estRegQueue.length === 0) {
-    showToast('✅ 全件登録完了しました', 'success');
+    const banner = document.getElementById('est-reg-banner');
+    if (banner) banner.remove();
     window._estRegQueue = null;
     window._estRegSource = null;
+    showToast('✅ 全件登録完了しました', 'success');
     return;
   }
-  const it = window._estRegQueue.shift();
+  const it = window._estRegQueue[0];
   const src = window._estRegSource;
+  const remaining = window._estRegQueue.length;
   showSection('product-form');
   setTimeout(() => {
     if (document.getElementById('pf-mat-name'))
@@ -4051,21 +4054,35 @@ function _estRegNext() {
       document.getElementById('pf-client').value = src.requester || '';
     if (document.getElementById('pf-note'))
       document.getElementById('pf-note').value = '見積 ' + (src.number||'') + ' より / 面取り:' + (it.chamfer||'') + ' 納期:' + (it.delivery||'');
-    window._origSaveProduct = window._origSaveProduct || saveProduct;
-    window.saveProduct = function() {
-      window._origSaveProduct();
-      if (window._estRegQueue && window._estRegQueue.length > 0) {
-        if (confirm('次の' + window._estRegQueue.length + '件も登録しますか？')) {
-          _estRegNext();
-        } else {
-          window.saveProduct = window._origSaveProduct;
-          window._estRegQueue = null;
-        }
-      } else {
-        window.saveProduct = window._origSaveProduct;
-      }
-    };
+    const oldBanner = document.getElementById('est-reg-banner');
+    if (oldBanner) oldBanner.remove();
+    const banner = document.createElement('div');
+    banner.id = 'est-reg-banner';
+    banner.style.cssText = 'background:#dbeafe;border:1px solid #93c5fd;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;font-size:13px;';
+    banner.innerHTML = `
+      <span>📋 見積から登録中（残り${remaining}件）</span>
+      <button class="btn btn-primary btn-sm" onclick="estRegSaveAndNext()" style="margin-left:auto;">💾 保存して次へ</button>
+      <button class="btn btn-ghost btn-sm" onclick="estRegCancel()">中止</button>
+    `;
+    const section = document.getElementById('sec-product-form');
+    const firstCard = section ? section.querySelector('.card') : null;
+    if (firstCard) firstCard.before(banner);
   }, 300);
+}
+function estRegSaveAndNext() {
+  const fignum = (document.getElementById('pf-fignum')||{}).value||'';
+  const name = (document.getElementById('pf-name')||{}).value||'';
+  if (!fignum || !name) { showToast('品番・品名を入力してください', 'error'); return; }
+  saveProduct();
+  window._estRegQueue.shift();
+  setTimeout(() => _estRegNext(), 200);
+}
+function estRegCancel() {
+  const banner = document.getElementById('est-reg-banner');
+  if (banner) banner.remove();
+  window._estRegQueue = null;
+  window._estRegSource = null;
+  showToast('登録を中止しました', 'success');
 }
 
 // ===== 履歴選択 =====
