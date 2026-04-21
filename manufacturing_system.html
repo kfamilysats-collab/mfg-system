@@ -3844,7 +3844,7 @@ function _renderEstTemplateCheckboxes() {
     const checked = selected.has(txt) ? 'checked' : '';
     return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
       <input type="checkbox" ${checked} data-txt="${_escHtml(txt)}" style="width:auto;">
-      <input type="text" value="${_escHtml(txt)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--bg2);" onchange="estUpdateTplText(${i}, this.value)">
+      <span style="flex:1;">${_escHtml(txt)}</span>
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},-1)">↑</button>
       <button class="btn btn-ghost btn-xs" type="button" onclick="estMoveTpl(${i},1)">↓</button>
       <button class="btn btn-danger btn-xs" type="button" onclick="estDeleteTpl(${i})">削除</button>
@@ -3877,23 +3877,6 @@ function estDeleteTpl(i) {
   DB.estimateTemplates.splice(i, 1);
   save();
   _renderEstTemplateCheckboxes();
-}
-function estUpdateTplText(i, newText) {
-  if (!newText.trim()) return;
-  const t = DB.estimateTemplates[i];
-  if (!t) return;
-  const oldText = typeof t === 'string' ? t : t.text;
-  if (typeof t === 'string') {
-    DB.estimateTemplates[i] = { text: newText };
-  } else {
-    t.text = newText;
-  }
-  if (_currentEstimate && _currentEstimate.selectedTemplateTexts) {
-    const idx = _currentEstimate.selectedTemplateTexts.indexOf(oldText);
-    if (idx >= 0) _currentEstimate.selectedTemplateTexts[idx] = newText;
-  }
-  save();
-  showToast('更新しました', 'success');
 }
 
 function _collectEstEditForm() {
