@@ -4236,45 +4236,65 @@ async function printEstimateById(id) {
 }
 
 async function _generateEstimatePdf(est) {
-  if (typeof html2pdf === 'undefined') {
-    showToast('html2pdf.js が読み込まれていません','error');
-    return;
-  }
-  const root = document.getElementById('est-print-root');
-  if (!root) { showToast('印刷用要素がありません','error'); return; }
-  root.innerHTML = _buildEstPrintHtml(est);
-
-  // DOMの描画完了を待つ
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  // PDF生成中は画面内（ただし z-index:-1 で裏）に配置しないと
-  // html2canvas が幅0で描画して真っ白PDFになる。
-  const _savedStyle = root.getAttribute('style') || '';
-  root.setAttribute('style',
-    'position:fixed;left:0;top:0;width:297mm;height:210mm;' +
-    'z-index:9999;opacity:0;pointer-events:none;overflow:hidden;background:#fff;');
-
-  const filename = '見積依頼書_' + (est.client||'') + '_' + (est.date||'') + '.pdf';
-  const opt = {
-    margin: 0,
-    filename: filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: true, backgroundColor: '#ffffff', width: 1122, height: 794 },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-    pagebreak: { mode: ['css', 'legacy'] },
-  };
-  try {
-    showToast('PDFを生成中...', 'success');
-    await html2pdf().set(opt).from(root).save();
-    showToast('✅ PDFを出力しました','success');
-  } catch (e) {
-    showToast('PDF生成失敗: ' + e.message, 'error');
-  } finally {
-    // 元のオフスクリーン配置に戻す
-    if (_savedStyle) root.setAttribute('style', _savedStyle);
-    else root.removeAttribute('style');
-    root.innerHTML = '';
-  }
+  const html = _buildEstPrintHtml(est);
+  const printWin = window.open('', '_blank', 'width=1200,height=900');
+  printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif; background:#fff; color:#000; }
+@page { size: A4 landscape; margin: 0; }
+@media print {
+  body { margin: 0; }
+  .est-page { page-break-after: always; }
+  .est-page:last-child { page-break-after: auto; }
+}
+.est-page {
+  width: 297mm; height: 210mm;
+  padding: 10mm 12mm;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+.est-page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:6mm; }
+.est-title { font-size:32px; font-weight:900; letter-spacing:0.6em; border-bottom:2px solid #000; padding:0 8px 2px; }
+.est-company { font-size:13px; text-align:right; line-height:1.55; }
+.est-company .c-name { font-size:15px; font-weight:700; margin-bottom:2px; }
+.est-meta-row { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:3mm; }
+.est-to { font-size:18px; font-weight:700; border-bottom:1px solid #000; padding:2px 6px 4px 2px; min-width:220px; }
+.est-to-note { font-size:14px; margin-top:2mm; font-weight:600; }
+.est-date { font-size:14px; text-align:right; }
+.est-print-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.est-print-table th, .est-print-table td { border:1.2px solid #000; padding:6px; vertical-align:middle; font-size:15px; word-break:break-all; }
+.est-print-table th { background:#f0f0f0; font-weight:700; font-size:13px; text-align:center; }
+.est-print-table col.c-no { width:38px; }
+.est-print-table col.c-mat { width:160px; }
+.est-print-table col.c-qty { width:52px; }
+.est-print-table col.c-cham { width:140px; }
+.est-print-table col.c-due { width:65px; }
+.est-print-table col.c-price { width:72px; }
+.est-print-table td.c-no { text-align:center; }
+.est-print-table td.c-mat { font-size:16px; font-weight:700; }
+.est-print-table td.c-qty { text-align:center; }
+.est-print-table td.c-due { text-align:center; }
+.est-footer-row { display:flex; gap:6mm; margin-top:4mm; align-items:flex-start; }
+.est-notes { flex:1; border:1.2px solid #000; padding:4mm 5mm; min-height:36mm; font-size:14px; line-height:1.8; white-space:pre-wrap; }
+.est-notes-title { font-weight:700; font-size:13px; margin-bottom:2mm; border-bottom:1px solid #000; padding-bottom:1mm; }
+.est-chamfer-ref { width:78mm; border:1.2px solid #000; padding:3mm; text-align:center; }
+.est-cref-title { font-size:12px; font-weight:700; margin-bottom:2mm; }
+.est-closing-msg { margin-top:3mm; border:1.5px solid #000; padding:3mm 5mm; font-size:15px; font-weight:700; text-align:center; }
+</style>
+</head>
+<body>${html}</body>
+</html>`);
+  printWin.document.close();
+  await new Promise(resolve => setTimeout(resolve, 800));
+  printWin.print();
+  printWin.close();
 }
 
 // ===== INIT =====
