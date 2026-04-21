@@ -4125,41 +4125,37 @@ const EST_ROWS_PER_PAGE = 7;
 
 function _buildEstChamferSvg() {
   return `
-    <svg viewBox="0 0 380 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 480 240" width="100%" height="240" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <marker id="est-a1" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#000"/>
-        </marker>
-        <marker id="est-a2" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto">
-          <path d="M7,0 L0,3.5 L7,7 Z" fill="#000"/>
-        </marker>
+        <marker id="ea1" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#000"/></marker>
+        <marker id="ea2" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto"><path d="M7,0 L0,3.5 L7,7 Z" fill="#000"/></marker>
       </defs>
-      <line x1="125" y1="37" x2="245" y2="37" stroke="#000" stroke-width="1.2" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
-      <text x="185" y="33" font-size="10" text-anchor="middle" fill="#000" font-weight="700">(L) 長手方向</text>
+      <line x1="90" y1="28" x2="330" y2="28" stroke="#000" stroke-width="1.2" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
+      <text x="210" y="24" font-size="11" text-anchor="middle" fill="#000" font-weight="700">(L) 長手方向</text>
       <g fill="none" stroke="#000" stroke-width="1.5">
-        <polygon points="75,175 215,175 215,85 75,85"/>
-        <polygon points="75,85 115,50 255,50 215,85"/>
-        <polygon points="215,85 255,50 255,140 215,175"/>
-        <line x1="115" y1="50" x2="115" y2="140" stroke-dasharray="4,3"/>
-        <line x1="115" y1="140" x2="255" y2="140" stroke-dasharray="4,3"/>
-        <line x1="115" y1="140" x2="75" y2="175" stroke-dasharray="4,3"/>
+        <polygon points="55,185 355,185 355,90 55,90"/>
+        <polygon points="55,90 95,50 395,50 355,90"/>
+        <polygon points="355,90 395,50 395,145 355,185"/>
+        <line x1="95" y1="50" x2="95" y2="145" stroke-dasharray="4,3"/>
+        <line x1="95" y1="145" x2="395" y2="145" stroke-dasharray="4,3"/>
+        <line x1="95" y1="145" x2="55" y2="185" stroke-dasharray="4,3"/>
       </g>
-      <line x1="278" y1="70" x2="278" y2="120" stroke="#000" stroke-width="1.2" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
-      <text x="292" y="100" font-size="10" fill="#000" font-weight="700" text-anchor="start">(T) 厚み方向</text>
-      <line x1="218" y1="193" x2="265" y2="150" stroke="#000" stroke-width="1.4" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
-      <text x="270" y="185" font-size="10" fill="#000" font-weight="700">(W) 幅方向</text>
-      <circle cx="115" cy="102" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="115" y="107" font-size="12" text-anchor="middle" font-weight="700" fill="#000">1</text>
-      <circle cx="75" cy="130" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="75" y="135" font-size="12" text-anchor="middle" font-weight="700" fill="#000">2</text>
-      <circle cx="255" cy="95" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="255" y="100" font-size="12" text-anchor="middle" font-weight="700" fill="#000">3</text>
-      <circle cx="215" cy="130" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="215" y="135" font-size="12" text-anchor="middle" font-weight="700" fill="#000">4</text>
-      <circle cx="95" cy="67" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="95" y="72" font-size="12" text-anchor="middle" font-weight="700" fill="#000">5</text>
-      <circle cx="95" cy="157" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="95" y="162" font-size="12" text-anchor="middle" font-weight="700" fill="#000">6</text>
-      <circle cx="235" cy="67" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="235" y="72" font-size="12" text-anchor="middle" font-weight="700" fill="#000">7</text>
-      <circle cx="235" cy="157" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="235" y="162" font-size="12" text-anchor="middle" font-weight="700" fill="#000">8</text>
-      <circle cx="185" cy="50" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="185" y="55" font-size="12" text-anchor="middle" font-weight="700" fill="#000">9</text>
-      <circle cx="185" cy="140" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="185" y="145" font-size="12" text-anchor="middle" font-weight="700" fill="#000">10</text>
-      <circle cx="145" cy="85" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="145" y="90" font-size="12" text-anchor="middle" font-weight="700" fill="#000">11</text>
-      <circle cx="145" cy="175" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="145" y="180" font-size="12" text-anchor="middle" font-weight="700" fill="#000">12</text>
+      <line x1="418" y1="68" x2="418" y2="128" stroke="#000" stroke-width="1.2" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
+      <text x="430" y="103" font-size="11" fill="#000" font-weight="700" text-anchor="start">(T) 厚み方向</text>
+      <line x1="358" y1="200" x2="405" y2="157" stroke="#000" stroke-width="1.4" marker-start="url(#ea2)" marker-end="url(#ea1)"/>
+      <text x="408" y="192" font-size="11" fill="#000" font-weight="700">(W) 幅方向</text>
+      <circle cx="95" cy="97" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="95" y="103" font-size="14" text-anchor="middle" font-weight="700" fill="#000">1</text>
+      <circle cx="55" cy="137" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="55" y="143" font-size="14" text-anchor="middle" font-weight="700" fill="#000">2</text>
+      <circle cx="395" cy="97" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="395" y="103" font-size="14" text-anchor="middle" font-weight="700" fill="#000">3</text>
+      <circle cx="355" cy="137" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="355" y="143" font-size="14" text-anchor="middle" font-weight="700" fill="#000">4</text>
+      <circle cx="75" cy="70" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="75" y="76" font-size="14" text-anchor="middle" font-weight="700" fill="#000">5</text>
+      <circle cx="75" cy="165" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="75" y="171" font-size="14" text-anchor="middle" font-weight="700" fill="#000">6</text>
+      <circle cx="375" cy="70" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="375" y="76" font-size="14" text-anchor="middle" font-weight="700" fill="#000">7</text>
+      <circle cx="375" cy="165" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="375" y="171" font-size="14" text-anchor="middle" font-weight="700" fill="#000">8</text>
+      <circle cx="245" cy="50" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="245" y="56" font-size="14" text-anchor="middle" font-weight="700" fill="#000">9</text>
+      <circle cx="245" cy="145" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="245" y="151" font-size="14" text-anchor="middle" font-weight="700" fill="#000">10</text>
+      <circle cx="205" cy="90" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="205" y="96" font-size="14" text-anchor="middle" font-weight="700" fill="#000">11</text>
+      <circle cx="205" cy="185" r="13" fill="white" stroke="#000" stroke-width="1.5"/><text x="205" y="191" font-size="14" text-anchor="middle" font-weight="700" fill="#000">12</text>
     </svg>
   `;
 }
@@ -4202,7 +4198,9 @@ function _buildEstPageHtml(est, pageRows, pageIdx, totalPages, isLastPage) {
         ${_buildEstChamferSvg()}
       </div>
     </div>
-    <div class="est-closing-msg">お手数ですが、納期回答を宜しくお願い致します。</div>
+    <div style="margin-top:3mm;font-size:15px;font-weight:700;text-align:center;letter-spacing:0.04em;">
+  お手数ですが、納期回答を宜しくお願い致します。
+</div>
   ` : '';
 
   return `
@@ -4334,11 +4332,11 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
 .est-print-table td.c-qty { text-align:center; }
 .est-print-table td.c-due { text-align:center; }
 .est-footer-row { display:flex; gap:6mm; margin-top:4mm; align-items:flex-start; }
-.est-notes { flex:1; border:1.2px solid #000; padding:4mm 5mm; min-height:36mm; font-size:14px; line-height:1.8; white-space:pre-wrap; }
+.est-notes { flex:1; border:1.2px solid #000; padding:2mm 4mm; min-height:24mm; font-size:14px; line-height:1.8; white-space:pre-wrap; }
 .est-notes-title { font-weight:700; font-size:13px; margin-bottom:2mm; border-bottom:1px solid #000; padding-bottom:1mm; }
-.est-chamfer-ref { width:78mm; border:1.2px solid #000; padding:3mm; text-align:center; }
+.est-chamfer-ref { width:78mm; border:1.2px solid #000; padding:2mm; text-align:center; }
 .est-cref-title { font-size:12px; font-weight:700; margin-bottom:2mm; }
-.est-closing-msg { margin-top:3mm; border:1.5px solid #000; padding:3mm 5mm; font-size:15px; font-weight:700; text-align:center; }
+.est-closing-msg { margin-top:3mm; font-size:15px; font-weight:700; text-align:center; letter-spacing:0.04em; }
 </style>
 </head>
 <body>
