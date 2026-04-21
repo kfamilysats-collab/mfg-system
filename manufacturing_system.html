@@ -4069,6 +4069,11 @@ function _estRegNext() {
     const section = document.getElementById('sec-product-form');
     const firstCard = section ? section.querySelector('.card') : null;
     if (firstCard) firstCard.before(banner);
+    const saveBtn = section ? section.querySelector('button[onclick="saveProduct()"]') : null;
+    if (saveBtn) {
+      saveBtn._origOnclick = saveBtn.getAttribute('onclick');
+      saveBtn.setAttribute('onclick', 'estRegSaveAndNext()');
+    }
   }, 300);
 }
 function estRegSaveAndNext() {
@@ -4086,6 +4091,9 @@ function estRegSaveAndNext() {
   } else {
     const banner = document.getElementById('est-reg-banner');
     if (banner) banner.remove();
+    const section2 = document.getElementById('sec-product-form');
+    const saveBtn2 = section2 ? section2.querySelector('button[onclick="estRegSaveAndNext()"]') : null;
+    if (saveBtn2 && saveBtn2._origOnclick) saveBtn2.setAttribute('onclick', saveBtn2._origOnclick);
     window._estRegQueue = null;
     window._estRegSource = null;
     showToast('✅ 全件登録完了しました', 'success');
@@ -4094,6 +4102,9 @@ function estRegSaveAndNext() {
 function estRegCancel() {
   const banner = document.getElementById('est-reg-banner');
   if (banner) banner.remove();
+  const section = document.getElementById('sec-product-form');
+  const saveBtn = section ? section.querySelector('button[onclick="estRegSaveAndNext()"]') : null;
+  if (saveBtn && saveBtn._origOnclick) saveBtn.setAttribute('onclick', saveBtn._origOnclick);
   window._estRegQueue = null;
   window._estRegSource = null;
   showToast('登録を中止しました', 'success');
