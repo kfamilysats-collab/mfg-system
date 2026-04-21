@@ -4091,37 +4091,42 @@ function deleteEstTemplate(id) {
 const EST_ROWS_PER_PAGE = 10;
 
 function _buildEstChamferSvg() {
-  // 直方体に①〜⑫の面取り位置番号。角12辺に対応。
   return `
-    <svg viewBox="0 0 260 150" width="260" height="150" xmlns="http://www.w3.org/2000/svg" style="font-family:inherit;">
-      <g fill="none" stroke="#000" stroke-width="1.4">
-        <!-- front face -->
-        <polygon points="30,110 170,110 170,30 30,30" />
-        <!-- back face offset -->
-        <polygon points="90,150 230,150 230,70 90,70" stroke-dasharray="3,3" />
-        <!-- connecting edges -->
-        <line x1="30" y1="30" x2="90" y2="70" />
-        <line x1="170" y1="30" x2="230" y2="70" />
-        <line x1="170" y1="110" x2="230" y2="150" />
-        <line x1="30" y1="110" x2="90" y2="150" stroke-dasharray="3,3" />
+    <svg viewBox="0 0 380 260" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="est-a1" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#000"/>
+        </marker>
+        <marker id="est-a2" markerWidth="7" markerHeight="7" refX="1" refY="3.5" orient="auto">
+          <path d="M7,0 L0,3.5 L7,7 Z" fill="#000"/>
+        </marker>
+      </defs>
+      <line x1="125" y1="37" x2="245" y2="37" stroke="#000" stroke-width="1.2" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
+      <text x="185" y="33" font-size="10" text-anchor="middle" fill="#000" font-weight="700">(L) 長手方向</text>
+      <g fill="none" stroke="#000" stroke-width="1.5">
+        <polygon points="75,175 215,175 215,85 75,85"/>
+        <polygon points="75,85 115,50 255,50 215,85"/>
+        <polygon points="215,85 255,50 255,140 215,175"/>
+        <line x1="115" y1="50" x2="115" y2="140" stroke-dasharray="4,3"/>
+        <line x1="115" y1="140" x2="255" y2="140" stroke-dasharray="4,3"/>
+        <line x1="115" y1="140" x2="75" y2="175" stroke-dasharray="4,3"/>
       </g>
-      <g font-size="11" font-weight="700" fill="#000" text-anchor="middle">
-        <!-- front face edges: ①top ②right ③bottom ④left -->
-        <text x="100" y="26">①</text>
-        <text x="178" y="72">②</text>
-        <text x="100" y="125">③</text>
-        <text x="22" y="72">④</text>
-        <!-- back face edges: ⑤top ⑥right ⑦bottom ⑧left -->
-        <text x="160" y="66">⑤</text>
-        <text x="238" y="112">⑥</text>
-        <text x="160" y="148">⑦</text>
-        <text x="82" y="112">⑧</text>
-        <!-- connecting (depth) edges: ⑨TL ⑩TR ⑪BR ⑫BL -->
-        <text x="54" y="46">⑨</text>
-        <text x="204" y="46">⑩</text>
-        <text x="204" y="136">⑪</text>
-        <text x="54" y="136">⑫</text>
-      </g>
+      <line x1="278" y1="70" x2="278" y2="120" stroke="#000" stroke-width="1.2" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
+      <text x="292" y="100" font-size="10" fill="#000" font-weight="700" text-anchor="start">(T) 厚み方向</text>
+      <line x1="218" y1="193" x2="265" y2="150" stroke="#000" stroke-width="1.4" marker-start="url(#est-a2)" marker-end="url(#est-a1)"/>
+      <text x="270" y="185" font-size="10" fill="#000" font-weight="700">(W) 幅方向</text>
+      <circle cx="115" cy="102" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="115" y="107" font-size="12" text-anchor="middle" font-weight="700" fill="#000">1</text>
+      <circle cx="75" cy="130" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="75" y="135" font-size="12" text-anchor="middle" font-weight="700" fill="#000">2</text>
+      <circle cx="255" cy="95" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="255" y="100" font-size="12" text-anchor="middle" font-weight="700" fill="#000">3</text>
+      <circle cx="215" cy="130" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="215" y="135" font-size="12" text-anchor="middle" font-weight="700" fill="#000">4</text>
+      <circle cx="95" cy="67" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="95" y="72" font-size="12" text-anchor="middle" font-weight="700" fill="#000">5</text>
+      <circle cx="95" cy="157" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="95" y="162" font-size="12" text-anchor="middle" font-weight="700" fill="#000">6</text>
+      <circle cx="235" cy="67" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="235" y="72" font-size="12" text-anchor="middle" font-weight="700" fill="#000">7</text>
+      <circle cx="235" cy="157" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="235" y="162" font-size="12" text-anchor="middle" font-weight="700" fill="#000">8</text>
+      <circle cx="185" cy="50" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="185" y="55" font-size="12" text-anchor="middle" font-weight="700" fill="#000">9</text>
+      <circle cx="185" cy="140" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="185" y="145" font-size="12" text-anchor="middle" font-weight="700" fill="#000">10</text>
+      <circle cx="145" cy="85" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="145" y="90" font-size="12" text-anchor="middle" font-weight="700" fill="#000">11</text>
+      <circle cx="145" cy="175" r="11" fill="white" stroke="#000" stroke-width="1.5"/><text x="145" y="180" font-size="12" text-anchor="middle" font-weight="700" fill="#000">12</text>
     </svg>
   `;
 }
