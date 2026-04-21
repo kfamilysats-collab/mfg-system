@@ -1506,6 +1506,7 @@ function load() {
     if (!DB.history) DB.history = [];
     if (!DB.estimates) DB.estimates = [];
     if (!DB.estimateTemplates) DB.estimateTemplates = [];
+    DB.estimates.forEach(e => { if (!e.templateIds) e.templateIds = []; });
   }
   // デフォルトのテンプレートが1つも無い場合は投入
   if (!DB.estimateTemplates || DB.estimateTemplates.length === 0) {
@@ -3745,6 +3746,7 @@ function editEstimate(id) {
   if (!e) { showToast('見積が見つかりません', 'error'); return; }
   _currentEstimate = _deepClone(e);
   _currentEstimate.isNew = false;
+  _currentEstimate.templateIds = _currentEstimate.templateIds || [];
   _renderEstEditView();
 }
 
@@ -3885,6 +3887,7 @@ async function saveEstimate() {
   const e = _collectEstEditForm();
   if (!e) return;
   console.log('templateIds:', e.templateIds);
+  e.templateIds = _currentEstimate.templateIds || [];
   if (!e.client) { showToast('宛先を入力してください', 'error'); return; }
   // 空行削除
   e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
