@@ -491,7 +491,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>日付</th><th>番号</th><th>宛先</th><th>行数</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
+                  <th>日付</th><th>番号</th><th>依頼先</th><th>宛先</th><th>行数</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
                 </tr>
               </thead>
               <tbody id="est-list-tbody"></tbody>
@@ -520,6 +520,11 @@
               <label>宛先（取引先）</label>
               <input type="text" id="est-client" list="est-client-list" placeholder="取引先を選択または入力">
               <datalist id="est-client-list"></datalist>
+            </div>
+            <div class="form-group">
+              <label>依頼先（受注先）</label>
+              <input type="text" id="est-requester" list="est-requester-list" placeholder="依頼元の会社を選択または入力">
+              <datalist id="est-requester-list"></datalist>
             </div>
             <div class="form-group">
               <label>状態</label>
@@ -3678,6 +3683,15 @@ function refreshEstClientList() {
   const names = (DB.companies||[]).map(c=>c.name).filter(Boolean);
   dl.innerHTML = [...new Set(names)].sort().map(n=>`<option value="${_escHtml(n)}">`).join('');
 }
+function refreshEstRequesterList() {
+  const dl = document.getElementById('est-requester-list');
+  if (!dl) return;
+  const names = (DB.companies||[])
+    .filter(c => c.type === '受注先' || !c.type)
+    .map(c => c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort()
+    .map(n => `<option value="${_escHtml(n)}">`).join('');
+}
 
 function backToEstList() {
   _currentEstimate = null;
@@ -3696,7 +3710,7 @@ function renderEstimateList() {
   const filtered = list.filter(e => {
     if (statusFilter && e.status !== statusFilter) return false;
     if (!q) return true;
-    const hay = [e.number, e.client, ...(e.items||[]).map(i=>(i.material||'')+' '+(i.size||''))].join(' ').toLowerCase();
+    const hay = [e.number, e.client, e.requester, ...(e.items||[]).map(i=>(i.material||'')+' '+(i.size||''))].join(' ').toLowerCase();
     return hay.includes(q);
   });
   document.getElementById('est-count-label').textContent = `${filtered.length}件の見積依頼書（全${list.length}件）`;
@@ -3709,6 +3723,7 @@ function renderEstimateList() {
     return `<tr style="cursor:pointer;" onclick="editEstimate('${e.id}')">
       <td>${_escHtml(fmtDate(e.date))}</td>
       <td style="font-family:monospace;">${_escHtml(e.number||'')}</td>
+      <td>${_escHtml(e.requester||'')}</td>
       <td>${_escHtml(e.client||'')}</td>
       <td style="text-align:right;">${(e.items||[]).length}</td>
       <td>
@@ -3732,6 +3747,7 @@ function newEstimate() {
     number: 'E' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0'),
     date: dateStr,
     client: '',
+    requester: '',
     items: [],
     selectedTemplateTexts: [],
     extraNotes: '',
@@ -3777,9 +3793,11 @@ function _renderEstEditView() {
   document.getElementById('est-edit-subtitle').textContent = _currentEstimate.number || '';
   document.getElementById('est-date').value = _currentEstimate.date || '';
   document.getElementById('est-client').value = _currentEstimate.client || '';
+  document.getElementById('est-requester').value = _currentEstimate.requester || '';
   document.getElementById('est-status').value = _currentEstimate.status || 'draft';
   document.getElementById('est-extra-notes').value = _currentEstimate.extraNotes || '';
   refreshEstClientList();
+  refreshEstRequesterList();
   _renderEstItems();
   _renderEstTemplateCheckboxes();
 }
@@ -3896,6 +3914,7 @@ function _collectEstEditForm() {
   if (!_currentEstimate) return null;
   _currentEstimate.date = document.getElementById('est-date').value || new Date().toISOString().slice(0,10);
   _currentEstimate.client = document.getElementById('est-client').value.trim();
+  _currentEstimate.requester = document.getElementById('est-requester').value.trim();
   _currentEstimate.status = document.getElementById('est-status').value || 'draft';
   _currentEstimate.extraNotes = document.getElementById('est-extra-notes').value || '';
   _currentEstimate.updatedAt = new Date().toISOString();
