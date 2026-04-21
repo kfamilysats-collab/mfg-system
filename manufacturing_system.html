@@ -4075,9 +4075,21 @@ function estRegSaveAndNext() {
   const fignum = (document.getElementById('pf-fignum')||{}).value||'';
   const name = (document.getElementById('pf-name')||{}).value||'';
   if (!fignum || !name) { showToast('品番・品名を入力してください', 'error'); return; }
-  saveProduct();
   window._estRegQueue.shift();
-  setTimeout(() => _estRegNext(), 200);
+  saveProduct();
+  if (window._estRegQueue && window._estRegQueue.length > 0) {
+    if (confirm('次の' + window._estRegQueue.length + '件も登録しますか？')) {
+      setTimeout(() => _estRegNext(), 400);
+    } else {
+      estRegCancel();
+    }
+  } else {
+    const banner = document.getElementById('est-reg-banner');
+    if (banner) banner.remove();
+    window._estRegQueue = null;
+    window._estRegSource = null;
+    showToast('✅ 全件登録完了しました', 'success');
+  }
 }
 function estRegCancel() {
   const banner = document.getElementById('est-reg-banner');
