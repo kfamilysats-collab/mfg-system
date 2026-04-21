@@ -307,6 +307,7 @@
   .est-footer-row .est-notes-title {
     font-weight: 700; font-size: 13px; margin-bottom: 2mm;
     border-bottom: 1px solid #000; padding-bottom: 1mm;
+    position: static; text-align: left;
   }
   .est-footer-row .est-chamfer-ref {
     width: 78mm;
@@ -3826,7 +3827,7 @@ function _renderEstTemplateCheckboxes() {
   const selected = new Set(_currentEstimate.templateIds || []);
   const rows = templates.map((t, i) => `
     <div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-      <input type="checkbox" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;flex-shrink:0;">
+      <input type="checkbox" data-tid="${t.id}" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;flex-shrink:0;">
       <input type="text" value="${_escHtml(t.text)}" oninput="updateEstTemplate('${t.id}',this.value)" style="flex:1;font-size:13px;">
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',-1)" ${i===0?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↑</button>
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',1)" ${i===templates.length-1?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↓</button>
@@ -3868,6 +3869,9 @@ function _collectEstEditForm() {
   _currentEstimate.status = document.getElementById('est-status').value || 'draft';
   _currentEstimate.extraNotes = document.getElementById('est-extra-notes').value || '';
   _currentEstimate.updatedAt = new Date().toISOString();
+  _currentEstimate.templateIds =
+    [...document.querySelectorAll('#est-template-list input[type=checkbox]:checked')]
+    .map(cb => cb.dataset.tid);
   return _currentEstimate;
 }
 
@@ -4192,7 +4196,7 @@ function _buildEstPageHtml(est, pageRows, pageIdx, totalPages, isLastPage) {
     <div class="est-footer-row">
       <div class="est-notes">
         <div class="est-notes-title">備考</div>
-        <div>${_escHtml(notesText || '　')}</div>
+        <div>${_escHtml(notesText || '')}</div>
       </div>
       <div class="est-chamfer-ref">
         <div class="est-cref-title">面取り位置 参照図</div>
@@ -4334,7 +4338,7 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
 .est-print-table td.c-due { text-align:center; }
 .est-footer-row { display:flex; gap:6mm; margin-top:2mm; align-items:flex-start; }
 .est-notes { flex:1; border:1.2px solid #000; padding:2mm 4mm; min-height:18mm; font-size:14px; line-height:1.8; white-space:pre-wrap; }
-.est-notes-title { font-weight:700; font-size:13px; margin-bottom:2mm; border-bottom:1px solid #000; padding-bottom:1mm; }
+.est-notes-title { font-weight:700; font-size:13px; margin-bottom:2mm; border-bottom:1px solid #000; padding-bottom:1mm; position:static; text-align:left; }
 .est-chamfer-ref { width:78mm; border:1.2px solid #000; padding:2mm; text-align:center; }
 .est-cref-title { font-size:12px; font-weight:700; margin-bottom:2mm; }
 .est-closing-msg { margin-top:1mm; font-size:15px; font-weight:700; text-align:center; letter-spacing:0.04em; }
