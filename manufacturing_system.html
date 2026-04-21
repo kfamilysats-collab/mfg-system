@@ -482,7 +482,6 @@
             <select id="est-status-filter" onchange="renderEstimateList()" style="width:160px;">
               <option value="">全状態</option>
               <option value="draft">🟡 下書き</option>
-              <option value="sent">✅ 送信済み</option>
               <option value="pending">🔵 回答待ち</option>
               <option value="done">✔ 完了</option>
             </select>
@@ -491,7 +490,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>日付</th><th>番号</th><th>依頼先</th><th>宛先</th><th>行数</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
+                  <th>日付</th><th>依頼先</th><th>材料発注先</th><th>行数</th><th>FAX済</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
                 </tr>
               </thead>
               <tbody id="est-list-tbody"></tbody>
@@ -530,7 +529,6 @@
               <label>状態</label>
               <select id="est-status">
                 <option value="draft">🟡 下書き</option>
-                <option value="sent">✅ 送信済み</option>
                 <option value="pending">🔵 回答待ち</option>
                 <option value="done">✔ 完了</option>
               </select>
@@ -3663,7 +3661,6 @@ let _currentEstimate = null; // 編集中の見積（null = 一覧表示）
 
 const EST_STATUS_META = {
   draft:   { icon: '🟡', label: '下書き',   cls: 'est-status-draft' },
-  sent:    { icon: '✅', label: '送信済み', cls: 'est-status-sent' },
   pending: { icon: '🔵', label: '回答待ち', cls: 'est-status-pending' },
   done:    { icon: '✔',  label: '完了',     cls: 'est-status-done' },
 };
@@ -3705,6 +3702,15 @@ function backToEstList() {
   if (ev) ev.style.display = 'none';
 }
 
+function toggleEstFax(id, checked) {
+  const e = (DB.estimates||[]).find(x=>x.id===id);
+  if (!e) return;
+  e.faxSent = checked;
+  e.updatedAt = new Date().toISOString();
+  save();
+  showToast(checked ? '📠 FAX送信済みにしました' : 'FAX済みを解除しました', 'success');
+}
+
 function renderEstimateList() {
   const tbody = document.getElementById('est-list-tbody');
   if (!tbody) return;
@@ -3719,17 +3725,20 @@ function renderEstimateList() {
   });
   document.getElementById('est-count-label').textContent = `${filtered.length}件の見積依頼書（全${list.length}件）`;
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">見積依頼書はまだありません</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text3);">見積依頼書はまだありません</td></tr>`;
     return;
   }
   tbody.innerHTML = filtered.map(e => {
     const m = EST_STATUS_META[e.status] || EST_STATUS_META.draft;
+    const dtLabel = e.createdAt ? new Date(e.createdAt).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}) : fmtDate(e.date);
     return `<tr style="cursor:pointer;" onclick="editEstimate('${e.id}')">
-      <td>${_escHtml(fmtDate(e.date))}</td>
-      <td style="font-family:monospace;">${_escHtml(e.number||'')}</td>
+      <td style="white-space:nowrap;">${_escHtml(dtLabel)}</td>
       <td>${_escHtml(e.requester||'')}</td>
       <td>${_escHtml(e.client||'')}</td>
       <td style="text-align:right;">${(e.items||[]).length}</td>
+      <td style="text-align:center;">
+        <input type="checkbox" ${e.faxSent?'checked':''} onclick="event.stopPropagation();toggleEstFax('${e.id}',this.checked)" style="width:auto;">
+      </td>
       <td>
         <span class="badge ${m.cls}" onclick="openEstStatusModal('${e.id}')" style="cursor:pointer;">${m.icon} ${m.label}</span>
       </td>
@@ -3945,6 +3954,10 @@ async function saveEstimate() {
   e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
   if (e.items.length === 0) { showToast('明細を1行以上入力してください', 'error'); return; }
 
+  if (_currentEstimate.status === 'draft') {
+    _currentEstimate.status = 'pending';
+    document.getElementById('est-status').value = 'pending';
+  }
   DB.estimates = DB.estimates || [];
   const idx = DB.estimates.findIndex(x=>x.id===e.id);
   const before = idx >= 0 ? _deepClone(DB.estimates[idx]) : null;
@@ -4006,35 +4019,53 @@ function setEstStatus(id, status) {
 function registerEstimateAsProducts() {
   const e = _collectEstEditForm();
   if (!e) return;
-  if (!e.client) { showToast('先に材料発注先を入力してください','error'); return; }
   const checked = [...document.querySelectorAll('#est-items-tbody .est-reg-check:checked')];
   if (checked.length === 0) { showToast('登録する行にチェックを入れてください','error'); return; }
-  if (!confirm(`${checked.length}件を製品マスタに登録しますか？`)) return;
-  let added = 0;
-  checked.forEach(cb => {
+  const idxList = checked.map(cb => {
     const row = cb.closest('tr');
-    const idx = [...row.parentElement.children].indexOf(row);
-    const it = e.items[idx];
-    if (!it) return;
-    DB.products.push({
-      id: genId(),
-      fignum: 'EST-' + e.number + '-' + (added+1),
-      name: (it.material||'') + ' ' + (it.size||''),
-      client: e.requester || e.client || '',
-      unitPrice: 0,
-      matSupplier: e.client || '',
-      matName: it.material || '',
-      matSize: it.size || '',
-      matPrice: 0,
-      outsource: [],
-      processes: [],
-      memo: '見積 ' + e.number + ' より登録 / 面取り:' + (it.chamfer||'') + ' 納期:' + (it.delivery||''),
-    });
-    added++;
+    return [...row.parentElement.children].indexOf(row);
   });
-  save();
-  if (typeof odSave === 'function') { try { odSave(); } catch(_) {} }
-  showToast('✅ ' + added + '件を製品登録しました', 'success');
+  window._estRegQueue = idxList.map(idx => e.items[idx]).filter(Boolean);
+  window._estRegSource = e;
+  _estRegNext();
+}
+
+function _estRegNext() {
+  if (!window._estRegQueue || window._estRegQueue.length === 0) {
+    showToast('✅ 全件登録完了しました', 'success');
+    window._estRegQueue = null;
+    window._estRegSource = null;
+    return;
+  }
+  const it = window._estRegQueue.shift();
+  const src = window._estRegSource;
+  showSection('product-form');
+  setTimeout(() => {
+    if (document.getElementById('pf-mat-name'))
+      document.getElementById('pf-mat-name').value = it.material || '';
+    if (document.getElementById('pf-mat-size'))
+      document.getElementById('pf-mat-size').value = it.size || '';
+    if (document.getElementById('pf-mat-supplier'))
+      document.getElementById('pf-mat-supplier').value = src.client || '';
+    if (document.getElementById('pf-client'))
+      document.getElementById('pf-client').value = src.requester || '';
+    if (document.getElementById('pf-note'))
+      document.getElementById('pf-note').value = '見積 ' + (src.number||'') + ' より / 面取り:' + (it.chamfer||'') + ' 納期:' + (it.delivery||'');
+    window._origSaveProduct = window._origSaveProduct || saveProduct;
+    window.saveProduct = function() {
+      window._origSaveProduct();
+      if (window._estRegQueue && window._estRegQueue.length > 0) {
+        if (confirm('次の' + window._estRegQueue.length + '件も登録しますか？')) {
+          _estRegNext();
+        } else {
+          window.saveProduct = window._origSaveProduct;
+          window._estRegQueue = null;
+        }
+      } else {
+        window.saveProduct = window._origSaveProduct;
+      }
+    };
+  }, 300);
 }
 
 // ===== 履歴選択 =====
