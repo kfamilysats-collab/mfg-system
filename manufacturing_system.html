@@ -4053,8 +4053,12 @@ function _renderEstTemplateEditList() {
     c.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px;">テンプレートがありません</div>';
     return;
   }
-  c.innerHTML = list.map(t => `
+  c.innerHTML = list.map((t, i) => `
     <div style="display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',-1)" ${i===0?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↑</button>
+        <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',1)" ${i===list.length-1?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↓</button>
+      </div>
       <textarea rows="2" style="flex:1;" oninput="updateEstTemplate('${t.id}',this.value)">${_escHtml(t.text)}</textarea>
       <button class="btn btn-danger btn-xs" onclick="deleteEstTemplate('${t.id}')">削除</button>
     </div>
@@ -4085,6 +4089,18 @@ function deleteEstTemplate(id) {
   _renderEstTemplateEditList();
   if (_currentEstimate) _renderEstTemplateCheckboxes();
   showToast('削除しました','success');
+}
+
+function moveEstTemplate(id, dir) {
+  const arr = DB.estimateTemplates || [];
+  const idx = arr.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  const target = idx + dir;
+  if (target < 0 || target >= arr.length) return;
+  [arr[idx], arr[target]] = [arr[target], arr[idx]];
+  save();
+  _renderEstTemplateEditList();
+  if (_currentEstimate) _renderEstTemplateCheckboxes();
 }
 
 // ===== 印刷（html2pdf.js）=====
