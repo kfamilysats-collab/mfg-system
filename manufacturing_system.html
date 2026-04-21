@@ -4294,6 +4294,7 @@ function _buildEstPrintHtml(est) {
 }
 
 async function printEstimate() {
+  _collectEstEditForm(); // 最新の入力値を_currentEstimateに反映
   const e = _collectEstEditForm();
   if (!e) return;
   if (!e.client) { showToast('宛先を入力してください','error'); return; }
