@@ -3836,9 +3836,16 @@ function _renderEstTemplateCheckboxes() {
   if (!container || !_currentEstimate) return;
   const templates = DB.estimateTemplates || [];
   const selected = new Set(_currentEstimate.templateIds || []);
+  if (templates.length > 0) {
+    console.log('[renderCheckboxes] first template id:', templates[0].id, '/ templateIds:', _currentEstimate.templateIds);
+  }
   const rows = templates.map((t, i) => `
     <div style="display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-      <input type="checkbox" id="tpl-cb-${t.id}" data-tid="${t.id}" ${selected.has(t.id)?'checked':''} onchange="estToggleTemplate('${t.id}',this.checked)" style="width:auto;flex-shrink:0;">
+      <input type="checkbox"
+        data-tid="${t.id}"
+        ${selected.has(t.id) ? 'checked' : ''}
+        onchange="estToggleTemplate('${t.id}', this.checked)"
+        style="width:auto;margin-right:6px;">
       <input type="text" value="${_escHtml(t.text)}" oninput="updateEstTemplate('${t.id}',this.value)" style="flex:1;font-size:13px;">
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',-1)" ${i===0?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↑</button>
       <button class="btn btn-xs" onclick="moveEstTemplate('${t.id}',1)" ${i===templates.length-1?'disabled':''} style="padding:2px 6px;font-size:13px;line-height:1;">↓</button>
