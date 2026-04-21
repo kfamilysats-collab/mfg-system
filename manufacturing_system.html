@@ -1970,7 +1970,9 @@ function saveProduct() {
   if (prod.matSupplier && !DB.suppliers.materials.includes(prod.matSupplier)) DB.suppliers.materials.push(prod.matSupplier);
   prod.outsource.forEach(o=>{ if(o.name && !DB.suppliers.clients.includes(o.name)) DB.suppliers.clients.push(o.name); });
 
-  save(); clearProductForm(); showSection('products');
+  save(); clearProductForm();
+  if (window._estRegQueue) return;
+  showSection('products');
 }
 
 // ===== PRODUCTION =====
