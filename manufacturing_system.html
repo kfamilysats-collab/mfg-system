@@ -4263,6 +4263,7 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
   body { margin: 0; }
   .est-page { page-break-after: always; }
   .est-page:last-child { page-break-after: auto; }
+  #print-bar { display:none !important; }
 }
 .est-page {
   width: 297mm; height: 210mm;
@@ -4302,16 +4303,35 @@ body { font-family:'Yu Gothic','Yu Gothic UI','Noto Sans JP','Meiryo',sans-serif
 .est-closing-msg { margin-top:3mm; border:1.5px solid #000; padding:3mm 5mm; font-size:15px; font-weight:700; text-align:center; }
 </style>
 </head>
-<body>${html}</body>
+<body>
+<div id="print-bar" style="
+  position:fixed; top:0; left:0; right:0;
+  background:#1e293b; color:#fff;
+  padding:10px 20px;
+  display:flex; align-items:center; gap:16px;
+  z-index:9999;
+  font-family:sans-serif;
+">
+  <span style="font-size:14px;">見積依頼書のプレビュー</span>
+  <button onclick="window.print()" style="
+    background:#3b82f6; color:#fff;
+    border:none; border-radius:6px;
+    padding:8px 24px; font-size:15px;
+    cursor:pointer; font-weight:700;
+  ">🖨 印刷 / PDF保存</button>
+  <button onclick="window.close()" style="
+    background:transparent; color:#fff;
+    border:1px solid #fff; border-radius:6px;
+    padding:8px 16px; font-size:14px;
+    cursor:pointer;
+  ">✕ 閉じる</button>
+</div>
+
+<div style="height:50px;"></div>
+
+${html}</body>
 </html>`);
   printWin.document.close();
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  printWin.onload = function() {
-    setTimeout(() => {
-      printWin.focus();
-      printWin.print();
-    }, 500);
-  };
 }
 
 // ===== INIT =====
