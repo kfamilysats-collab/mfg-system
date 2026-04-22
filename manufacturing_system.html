@@ -649,6 +649,11 @@
               <input type="date" id="ord-date">
             </div>
             <div class="form-group">
+              <label>依頼先（受注先）</label>
+              <input type="text" id="ord-requester" list="ord-requester-list" placeholder="依頼元の会社を選択または入力">
+              <datalist id="ord-requester-list"></datalist>
+            </div>
+            <div class="form-group">
               <label>状態</label>
               <select id="ord-status">
                 <option value="draft">🟡 下書き</option>
@@ -663,6 +668,8 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
             <div class="card-title" style="margin:0;">明細（発注先ごとに色分け・会社別に印刷）</div>
             <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="ordPickFromHistory()">📋 過去発注から選択</button>
+              <button class="btn btn-ghost btn-sm" onclick="ordPickFromProducts()">🔍 製品から選択</button>
               <button class="btn btn-primary btn-sm" onclick="ordAddRow()">＋ 行追加</button>
             </div>
           </div>
@@ -670,6 +677,7 @@
             <table class="est-item-table">
               <thead>
                 <tr>
+                  <th style="width:30px;">登録</th>
                   <th style="width:38px;">No.</th>
                   <th style="width:160px;">発注先</th>
                   <th style="width:220px;">材質</th>
@@ -677,7 +685,6 @@
                   <th style="width:70px;">数量</th>
                   <th style="width:150px;">面取り指示</th>
                   <th style="width:80px;">納期</th>
-                  <th style="width:120px;">備考</th>
                   <th style="width:1%;white-space:nowrap;"></th>
                 </tr>
               </thead>
@@ -1564,6 +1571,44 @@
       <table>
         <thead><tr><th>日付</th><th>宛先</th><th>材質</th><th>寸法</th><th>数量</th><th>面取り</th><th>納期</th><th style="width:1%;"></th></tr></thead>
         <tbody id="est-history-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Order history picker modal -->
+<div class="modal-overlay" id="ord-history-modal">
+  <div class="modal" style="max-width:820px;">
+    <div class="modal-header">
+      <div class="modal-title">📋 過去の発注履歴から選択</div>
+      <button class="modal-close" onclick="closeModal('ord-history-modal')">✕</button>
+    </div>
+    <div class="search-row">
+      <div class="search-input"><input type="text" id="ord-history-search" placeholder="材質・寸法・発注先で検索..." oninput="renderOrdHistoryList()"></div>
+    </div>
+    <div class="table-wrap" style="max-height:420px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>日付</th><th>発注先</th><th>材質</th><th>寸法</th><th>数量</th><th>面取り</th><th>納期</th><th style="width:1%;"></th></tr></thead>
+        <tbody id="ord-history-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Order product picker modal -->
+<div class="modal-overlay" id="ord-product-modal">
+  <div class="modal" style="max-width:780px;">
+    <div class="modal-header">
+      <div class="modal-title">🔍 製品検索</div>
+      <button class="modal-close" onclick="closeModal('ord-product-modal')">✕</button>
+    </div>
+    <div class="search-row">
+      <div class="search-input"><input type="text" id="ord-product-search" placeholder="図番・品名・材質・寸法で検索..." oninput="ordSearchProducts()"></div>
+    </div>
+    <div class="table-wrap" style="max-height:400px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>図番</th><th>品名</th><th>材質</th><th>寸法</th><th>選択</th></tr></thead>
+        <tbody id="ord-product-results"></tbody>
       </table>
     </div>
   </div>
@@ -5342,6 +5387,16 @@ function refreshOrdSupplierList() {
     .map(n => `<option value="${_escHtml(n)}">`).join("");
 }
 
+function refreshOrdRequesterList() {
+  const dl = document.getElementById('ord-requester-list');
+  if (!dl) return;
+  const names = (DB.companies||[])
+    .filter(c => (c.types||[]).includes('client'))
+    .map(c => c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort()
+    .map(n => `<option value="${_escHtml(n)}">`).join('');
+}
+
 function backToOrderList() {
   _currentOrder = null;
   document.getElementById("ord-list-view").style.display = "";
@@ -5392,6 +5447,7 @@ function newOrder() {
     date: today.toISOString().slice(0,10),
     status: 'draft',
     items: [],
+    requester: '',
     extraNotes: '',
     selectedTemplateTexts: [],
     isNew: true,
@@ -5435,7 +5491,9 @@ function _renderOrdEditView() {
   document.getElementById('ord-date').value = _currentOrder.date || '';
   document.getElementById('ord-status').value = _currentOrder.status || 'draft';
   document.getElementById('ord-extra-notes').value = _currentOrder.extraNotes || '';
+  document.getElementById('ord-requester').value = _currentOrder.requester || '';
   refreshOrdSupplierList();
+  refreshOrdRequesterList();
   _renderOrdItems();
   _renderOrdTemplateCheckboxes();
 }
@@ -5462,6 +5520,7 @@ function _renderOrdItems() {
     const s = (it.supplier||'').trim();
     const rowBg = s && supplierColorMap[s] ? `background:${supplierColorMap[s]};` : '';
     return `<tr style="${rowBg}">
+      <td style="text-align:center;"><input type="checkbox" class="ord-reg-check" style="width:auto;"></td>
       <td style="text-align:center;font-weight:600;">${i+1}</td>
       <td><input type="text" list="ord-supplier-list" class="est-row-input" value="${_escHtml(it.supplier||'')}" onchange="ordRowUpdate(${i},'supplier',this.value)" placeholder="発注先"></td>
       <td><input class="est-row-input" value="${_escHtml(it.material||'')}" oninput="ordRowUpdate(${i},'material',this.value)" placeholder="例：SS400"></td>
@@ -5469,7 +5528,6 @@ function _renderOrdItems() {
       <td><input class="est-row-input" type="text" value="${_escHtml(it.qty||'')}" oninput="ordRowUpdate(${i},'qty',this.value)" placeholder="1"></td>
       <td><input class="est-row-input" value="${_escHtml(it.chamfer||'')}" oninput="ordRowUpdate(${i},'chamfer',this.value)" placeholder="例：C2 全周"></td>
       <td><input class="est-row-input" value="${_escHtml(it.delivery||'')}" oninput="ordRowUpdate(${i},'delivery',this.value)" placeholder="例：5日"></td>
-      <td><input class="est-row-input" value="${_escHtml(it.note||'')}" oninput="ordRowUpdate(${i},'note',this.value)" placeholder=""></td>
       <td style="white-space:nowrap;">
       <button class="btn btn-ghost btn-xs" onclick="ordMoveRow(${i},-1)" title="上へ">↑</button>
       <button class="btn btn-ghost btn-xs" onclick="ordMoveRow(${i},1)" title="下へ">↓</button>
@@ -5477,6 +5535,104 @@ function _renderOrdItems() {
       </td></tr>`;
   }).join('');
   _renderOrdSupplierPrintButtons();
+}
+
+function ordPickFromHistory() {
+  renderOrdHistoryList();
+  openModal('ord-history-modal');
+}
+function renderOrdHistoryList() {
+  const tbody = document.getElementById('ord-history-tbody');
+  if (!tbody) return;
+  const q = (document.getElementById('ord-history-search').value||'').toLowerCase().trim();
+  const rows = [];
+  (DB.orders||[]).forEach(o => {
+    (o.items||[]).forEach(it => {
+      rows.push({ date: o.date, supplier: it.supplier||'', item: it });
+    });
+  });
+  const filtered = rows.filter(r => {
+    if (!q) return true;
+    return ((r.item.material||'')+' '+(r.item.size||'')+' '+(r.item.supplier||'')).toLowerCase().includes(q);
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0, 200);
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);">履歴がありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((r,i) => `
+    <tr>
+      <td>${_escHtml(fmtDate(r.date))}</td>
+      <td>${_escHtml(r.item.supplier||'')}</td>
+      <td>${_escHtml(r.item.material||'')}</td>
+      <td>${_escHtml(r.item.size||'')}</td>
+      <td style="text-align:center;">${_escHtml(r.item.qty||'')}</td>
+      <td>${_escHtml(r.item.chamfer||'')}</td>
+      <td>${_escHtml(r.item.delivery||'')}</td>
+      <td><button class="btn btn-primary btn-xs" onclick='ordAddFromHistory(${JSON.stringify(r.item).replace(/'/g,"&#39;")})'>追加</button></td>
+    </tr>
+  `).join('');
+}
+function ordAddFromHistory(item) {
+  if (!_currentOrder) return;
+  _currentOrder.items = _currentOrder.items || [];
+  _currentOrder.items.push({
+    supplier: item.supplier||'',
+    material: item.material||'',
+    size: item.size||'',
+    qty: item.qty||'',
+    chamfer: item.chamfer||'',
+    delivery: item.delivery||'',
+  });
+  _renderOrdItems();
+  closeModal('ord-history-modal');
+  showToast('明細を追加しました','success');
+}
+
+function ordPickFromProducts() {
+  document.getElementById('ord-product-search').value = '';
+  _renderOrdProductResults('');
+  openModal('ord-product-modal');
+}
+function ordSearchProducts() {
+  _renderOrdProductResults(document.getElementById('ord-product-search').value||'');
+}
+function _renderOrdProductResults(q) {
+  const tbody = document.getElementById('ord-product-results');
+  if (!tbody) return;
+  const needle = q.toLowerCase().trim();
+  const list = (DB.products||[]).filter(p => {
+    if (!needle) return true;
+    return ((p.fignum||'')+' '+(p.name||'')+' '+(p.matName||'')+' '+(p.matSize||'')).toLowerCase().includes(needle);
+  }).slice(0, 200);
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3);">製品がありません</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(p => `
+    <tr>
+      <td>${_escHtml(p.fignum||'')}</td>
+      <td>${_escHtml(p.name||'')}</td>
+      <td>${_escHtml(p.matName||'')}</td>
+      <td>${_escHtml(p.matSize||'')}</td>
+      <td><button class="btn btn-primary btn-xs" onclick="ordAddFromProduct('${p.id}')">追加</button></td>
+    </tr>
+  `).join('');
+}
+function ordAddFromProduct(id) {
+  const p = (DB.products||[]).find(x=>x.id===id);
+  if (!p || !_currentOrder) return;
+  _currentOrder.items = _currentOrder.items || [];
+  _currentOrder.items.push({
+    supplier: p.matSupplier||'',
+    material: p.matName||'',
+    size: p.matSize||'',
+    qty: '1',
+    chamfer: '',
+    delivery: '',
+  });
+  _renderOrdItems();
+  closeModal('ord-product-modal');
+  showToast('製品を明細に追加しました','success');
 }
 
 function ordAddRow() {
@@ -5525,6 +5681,7 @@ function _collectOrdEditForm() {
   _currentOrder.date = document.getElementById('ord-date').value || new Date().toISOString().slice(0,10);
   _currentOrder.status = document.getElementById('ord-status').value || 'draft';
   _currentOrder.extraNotes = document.getElementById('ord-extra-notes').value || '';
+  _currentOrder.requester = document.getElementById('ord-requester').value.trim();
   _currentOrder.updatedAt = new Date().toISOString();
   _currentOrder.selectedTemplateTexts =
     [...document.querySelectorAll('#ord-template-list input[type=checkbox]:checked')]
@@ -5571,15 +5728,18 @@ function deleteOrder() {
 function _renderOrdTemplateCheckboxes() {
   const container = document.getElementById('ord-template-list');
   if (!container || !_currentOrder) return;
-  const selectedTexts = _currentOrder.selectedTemplateTexts || [];
-  container.innerHTML = (DB.orderTemplates||[]).map(t => {
-    const checked = selectedTexts.includes(t.text) ? 'checked' : '';
-    return '<label class="est-tpl-item">' +
-      '<input type="checkbox" data-txt="' + _escHtml(t.text) + '" ' + checked + ' onchange="ordTemplateCheck(this)">' +
-      '<input type="text" class="est-row-input" value="' + _escHtml(t.text) + '" style="flex:1;"' +
-      ' onfocus="this.previousElementSibling.checked=true;ordTemplateCheck(this.previousElementSibling);"' +
-      ' oninput="this.previousElementSibling.setAttribute(\'data-txt\',this.value)">' +
-      '</label>';
+  const templates = DB.orderTemplates || [];
+  const selected = new Set(_currentOrder.selectedTemplateTexts || []);
+  container.innerHTML = templates.map((t, i) => {
+    const txt = typeof t === 'string' ? t : (t.text || '');
+    const checked = selected.has(txt) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer;">
+      <input type="checkbox" ${checked} data-txt="${_escHtml(txt)}" style="width:auto;" onchange="ordTemplateCheck(this)">
+      <input type="text" value="${_escHtml(txt)}" style="flex:1;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:13px;background:var(--bg2);" oninput="ordUpdateTplText(${i}, '${_escHtml(txt)}', this.value)">
+      <button class="btn btn-ghost btn-xs" type="button" onclick="ordMoveTpl(${i},-1)">↑</button>
+      <button class="btn btn-ghost btn-xs" type="button" onclick="ordMoveTpl(${i},1)">↓</button>
+      <button class="btn btn-danger btn-xs" type="button" onclick="ordDeleteTpl(${i})">削除</button>
+    </label>`;
   }).join('');
 }
 
@@ -5591,6 +5751,32 @@ function ordTemplateCheck(cb) {
       const ti = label ? label.querySelector('input[type=text]') : null;
       return ti ? ti.value.trim() : c.getAttribute('data-txt');
     }).filter(t=>t);
+}
+function ordMoveTpl(i, dir) {
+  const t = DB.orderTemplates;
+  const j = i + dir;
+  if (j < 0 || j >= t.length) return;
+  [t[i], t[j]] = [t[j], t[i]];
+  save();
+  _renderOrdTemplateCheckboxes();
+}
+function ordDeleteTpl(i) {
+  if (!confirm('削除しますか？')) return;
+  DB.orderTemplates.splice(i, 1);
+  save();
+  _renderOrdTemplateCheckboxes();
+}
+function ordUpdateTplText(i, oldText, newText) {
+  newText = (newText||'').trim();
+  if (!newText) return;
+  const t = DB.orderTemplates[i];
+  if (typeof t === 'string') DB.orderTemplates[i] = { text: newText };
+  else if (t) t.text = newText;
+  if (_currentOrder && _currentOrder.selectedTemplateTexts) {
+    const idx = _currentOrder.selectedTemplateTexts.indexOf(oldText);
+    if (idx >= 0) _currentOrder.selectedTemplateTexts[idx] = newText;
+  }
+  save();
 }
 
 function openOrdTemplateManager() {
