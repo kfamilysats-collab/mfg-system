@@ -434,8 +434,12 @@
         <div>
           <div class="page-title">ダッシュボード</div>
           <div class="page-subtitle" id="today-date"></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;" id="last-backup-label"></div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="showSection('production-form')">＋ 実績登録</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="downloadBackup()">💾 今すぐバックアップ</button>
+          <button class="btn btn-primary btn-sm" onclick="showSection('production-form')">＋ 実績登録</button>
+        </div>
       </div>
 
       <div class="stats-grid" id="stats-grid"></div>
@@ -4585,8 +4589,49 @@ ${html}</body>
   printWin.document.close();
 }
 
+// ===== AUTO BACKUP =====
+function autoBackup() {
+  const lastBackup = localStorage.getItem('lastBackupTime');
+  const now = new Date();
+  const oneDayAgo = now.getTime() - 24 * 60 * 60 * 1000;
+  if (!lastBackup || parseInt(lastBackup) < oneDayAgo) {
+    downloadBackup();
+    localStorage.setItem('lastBackupTime', now.getTime().toString());
+  }
+  updateLastBackupLabel();
+}
+
+function downloadBackup() {
+  const data = JSON.stringify(DB, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const dateStr = now.getFullYear() +
+    String(now.getMonth()+1).padStart(2,'0') +
+    String(now.getDate()).padStart(2,'0');
+  a.href = url;
+  a.download = '製造管理データ_backup_' + dateStr + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  localStorage.setItem('lastBackupTime', now.getTime().toString());
+  updateLastBackupLabel();
+  showToast('✅ バックアップを保存しました', 'success');
+}
+
+function updateLastBackupLabel() {
+  const el = document.getElementById('last-backup-label');
+  if (!el) return;
+  const ts = localStorage.getItem('lastBackupTime');
+  if (!ts) { el.textContent = '最終バックアップ：未実行'; return; }
+  const d = new Date(parseInt(ts));
+  el.textContent = '最終バックアップ：' + d.getMonth()+1 + '月' + d.getDate() + '日 ' +
+    String(d.getHours()).padStart(2,'0') + '時' + String(d.getMinutes()).padStart(2,'0') + '分';
+}
+
 // ===== INIT =====
 load();
+autoBackup();
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('ja-JP', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 renderDashboard();
 refreshProductFormLists();
