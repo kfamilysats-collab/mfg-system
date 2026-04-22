@@ -2063,8 +2063,6 @@ function clearProductForm() {
 function saveProduct() {
   const fignum = document.getElementById('pf-fignum').value.trim();
   const name = document.getElementById('pf-name').value.trim();
-  if (!fignum || !name) { showToast('図番と品名は必須です', 'error'); return; }
-
   const editId = document.getElementById('pf-fignum').dataset.editId;
   const os = [...document.querySelectorAll('.outsource-row')].map(r=>({
     name: r.querySelector('.os-name').value.trim(),
@@ -4312,7 +4310,6 @@ function _estRegNext() {
 function estRegSaveAndNext() {
   const fignum = (document.getElementById('pf-fignum')||{}).value||'';
   const name = (document.getElementById('pf-name')||{}).value||'';
-  if (!fignum || !name) { showToast('品番・品名を入力してください', 'error'); return; }
   window._estRegQueue.shift();
   saveProduct();
   if (window._estRegQueue && window._estRegQueue.length > 0) {
