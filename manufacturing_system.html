@@ -551,7 +551,8 @@
                 <tr>
                   <th style="width:30px;">登録</th>
                   <th style="width:38px;">No.</th>
-                  <th style="width:160px;">材質</th>
+                  <th style="width:140px;">発注先</th>
+                  <th style="width:130px;">材質</th>
                   <th>寸法</th>
                   <th style="width:70px;">数量</th>
                   <th style="width:150px;">面取り指示</th>
@@ -561,6 +562,7 @@
               </thead>
               <tbody id="est-items-tbody"></tbody>
             </table>
+            <datalist id="est-supplier-list"></datalist>
           </div>
         </div>
 
@@ -582,6 +584,7 @@
             <button class="btn btn-ghost btn-sm" onclick="registerEstimateAsProducts()">📝 製品登録</button>
             <button class="btn btn-danger btn-sm" onclick="deleteEstimate()" style="margin-left:auto;">🗑 削除</button>
           </div>
+          <div id="est-supplier-print-btns" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
         </div>
       </div>
     </section>
@@ -3696,6 +3699,16 @@ function refreshEstRequesterList() {
     .map(n => `<option value="${_escHtml(n)}">`).join('');
 }
 
+function refreshEstSupplierList() {
+  const dl = document.getElementById('est-supplier-list');
+  if (!dl) return;
+  const names = (DB.companies||[])
+    .filter(c => (c.types||[]).includes('material'))
+    .map(c => c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort()
+    .map(n => `<option value="${_escHtml(n)}">`).join('');
+}
+
 function backToEstList() {
   _currentEstimate = null;
   const lv = document.getElementById('est-list-view');
@@ -3813,6 +3826,7 @@ function _renderEstEditView() {
   document.getElementById('est-extra-notes').value = _currentEstimate.extraNotes || '';
   refreshEstClientList();
   refreshEstRequesterList();
+  refreshEstSupplierList();
   _renderEstItems();
   _renderEstTemplateCheckboxes();
 }
@@ -3822,15 +3836,28 @@ function _renderEstItems() {
   if (!tbody || !_currentEstimate) return;
   const items = _currentEstimate.items || [];
   if (items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>`;
     return;
   }
-  tbody.innerHTML = items.map((it,i) => `
-    <tr>
+  const supplierColorMap = {};
+  let colorIdx = 0;
+  items.forEach(it => {
+    const s = (it.supplier||'').trim();
+    if (s && !(s in supplierColorMap)) {
+      supplierColorMap[s] = SUPPLIER_COLORS[colorIdx % SUPPLIER_COLORS.length];
+      colorIdx++;
+    }
+  });
+  tbody.innerHTML = items.map((it,i) => {
+    const s = (it.supplier||'').trim();
+    const rowBg = s && supplierColorMap[s] ? `background:${supplierColorMap[s]};` : '';
+    return `
+    <tr style="${rowBg}">
       <td style="text-align:center;">
         <input type="checkbox" class="est-reg-check" style="width:auto;">
       </td>
       <td style="text-align:center;font-weight:600;">${i+1}</td>
+      <td><input type="text" list="est-supplier-list" class="est-row-input" value="${_escHtml(it.supplier||'')}" oninput="estRowUpdate(${i},'supplier',this.value)" placeholder="発注先"></td>
       <td><input class="est-row-input" value="${_escHtml(it.material||'')}" oninput="estRowUpdate(${i},'material',this.value)" placeholder="例：SS400"></td>
       <td><input class="est-row-input" value="${_escHtml(it.size||'')}" oninput="estRowUpdate(${i},'size',this.value)" placeholder="例：t12×100×200"></td>
       <td><input class="est-row-input" type="text" value="${_escHtml(it.qty||'')}" oninput="estRowUpdate(${i},'qty',this.value)" placeholder="1"></td>
@@ -3841,14 +3868,15 @@ function _renderEstItems() {
         <button class="btn btn-ghost btn-xs" onclick="estMoveRow(${i},1)" title="下へ">↓</button>
         <button class="btn btn-danger btn-xs" onclick="estRemoveRow(${i})">✕</button>
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+  _renderSupplierPrintButtons();
 }
 
 function estAddRow() {
   if (!_currentEstimate) return;
   _currentEstimate.items = _currentEstimate.items || [];
-  _currentEstimate.items.push({ material:'', size:'', qty:'', chamfer:'', delivery:'' });
+  _currentEstimate.items.push({ supplier:'', material:'', size:'', qty:'', chamfer:'', delivery:'' });
   _renderEstItems();
 }
 function estRemoveRow(i) {
@@ -3868,6 +3896,34 @@ function estRowUpdate(i, key, val) {
   if (!_currentEstimate) return;
   if (!_currentEstimate.items[i]) return;
   _currentEstimate.items[i][key] = val;
+  if (key === 'supplier') _renderSupplierPrintButtons();
+}
+
+function _renderSupplierPrintButtons() {
+  const container = document.getElementById('est-supplier-print-btns');
+  if (!container || !_currentEstimate) return;
+  const items = _currentEstimate.items || [];
+  const supplierCounts = {};
+  items.forEach(it => {
+    const s = (it.supplier||'').trim();
+    if (s) supplierCounts[s] = (supplierCounts[s]||0) + 1;
+  });
+  const suppliers = Object.keys(supplierCounts);
+  if (suppliers.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = suppliers.map(s =>
+    `<button class="btn btn-ghost btn-sm" onclick="printEstimateBySupplier('${_escHtml(s)}')">🖨 ${_escHtml(s)}（${supplierCounts[s]}行）</button>`
+  ).join('');
+}
+
+async function printEstimateBySupplier(supplierName) {
+  const e = _collectEstEditForm();
+  if (!e) return;
+  const filtered = Object.assign({}, e, {
+    items: (e.items||[]).filter(it => (it.supplier||'').trim() === supplierName),
+    client: supplierName
+  });
+  if (filtered.items.length === 0) { showToast('対象の行がありません', 'error'); return; }
+  await _generateEstimatePdf(filtered);
 }
 
 function _renderEstTemplateCheckboxes() {
@@ -4265,6 +4321,7 @@ function moveEstTemplate(id, dir) {
 
 // ===== 印刷（html2pdf.js）=====
 const EST_ROWS_PER_PAGE = 7;
+const SUPPLIER_COLORS = ['#eff6ff','#f0fdf4','#fef9c3','#fdf2f8','#fff7ed'];
 
 function _buildEstChamferSvg() {
   return `
