@@ -375,6 +375,9 @@
         <div class="nav-item" onclick="showSection('estimate')">
           <span class="nav-icon">📋</span>見積依頼書
         </div>
+        <div class="nav-item" onclick="showSection('order')">
+          <span class="nav-icon">📦</span>発注書
+        </div>
       </div>
       <div class="nav-group">
         <div class="nav-label">生産管理</div>
@@ -589,6 +592,118 @@
             <button class="btn btn-danger btn-sm" onclick="deleteEstimate()" style="margin-left:auto;">🗑 削除</button>
           </div>
           <div id="est-supplier-print-btns" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ORDER (発注書) ===== -->
+    <section class="section" id="sec-order">
+      <!-- 一覧 -->
+      <div id="ord-list-view">
+        <div class="page-header">
+          <div>
+            <div class="page-title">📦 発注書</div>
+            <div class="page-subtitle" id="ord-count-label"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="openOrdTemplateManager()">📝 文言テンプレート</button>
+            <button class="btn btn-primary btn-sm" onclick="newOrder()">＋ 新規作成</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="search-row">
+            <div class="search-input"><input type="text" id="ord-search" placeholder="🔍 発注先・材質で検索..." oninput="renderOrderList()"></div>
+            <select id="ord-status-filter" onchange="renderOrderList()" style="width:160px;">
+              <option value="">全状態</option>
+              <option value="draft">🟡 下書き</option>
+              <option value="pending">🔵 FAX送信済</option>
+              <option value="done">✔ 完了</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>日付</th><th>発注先（複数）</th><th>行数</th><th>状態</th><th style="width:1%;white-space:nowrap;">操作</th>
+                </tr>
+              </thead>
+              <tbody id="ord-list-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 編集フォーム -->
+      <div id="ord-edit-view" style="display:none;">
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="ord-edit-title">発注書 作成</div>
+            <div class="page-subtitle" id="ord-edit-subtitle"></div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="backToOrderList()">← 一覧へ</button>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>日付</label>
+              <input type="date" id="ord-date">
+            </div>
+            <div class="form-group">
+              <label>状態</label>
+              <select id="ord-status">
+                <option value="draft">🟡 下書き</option>
+                <option value="pending">🔵 FAX送信済</option>
+                <option value="done">✔ 完了</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">明細（発注先ごとに色分け・会社別に印刷）</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="ordAddRow()">＋ 行追加</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="est-item-table">
+              <thead>
+                <tr>
+                  <th style="width:38px;">No.</th>
+                  <th style="width:160px;">発注先</th>
+                  <th style="width:220px;">材質</th>
+                  <th>寸法</th>
+                  <th style="width:70px;">数量</th>
+                  <th style="width:150px;">面取り指示</th>
+                  <th style="width:80px;">納期</th>
+                  <th style="width:120px;">備考</th>
+                  <th style="width:1%;white-space:nowrap;"></th>
+                </tr>
+              </thead>
+              <tbody id="ord-items-tbody"></tbody>
+            </table>
+            <datalist id="ord-supplier-list"></datalist>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">備考欄（印刷用・複数選択可）</div>
+          <div id="ord-template-list" style="margin-bottom:12px;"></div>
+          <div class="form-group">
+            <label>追加メモ（任意・テンプレートと重ね合わせ）</label>
+            <textarea id="ord-extra-notes" rows="3" placeholder="その他自由記入"></textarea>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">操作</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="saveOrder()">💾 保存</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteOrder()" style="margin-left:auto;">🗑 削除</button>
+          </div>
+          <div id="ord-supplier-print-btns" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"></div>
         </div>
       </div>
     </section>
@@ -1472,6 +1587,8 @@ const DB = {
   history: [], // 変更履歴（最大500件）
   estimates: [], // 見積依頼書
   estimateTemplates: [], // 備考文言テンプレート
+  orders: [], // 発注書
+  orderTemplates: [], // 発注書備考文言テンプレート
 };
 
 const EST_DEFAULT_TEMPLATES = [
@@ -1479,6 +1596,13 @@ const EST_DEFAULT_TEMPLATES = [
   '請求は〇月にして頂きますようお願い致します。',
   'いつもお世話になっております。',
   '※キズ・打痕・サビ注意',
+];
+
+const ORDER_DEFAULT_TEMPLATES = [
+  'いつもお世話になっております。',
+  '請求は〇月にして頂きますようお願い致します。',
+  '※キズ・打痕・サビ注意',
+  '納期のご回答をお願い致します。',
 ];
 
 function save() {
@@ -1517,7 +1641,10 @@ function load() {
     if (!DB.history) DB.history = [];
     if (!DB.estimates) DB.estimates = [];
     if (!DB.estimateTemplates) DB.estimateTemplates = [];
+    if (!DB.orders) DB.orders = [];
+    if (!DB.orderTemplates) DB.orderTemplates = [];
     DB.estimates.forEach(e => { if (!e.selectedTemplateTexts) e.selectedTemplateTexts = []; });
+    DB.orders.forEach(o => { if (!o.selectedTemplateTexts) o.selectedTemplateTexts = []; });
   }
   // デフォルトのテンプレートが1つも無い場合は投入
   if (!DB.estimateTemplates || DB.estimateTemplates.length === 0) {
@@ -1525,6 +1652,12 @@ function load() {
   }
   DB.estimateTemplates.forEach((t, i) => {
     if (!t.id) t.id = 'tpl-' + i + '-' + Date.now();
+  });
+  if (!DB.orderTemplates || DB.orderTemplates.length === 0) {
+    DB.orderTemplates = ORDER_DEFAULT_TEMPLATES.map(t => ({ id: genId(), text: t }));
+  }
+  DB.orderTemplates.forEach((t, i) => {
+    if (!t.id) t.id = 'ord-tpl-' + i + '-' + Date.now();
   });
 }
 
@@ -1589,6 +1722,7 @@ function showSection(name) {
   if (name === 'production-form') initProductionForm();
   if (name === 'product-form') { initProductForm(); refreshProductFormLists(); }
   if (name === 'estimate') initEstimateSection();
+  if (name === 'order') initOrderSection();
 }
 
 function toggleSidebar() {
@@ -5154,6 +5288,467 @@ document.documentElement.style.setProperty('font-size','17px');
     };
   }
 })();
+
+
+// ===== ORDER (発注書) =====
+let _currentOrder = null;
+
+const ORD_STATUS_META = {
+  draft:   { icon: "🟡", label: "下書き",    cls: "est-status-draft" },
+  pending: { icon: "🔵", label: "FAX送信済", cls: "est-status-pending" },
+  done:    { icon: "✔",  label: "完了",       cls: "est-status-done" },
+};
+
+const ORD_ROWS_PER_PAGE = 8;
+const ORDER_SUPPLIER_COLORS = ["#eff6ff","#f0fdf4","#fef9c3","#fdf2f8","#fff7ed"];
+
+function initOrderSection() {
+  backToOrderList();
+  renderOrderList();
+  refreshOrdSupplierList();
+}
+
+function refreshOrdSupplierList() {
+  const dl = document.getElementById("ord-supplier-list");
+  if (!dl) return;
+  const names = (DB.companies||[])
+    .filter(c => (c.types||[]).includes("material"))
+    .map(c => c.name).filter(Boolean);
+  dl.innerHTML = [...new Set(names)].sort()
+    .map(n => `<option value="${_escHtml(n)}">`).join("");
+}
+
+function backToOrderList() {
+  _currentOrder = null;
+  document.getElementById("ord-list-view").style.display = "";
+  document.getElementById("ord-edit-view").style.display = "none";
+  renderOrderList();
+}
+function renderOrderList() {
+  const tbody = document.getElementById('ord-list-tbody');
+  if (!tbody) return;
+  const q = (document.getElementById('ord-search').value||'').toLowerCase().trim();
+  const statusFilter = document.getElementById('ord-status-filter').value || '';
+  const list = (DB.orders||[]).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const filtered = list.filter(o => {
+    if (statusFilter && o.status !== statusFilter) return false;
+    if (!q) return true;
+    const hay = [o.number, ...(o.items||[]).map(i=>(i.supplier||'')+' '+(i.material||'')+' '+(i.size||''))].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+  document.getElementById('ord-count-label').textContent = filtered.length + '件の発注書（全' + list.length + '件）';
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text3);">発注書はまだありません</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(o => {
+    const m = ORD_STATUS_META[o.status] || ORD_STATUS_META.draft;
+    const suppliers = [...new Set((o.items||[]).map(i=>(i.supplier||'').trim()).filter(Boolean))];
+    const dtLabel = o.createdAt
+      ? new Date(o.createdAt).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
+      : fmtDate(o.date);
+    return '<tr style="cursor:pointer;" onclick="editOrder('' + o.id + '')">' +
+      '<td style="white-space:nowrap;">' + _escHtml(dtLabel) + '</td>' +
+      '<td>' + _escHtml(suppliers.join('、')||'—') + '</td>' +
+      '<td style="text-align:right;">' + (o.items||[]).length + '</td>' +
+      '<td><span class="badge ' + m.cls + '">' + m.icon + ' ' + m.label + '</span></td>' +
+      '<td style="white-space:nowrap;" onclick="event.stopPropagation()">' +
+      '<button class="btn btn-ghost btn-xs" onclick="editOrder('' + o.id + '')">編集</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="duplicateOrder('' + o.id + '')">複製</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function newOrder() {
+  const today = new Date();
+  const yearSeq = (DB.orders||[]).filter(x=>(x.number||'').startsWith('PO'+today.getFullYear())).length + 1;
+  _currentOrder = {
+    id: genId(),
+    number: 'PO' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0'),
+    date: today.toISOString().slice(0,10),
+    status: 'draft',
+    items: [],
+    extraNotes: '',
+    selectedTemplateTexts: [],
+    isNew: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  _renderOrdEditView();
+}
+
+function editOrder(id) {
+  const o = (DB.orders||[]).find(x=>x.id===id);
+  if (!o) { showToast('発注書が見つかりません', 'error'); return; }
+  _currentOrder = _deepClone(o);
+  _currentOrder.isNew = false;
+  _currentOrder.selectedTemplateTexts = o.selectedTemplateTexts || [];
+  _renderOrdEditView();
+}
+
+function duplicateOrder(id) {
+  const o = (DB.orders||[]).find(x=>x.id===id);
+  if (!o) return;
+  const today = new Date();
+  const yearSeq = (DB.orders||[]).filter(x=>(x.number||'').startsWith('PO'+today.getFullYear())).length + 1;
+  _currentOrder = _deepClone(o);
+  _currentOrder.id = genId();
+  _currentOrder.number = 'PO' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0');
+  _currentOrder.date = today.toISOString().slice(0,10);
+  _currentOrder.status = 'draft';
+  _currentOrder.isNew = true;
+  _currentOrder.createdAt = new Date().toISOString();
+  _currentOrder.updatedAt = new Date().toISOString();
+  _renderOrdEditView();
+}
+
+function _renderOrdEditView() {
+  if (!_currentOrder) return;
+  document.getElementById('ord-list-view').style.display = 'none';
+  document.getElementById('ord-edit-view').style.display = '';
+  document.getElementById('ord-edit-title').textContent = _currentOrder.isNew ? '発注書 作成' : '発注書 編集';
+  document.getElementById('ord-edit-subtitle').textContent = _currentOrder.number || '';
+  document.getElementById('ord-date').value = _currentOrder.date || '';
+  document.getElementById('ord-status').value = _currentOrder.status || 'draft';
+  document.getElementById('ord-extra-notes').value = _currentOrder.extraNotes || '';
+  refreshOrdSupplierList();
+  _renderOrdItems();
+  _renderOrdTemplateCheckboxes();
+}
+
+function _renderOrdItems() {
+  const tbody = document.getElementById('ord-items-tbody');
+  if (!tbody || !_currentOrder) return;
+  const items = _currentOrder.items || [];
+  if (items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3);">「＋ 行追加」で明細を追加してください</td></tr>';
+    _renderOrdSupplierPrintButtons();
+    return;
+  }
+  const supplierColorMap = {};
+  let colorIdx = 0;
+  items.forEach(it => {
+    const s = (it.supplier||'').trim();
+    if (s && !(s in supplierColorMap)) {
+      supplierColorMap[s] = ORDER_SUPPLIER_COLORS[colorIdx % ORDER_SUPPLIER_COLORS.length];
+      colorIdx++;
+    }
+  });
+  tbody.innerHTML = items.map((it,i) => {
+    const s = (it.supplier||'').trim();
+    const rowBg = s && supplierColorMap[s] ? 'background:' + supplierColorMap[s] + ';' : '';
+    return '<tr style="' + rowBg + '">' +
+      '<td style="text-align:center;font-weight:600;">' + (i+1) + '</td>' +
+      '<td><input type="text" list="ord-supplier-list" class="est-row-input" value="' + _escHtml(it.supplier||'') + '" onchange="ordRowUpdate(' + i + ','supplier',this.value)" placeholder="発注先"></td>' +
+      '<td><input class="est-row-input" value="' + _escHtml(it.material||'') + '" oninput="ordRowUpdate(' + i + ','material',this.value)" placeholder="例：SS400"></td>' +
+      '<td><input class="est-row-input" value="' + _escHtml(it.size||'') + '" oninput="ordRowUpdate(' + i + ','size',this.value)" placeholder="例：t12×100×200"></td>' +
+      '<td><input class="est-row-input" type="text" value="' + _escHtml(it.qty||'') + '" oninput="ordRowUpdate(' + i + ','qty',this.value)" placeholder="1"></td>' +
+      '<td><input class="est-row-input" value="' + _escHtml(it.chamfer||'') + '" oninput="ordRowUpdate(' + i + ','chamfer',this.value)" placeholder="例：C2 全周"></td>' +
+      '<td><input class="est-row-input" value="' + _escHtml(it.delivery||'') + '" oninput="ordRowUpdate(' + i + ','delivery',this.value)" placeholder="例：5日"></td>' +
+      '<td><input class="est-row-input" value="' + _escHtml(it.note||'') + '" oninput="ordRowUpdate(' + i + ','note',this.value)" placeholder=""></td>' +
+      '<td style="white-space:nowrap;">' +
+      '<button class="btn btn-ghost btn-xs" onclick="ordMoveRow(' + i + ',-1)" title="上へ">↑</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="ordMoveRow(' + i + ',1)" title="下へ">↓</button>' +
+      '<button class="btn btn-danger btn-xs" onclick="ordRemoveRow(' + i + ')">✕</button>' +
+      '</td></tr>';
+  }).join('');
+  _renderOrdSupplierPrintButtons();
+}
+
+function ordAddRow() {
+  if (!_currentOrder) return;
+  _currentOrder.items = _currentOrder.items || [];
+  _currentOrder.items.push({ supplier:'', material:'', size:'', qty:'', chamfer:'', delivery:'', note:'' });
+  _renderOrdItems();
+}
+function ordRemoveRow(i) {
+  if (!_currentOrder) return;
+  _currentOrder.items.splice(i,1);
+  _renderOrdItems();
+}
+function ordMoveRow(i, dir) {
+  if (!_currentOrder) return;
+  const items = _currentOrder.items;
+  const j = i + dir;
+  if (j < 0 || j >= items.length) return;
+  [items[i], items[j]] = [items[j], items[i]];
+  _renderOrdItems();
+}
+function ordRowUpdate(i, key, val) {
+  if (!_currentOrder || !_currentOrder.items[i]) return;
+  _currentOrder.items[i][key] = val;
+  if (key === 'supplier') _renderOrdItems();
+}
+
+function _renderOrdSupplierPrintButtons() {
+  const container = document.getElementById('ord-supplier-print-btns');
+  if (!container || !_currentOrder) return;
+  const items = _currentOrder.items || [];
+  const supplierCounts = {};
+  items.forEach(it => {
+    const s = (it.supplier||'').trim();
+    if (s) supplierCounts[s] = (supplierCounts[s]||0) + 1;
+  });
+  const suppliers = Object.keys(supplierCounts);
+  if (suppliers.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = suppliers.map(s =>
+    '<button class="btn btn-success btn-sm" data-s="' + _escHtml(s) + '" onclick="printOrderBySupplier(this.dataset.s)">🖨 ' + _escHtml(s) + '（' + supplierCounts[s] + '行）</button>'
+  ).join('');
+}
+
+function _collectOrdEditForm() {
+  if (!_currentOrder) return null;
+  _currentOrder.date = document.getElementById('ord-date').value || new Date().toISOString().slice(0,10);
+  _currentOrder.status = document.getElementById('ord-status').value || 'draft';
+  _currentOrder.extraNotes = document.getElementById('ord-extra-notes').value || '';
+  _currentOrder.updatedAt = new Date().toISOString();
+  _currentOrder.selectedTemplateTexts =
+    [...document.querySelectorAll('#ord-template-list input[type=checkbox]:checked')]
+    .map(cb => {
+      const label = cb.closest('label');
+      const ti = label ? label.querySelector('input[type=text]') : null;
+      return ti ? ti.value.trim() : cb.getAttribute('data-txt');
+    }).filter(t => t);
+  return _currentOrder;
+}
+
+function saveOrder() {
+  const o = _collectOrdEditForm();
+  if (!o) return;
+  o.items = (o.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
+  if (o.items.length === 0) { showToast('明細を1行以上入力してください', 'error'); return; }
+  if (o.status === 'draft') {
+    o.status = 'pending';
+    document.getElementById('ord-status').value = 'pending';
+  }
+  DB.orders = DB.orders || [];
+  const idx = DB.orders.findIndex(x=>x.id===o.id);
+  const before = idx >= 0 ? _deepClone(DB.orders[idx]) : null;
+  if (idx >= 0) DB.orders[idx] = _deepClone(o);
+  else DB.orders.push(_deepClone(o));
+  recordHistory(idx>=0?'update':'create', 'order', o.number, before, _deepClone(o));
+  save();
+  _currentOrder.isNew = false;
+  showToast('✅ 発注書を保存しました', 'success');
+  renderOrderList();
+}
+
+function deleteOrder() {
+  if (!_currentOrder) return;
+  if (!confirm('この発注書を削除しますか？')) return;
+  DB.orders = (DB.orders||[]).filter(x=>x.id!==_currentOrder.id);
+  recordHistory('delete', 'order', _currentOrder.number, _deepClone(_currentOrder), null);
+  save();
+  showToast('🗑 削除しました', 'success');
+  backToOrderList();
+}
+
+// ===== 発注書テンプレートマネージャー =====
+function _renderOrdTemplateCheckboxes() {
+  const container = document.getElementById('ord-template-list');
+  if (!container || !_currentOrder) return;
+  const selectedTexts = _currentOrder.selectedTemplateTexts || [];
+  container.innerHTML = (DB.orderTemplates||[]).map(t => {
+    const checked = selectedTexts.includes(t.text) ? 'checked' : '';
+    return '<label class="est-tpl-item">' +
+      '<input type="checkbox" data-txt="' + _escHtml(t.text) + '" ' + checked + ' onchange="ordTemplateCheck(this)">' +
+      '<input type="text" class="est-row-input" value="' + _escHtml(t.text) + '" style="flex:1;"' +
+      ' onfocus="this.previousElementSibling.checked=true;ordTemplateCheck(this.previousElementSibling);"' +
+      ' oninput="this.previousElementSibling.setAttribute('data-txt',this.value)">' +
+      '</label>';
+  }).join('');
+}
+
+function ordTemplateCheck(cb) {
+  if (!_currentOrder) return;
+  _currentOrder.selectedTemplateTexts = [...document.querySelectorAll('#ord-template-list input[type=checkbox]:checked')]
+    .map(c => {
+      const label = c.closest('label');
+      const ti = label ? label.querySelector('input[type=text]') : null;
+      return ti ? ti.value.trim() : c.getAttribute('data-txt');
+    }).filter(t=>t);
+}
+
+function openOrdTemplateManager() {
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.style.zIndex = '9999';
+  modal.innerHTML =
+    '<div class="modal" style="max-width:500px;width:95%;">' +
+    '<div class="modal-title">📝 発注書 文言テンプレート管理</div>' +
+    '<div id="ord-tpl-mgr-list"></div>' +
+    '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="ordTplMgrAdd()">＋ 追加</button>' +
+    '<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">' +
+    '<button class="btn btn-primary btn-sm" onclick="ordTplMgrSave(this)">保存して閉じる</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-overlay').remove()">キャンセル</button>' +
+    '</div></div>';
+  document.body.appendChild(modal);
+  _renderOrdTplMgrList();
+}
+function _renderOrdTplMgrList() {
+  const list = document.getElementById('ord-tpl-mgr-list');
+  if (!list) return;
+  list.innerHTML = (DB.orderTemplates||[]).map((t,i) =>
+    '<div class="est-tpl-item" data-idx="' + i + '">' +
+    '<input type="text" class="est-row-input" value="' + _escHtml(t.text) + '" style="flex:1;">' +
+    '<button class="btn btn-danger btn-xs" onclick="ordTplMgrDelete(' + i + ')">削除</button>' +
+    '</div>'
+  ).join('');
+}
+function ordTplMgrAdd() {
+  DB.orderTemplates = DB.orderTemplates || [];
+  DB.orderTemplates.push({ id: genId(), text: '' });
+  _renderOrdTplMgrList();
+}
+function ordTplMgrDelete(i) {
+  DB.orderTemplates.splice(i,1);
+  _renderOrdTplMgrList();
+}
+function ordTplMgrSave(btn) {
+  const items = document.querySelectorAll('#ord-tpl-mgr-list .est-tpl-item');
+  DB.orderTemplates = [...items].map((div,i) => ({
+    id: (DB.orderTemplates[i]||{}).id || genId(),
+    text: div.querySelector('input[type=text]').value.trim()
+  })).filter(t=>t.text);
+  save();
+  btn.closest('.modal-overlay').remove();
+  if (_currentOrder) _renderOrdTemplateCheckboxes();
+  showToast('✅ テンプレートを保存しました','success');
+}
+
+// ===== 発注書 印刷 =====
+const _ORD_PRINT_CSS = "* { margin:0; padding:0; box-sizing:border-box; }\nbody { font-family:\"Yu Gothic\",sans-serif; background:#fff; color:#000; }\n@page { size: A4 landscape; margin: 0; }\n@media print { body { margin: 0; } .ord-page { page-break-after: always; } .ord-page:last-child { page-break-after: auto; } #print-bar { display:none !important; } }\n.ord-page { width:297mm; height:auto; max-height:210mm; padding:6mm 8mm; box-sizing:border-box; background:#fff; font-size:15px; line-height:1.5; overflow:hidden; }\n.ord-page-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:3mm; }\n.ord-title { font-size:32px; font-weight:900; letter-spacing:0.6em; border-bottom:2px solid #000; padding:0 8px 2px; }\n.ord-company { font-size:13px; text-align:right; line-height:1.55; }\n.ord-company .c-name { font-size:15px; font-weight:700; margin-bottom:2px; }\n.ord-meta-row { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2mm; gap:10mm; }\n.ord-to { font-size:18px; font-weight:700; border-bottom:1px solid #000; padding:2px 6px 4px 2px; min-width:220px; }\n.ord-to-note { font-size:14px; margin-top:2mm; font-weight:600; }\n.ord-date { font-size:14px; text-align:right; }\n.ord-print-table { width:100%; border-collapse:collapse; table-layout:fixed; }\n.ord-print-table th, .ord-print-table td { border:1.2px solid #000; padding:4px 5px; vertical-align:middle; font-size:15px; word-break:break-all; line-height:1.35; }\n.ord-print-table th { background:#f0f0f0; font-weight:700; font-size:13px; text-align:center; }\n.ord-print-table col.c-no { width:38px; }\n.ord-print-table col.c-mat { width:220px; }\n.ord-print-table col.c-size { width:auto; }\n.ord-print-table col.c-qty { width:52px; }\n.ord-print-table col.c-cham { width:140px; }\n.ord-print-table col.c-due { width:65px; }\n.ord-print-table col.c-note { width:100px; }\n.ord-print-table td.c-no { text-align:center; }\n.ord-print-table td.c-mat { font-size:16px; font-weight:700; }\n.ord-print-table td.c-qty { text-align:center; }\n.ord-print-table td.c-due { text-align:center; }\n.ord-footer-row { display:flex; gap:6mm; margin-top:2mm; align-items:flex-start; }\n.ord-notes { flex:1; border:1.2px solid #000; padding:2mm 4mm; min-height:18mm; font-size:14px; line-height:1.8; white-space:pre-wrap; display:flex; flex-direction:column; }\n.ord-notes-title { font-weight:700; font-size:13px; padding:2px 4px 4px 4px; border-bottom:1px solid #000; margin-bottom:4px; align-self:flex-start; width:100%; }\n.ord-chamfer-ref { width:78mm; border:1.2px solid #000; padding:2mm; text-align:center; min-height:120px; display:flex; flex-direction:column; }\n.ord-cref-title { font-size:12px; font-weight:700; margin-bottom:2mm; }";
+
+function _buildOrdNotesText(ord) {
+  const texts = ord.selectedTemplateTexts || [];
+  const extra = (ord.extraNotes || "").trim();
+  return [...texts, ...(extra ? [extra] : [])].join("
+");
+}
+
+async function printOrderBySupplier(supplierName) {
+  const o = _collectOrdEditForm();
+  if (!o) return;
+  const filtered = _deepClone(o);
+  filtered.items = (o.items||[]).filter(it =>
+    (it.supplier||"").trim() === supplierName &&
+    ((it.material||"").trim() || (it.size||"").trim() || (it.qty||"").trim())
+  );
+  if (filtered.items.length === 0) { showToast("該当行がありません", "error"); return; }
+  filtered._supplierName = supplierName;
+  await _generateOrderPdf(filtered);
+}
+
+async function _generateOrderPdf(ord) {
+  const html = _buildOrdPrintHtml(ord);
+  const supplierName = ord._supplierName || "";
+  const now = new Date();
+  const _ts = now.getFullYear() + String(now.getMonth()+1).padStart(2,"0") + String(now.getDate()).padStart(2,"0") + "_" + String(now.getHours()).padStart(2,"0") + String(now.getMinutes()).padStart(2,"0");
+  const _printTitle = "発注書_" + supplierName + "_" + _ts;
+  const printWin = window.open("", "_blank", "width=1200,height=900");
+  if (!printWin) { showToast("ポップアップがブロックされました。ブラウザのポップアップ許可が必要です", "error"); return; }
+  printWin.document.write(
+    "<!DOCTYPE html>
+<html>
+<head>
+<meta charset=\"UTF-8\">
+<title>" + _printTitle + "</title>
+" +
+    "<style>
+" + _ORD_PRINT_CSS + "
+</style>
+</head>
+<body>
+" +
+    "<div id=\"print-bar\" style=\"position:fixed;top:0;left:0;right:0;background:#1e293b;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:9999;font-family:sans-serif;\">" +
+    "<span style=\"font-size:14px;\">発注書プレビュー：" + _escHtml(supplierName) + "</span>" +
+    "<button onclick=\"window.print()\" style=\"background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:15px;cursor:pointer;font-weight:700;\">🖨 印刷 / PDF保存</button>" +
+    "<button onclick=\"window.close()\" style=\"background:transparent;color:#fff;border:1px solid #fff;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer;\">✕ 閉じる</button>" +
+    "</div>
+<div style=\"height:50px;\"></div>
+" + html + "
+</body>
+</html>"
+  );
+  printWin.document.close();
+}
+
+function _buildOrdPrintHtml(ord) {
+  const items = (ord.items||[]).filter(it => (it.material||"").trim() || (it.size||"").trim() || (it.qty||"").trim());
+  const pages = [];
+  if (items.length === 0) {
+    pages.push([]);
+  } else {
+    for (let i=0; i<items.length; i+=ORD_ROWS_PER_PAGE) {
+      pages.push(items.slice(i, i+ORD_ROWS_PER_PAGE));
+    }
+  }
+  const total = pages.length;
+  return pages.map((pageRows, idx) => _buildOrdPageHtml(ord, pageRows, idx, total, idx===total-1)).join("");
+}
+
+function _buildOrdPageHtml(ord, pageRows, pageIdx, totalPages, isLastPage) {
+  const dateStr = (ord.date||"").replace(/-/g,"/");
+  const supplierName = ord._supplierName || "";
+  const notesText = _buildOrdNotesText(ord);
+  const rowsHtml = pageRows.map((it,idx) => {
+    const no = pageIdx * ORD_ROWS_PER_PAGE + idx + 1;
+    return "<tr>" +
+      "<td class=\"c-no\">" + no + "</td>" +
+      "<td class=\"c-mat\">" + _escHtml(it.material||"") + "</td>" +
+      "<td class=\"c-size\">" + _escHtml(it.size||"") + "</td>" +
+      "<td class=\"c-qty\">" + _escHtml(it.qty||"") + "</td>" +
+      "<td class=\"c-cham\">" + _escHtml(it.chamfer||"") + "</td>" +
+      "<td class=\"c-due\">" + _escHtml(it.delivery||"") + "</td>" +
+      "<td class=\"c-note\">" + _escHtml(it.note||"") + "</td>" +
+      "</tr>";
+  }).join("");
+  const svgBox = (
+    "<div class=\"ord-chamfer-ref\">" +
+    "<div class=\"ord-cref-title\">面取り位置 参照図</div>" +
+    _buildEstChamferSvg() +
+    "</div>"
+  );
+  const footer = isLastPage ? (
+    "<div class=\"ord-footer-row\">" +
+    "<div class=\"ord-notes\">" +
+    "<div class=\"ord-notes-title\">備考</div>" +
+    "<div>" + _escHtml(notesText || "") + "</div>" +
+    "</div>" +
+    svgBox +
+    "</div>"
+  ) : "";
+  const pageInfo = totalPages > 1 ? "<div style=\"font-size:11px;margin-top:2px;\">" + (pageIdx+1) + " / " + totalPages + "</div>" : "";
+  return (
+    "<div class=\"ord-page\">" +
+    "<div class=\"ord-page-header\">" +
+    "<div class=\"ord-title\">発　注　書</div>" +
+    "<div class=\"ord-company\">" +
+    "<div class=\"c-name\">有限会社黒部鉄工所</div>" +
+    "<div>〒537-0012　大阪市東成区大今里2-14-7</div>" +
+    "<div>TEL 06-6974-0590　／　FAX 06-6972-6906</div>" +
+    "</div></div>" +
+    "<div class=\"ord-meta-row\">" +
+    "<div>" +
+    "<div class=\"ord-to\">" + _escHtml(supplierName) + " 御中</div>" +
+    "<div class=\"ord-to-note\">下記の通り発注致します</div>" +
+    "</div>" +
+    "<div class=\"ord-date\">" +
+    "<div>" + _escHtml(dateStr) + "</div>" +
+    "<div style=\"font-size:11px;margin-top:2px;\">" + _escHtml(ord.number||"") + "</div>" +
+    pageInfo +
+    "</div></div>" +
+    "<table class=\"ord-print-table\">" +
+    "<colgroup><col class=\"c-no\"><col class=\"c-mat\"><col class=\"c-size\">" +
+    "<col class=\"c-qty\"><col class=\"c-cham\"><col class=\"c-due\"><col class=\"c-note\"></colgroup>" +
+    "<thead><tr><th>No.</th><th>材質</th><th>寸法</th><th>数量</th>" +
+    "<th>面取り指示</th><th>納期</th><th>備考</th></tr></thead>" +
+    "<tbody>" + rowsHtml + "</tbody>" +
+    "</table>" +
+    footer +
+    "</div>"
+  );
+}
 
 
 </script></body>
