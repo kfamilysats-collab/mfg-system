@@ -2588,11 +2588,23 @@ function quickCopy(text, btn) {
   });
 }
 
+function toHiragana(str) {
+  return str.replace(/[ァ-ヶ]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) - 0x60)
+  );
+}
+function toKatakana(str) {
+  return str.replace(/[ぁ-ゖ]/g, ch =>
+    String.fromCharCode(ch.charCodeAt(0) + 0x60)
+  );
+}
+
 function renderSuppliers() {
   const q = (document.getElementById('sup-search')||{value:''}).value.toLowerCase();
   let list = DB.companies.filter(c=>{
     const matchTab = supCurrentTab==='all' || (c.types||[]).includes(supCurrentTab);
-    const matchQ = !q || c.name.toLowerCase().includes(q) || (c.kana||'').toLowerCase().includes(q) || (c.contact||'').toLowerCase().includes(q);
+    const qH = toHiragana(q);
+    const matchQ = !q || c.name.toLowerCase().includes(q) || toHiragana(c.kana||'').includes(qH) || (c.contact||'').toLowerCase().includes(q);
     return matchTab && matchQ;
   });
   document.getElementById('sup-count-label').textContent = `${DB.companies.length}社登録済み`;
@@ -2658,7 +2670,7 @@ function saveSupplier() {
   const obj = {
     id: document.getElementById('sup-edit-id').value || genId(),
     name,
-    kana: document.getElementById('sup-kana').value.trim(),
+    kana: toHiragana(document.getElementById('sup-kana').value.trim()),
     types,
     contact: document.getElementById('sup-contact').value.trim(),
     tel: document.getElementById('sup-tel').value.trim(),
