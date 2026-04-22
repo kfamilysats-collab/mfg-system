@@ -4270,8 +4270,12 @@ function estAddFromProduct(id) {
   const p = (DB.products||[]).find(x=>x.id===id);
   if (!p || !_currentEstimate) return;
   _currentEstimate.items.push({
-    material: p.matName||'', size: p.matSize||'', qty:'1',
-    chamfer:'', delivery:'',
+    material: p.matName||'',
+    size: p.matSize||'',
+    qty: '1',
+    chamfer: '',
+    delivery: '',
+    supplier: p.matSupplier||'',
   });
   _renderEstItems();
   closeModal('est-product-modal');
