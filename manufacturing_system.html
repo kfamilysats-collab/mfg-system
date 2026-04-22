@@ -5374,14 +5374,14 @@ function renderOrderList() {
     const dtLabel = o.createdAt
       ? new Date(o.createdAt).toLocaleString('ja-JP', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})
       : fmtDate(o.date);
-    return '<tr style="cursor:pointer;" onclick="editOrder('' + o.id + '')">' +
+    return '<tr style="cursor:pointer;" onclick="editOrder(\'' + o.id + '\')">' +
       '<td style="white-space:nowrap;">' + _escHtml(dtLabel) + '</td>' +
       '<td>' + _escHtml(suppliers.join('、')||'—') + '</td>' +
       '<td style="text-align:right;">' + (o.items||[]).length + '</td>' +
       '<td><span class="badge ' + m.cls + '">' + m.icon + ' ' + m.label + '</span></td>' +
       '<td style="white-space:nowrap;" onclick="event.stopPropagation()">' +
-      '<button class="btn btn-ghost btn-xs" onclick="editOrder('' + o.id + '')">編集</button>' +
-      '<button class="btn btn-ghost btn-xs" onclick="duplicateOrder('' + o.id + '')">複製</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="editOrder(\'' + o.id + '\')">編集</button>' +
+      '<button class="btn btn-ghost btn-xs" onclick="duplicateOrder(\'' + o.id + '\')">複製</button>' +
       '</td></tr>';
   }).join('');
 }
@@ -5463,21 +5463,21 @@ function _renderOrdItems() {
   });
   tbody.innerHTML = items.map((it,i) => {
     const s = (it.supplier||'').trim();
-    const rowBg = s && supplierColorMap[s] ? 'background:' + supplierColorMap[s] + ';' : '';
-    return '<tr style="' + rowBg + '">' +
-      '<td style="text-align:center;font-weight:600;">' + (i+1) + '</td>' +
-      '<td><input type="text" list="ord-supplier-list" class="est-row-input" value="' + _escHtml(it.supplier||'') + '" onchange="ordRowUpdate(' + i + ','supplier',this.value)" placeholder="発注先"></td>' +
-      '<td><input class="est-row-input" value="' + _escHtml(it.material||'') + '" oninput="ordRowUpdate(' + i + ','material',this.value)" placeholder="例：SS400"></td>' +
-      '<td><input class="est-row-input" value="' + _escHtml(it.size||'') + '" oninput="ordRowUpdate(' + i + ','size',this.value)" placeholder="例：t12×100×200"></td>' +
-      '<td><input class="est-row-input" type="text" value="' + _escHtml(it.qty||'') + '" oninput="ordRowUpdate(' + i + ','qty',this.value)" placeholder="1"></td>' +
-      '<td><input class="est-row-input" value="' + _escHtml(it.chamfer||'') + '" oninput="ordRowUpdate(' + i + ','chamfer',this.value)" placeholder="例：C2 全周"></td>' +
-      '<td><input class="est-row-input" value="' + _escHtml(it.delivery||'') + '" oninput="ordRowUpdate(' + i + ','delivery',this.value)" placeholder="例：5日"></td>' +
-      '<td><input class="est-row-input" value="' + _escHtml(it.note||'') + '" oninput="ordRowUpdate(' + i + ','note',this.value)" placeholder=""></td>' +
-      '<td style="white-space:nowrap;">' +
-      '<button class="btn btn-ghost btn-xs" onclick="ordMoveRow(' + i + ',-1)" title="上へ">↑</button>' +
-      '<button class="btn btn-ghost btn-xs" onclick="ordMoveRow(' + i + ',1)" title="下へ">↓</button>' +
-      '<button class="btn btn-danger btn-xs" onclick="ordRemoveRow(' + i + ')">✕</button>' +
-      '</td></tr>';
+    const rowBg = s && supplierColorMap[s] ? `background:${supplierColorMap[s]};` : '';
+    return `<tr style="${rowBg}">
+      <td style="text-align:center;font-weight:600;">${i+1}</td>
+      <td><input type="text" list="ord-supplier-list" class="est-row-input" value="${_escHtml(it.supplier||'')}" onchange="ordRowUpdate(${i},'supplier',this.value)" placeholder="発注先"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.material||'')}" oninput="ordRowUpdate(${i},'material',this.value)" placeholder="例：SS400"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.size||'')}" oninput="ordRowUpdate(${i},'size',this.value)" placeholder="例：t12×100×200"></td>
+      <td><input class="est-row-input" type="text" value="${_escHtml(it.qty||'')}" oninput="ordRowUpdate(${i},'qty',this.value)" placeholder="1"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.chamfer||'')}" oninput="ordRowUpdate(${i},'chamfer',this.value)" placeholder="例：C2 全周"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.delivery||'')}" oninput="ordRowUpdate(${i},'delivery',this.value)" placeholder="例：5日"></td>
+      <td><input class="est-row-input" value="${_escHtml(it.note||'')}" oninput="ordRowUpdate(${i},'note',this.value)" placeholder=""></td>
+      <td style="white-space:nowrap;">
+      <button class="btn btn-ghost btn-xs" onclick="ordMoveRow(${i},-1)" title="上へ">↑</button>
+      <button class="btn btn-ghost btn-xs" onclick="ordMoveRow(${i},1)" title="下へ">↓</button>
+      <button class="btn btn-danger btn-xs" onclick="ordRemoveRow(${i})">✕</button>
+      </td></tr>`;
   }).join('');
   _renderOrdSupplierPrintButtons();
 }
@@ -5581,7 +5581,7 @@ function _renderOrdTemplateCheckboxes() {
       '<input type="checkbox" data-txt="' + _escHtml(t.text) + '" ' + checked + ' onchange="ordTemplateCheck(this)">' +
       '<input type="text" class="est-row-input" value="' + _escHtml(t.text) + '" style="flex:1;"' +
       ' onfocus="this.previousElementSibling.checked=true;ordTemplateCheck(this.previousElementSibling);"' +
-      ' oninput="this.previousElementSibling.setAttribute('data-txt',this.value)">' +
+      ' oninput="this.previousElementSibling.setAttribute(\'data-txt\',this.value)">' +
       '</label>';
   }).join('');
 }
@@ -5607,7 +5607,7 @@ function openOrdTemplateManager() {
     '<button class="btn btn-ghost btn-sm" style="margin-top:8px;" onclick="ordTplMgrAdd()">＋ 追加</button>' +
     '<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px;">' +
     '<button class="btn btn-primary btn-sm" onclick="ordTplMgrSave(this)">保存して閉じる</button>' +
-    '<button class="btn btn-ghost btn-sm" onclick="this.closest('.modal-overlay').remove()">キャンセル</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="this.closest(\'.modal-overlay\').remove()">キャンセル</button>' +
     '</div></div>';
   document.body.appendChild(modal);
   _renderOrdTplMgrList();
@@ -5649,8 +5649,7 @@ const _ORD_PRINT_CSS = "* { margin:0; padding:0; box-sizing:border-box; }\nbody 
 function _buildOrdNotesText(ord) {
   const texts = ord.selectedTemplateTexts || [];
   const extra = (ord.extraNotes || "").trim();
-  return [...texts, ...(extra ? [extra] : [])].join("
-");
+  return [...texts, ...(extra ? [extra] : [])].join("\n");
 }
 
 async function printOrderBySupplier(supplierName) {
@@ -5675,27 +5674,13 @@ async function _generateOrderPdf(ord) {
   const printWin = window.open("", "_blank", "width=1200,height=900");
   if (!printWin) { showToast("ポップアップがブロックされました。ブラウザのポップアップ許可が必要です", "error"); return; }
   printWin.document.write(
-    "<!DOCTYPE html>
-<html>
-<head>
-<meta charset=\"UTF-8\">
-<title>" + _printTitle + "</title>
-" +
-    "<style>
-" + _ORD_PRINT_CSS + "
-</style>
-</head>
-<body>
-" +
+    "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"UTF-8\">\n<title>" + _printTitle + "</title>\n" +
+    "<style>\n" + _ORD_PRINT_CSS + "\n</style>\n</head>\n<body>\n" +
     "<div id=\"print-bar\" style=\"position:fixed;top:0;left:0;right:0;background:#1e293b;color:#fff;padding:10px 20px;display:flex;align-items:center;gap:16px;z-index:9999;font-family:sans-serif;\">" +
     "<span style=\"font-size:14px;\">発注書プレビュー：" + _escHtml(supplierName) + "</span>" +
     "<button onclick=\"window.print()\" style=\"background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:15px;cursor:pointer;font-weight:700;\">🖨 印刷 / PDF保存</button>" +
     "<button onclick=\"window.close()\" style=\"background:transparent;color:#fff;border:1px solid #fff;border-radius:6px;padding:8px 16px;font-size:14px;cursor:pointer;\">✕ 閉じる</button>" +
-    "</div>
-<div style=\"height:50px;\"></div>
-" + html + "
-</body>
-</html>"
+    "</div>\n<div style=\"height:50px;\"></div>\n" + html + "\n</body>\n</html>"
   );
   printWin.document.close();
 }
