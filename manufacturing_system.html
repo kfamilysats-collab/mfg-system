@@ -523,11 +523,6 @@
               <input type="date" id="est-date">
             </div>
             <div class="form-group">
-              <label>材料発注先</label>
-              <input type="text" id="est-client" list="est-client-list" placeholder="材料発注先を選択または入力">
-              <datalist id="est-client-list"></datalist>
-            </div>
-            <div class="form-group">
               <label>依頼先（受注先）</label>
               <input type="text" id="est-requester" list="est-requester-list" placeholder="依頼元の会社を選択または入力">
               <datalist id="est-requester-list"></datalist>
@@ -3827,7 +3822,6 @@ function _escHtml(s) {
 function initEstimateSection() {
   backToEstList();
   renderEstimateList();
-  refreshEstClientList();
 }
 
 function refreshEstClientList() {
@@ -3970,11 +3964,9 @@ function _renderEstEditView() {
   document.getElementById('est-edit-title').textContent = _currentEstimate.isNew ? '見積依頼書 作成' : '見積依頼書 編集';
   document.getElementById('est-edit-subtitle').textContent = _currentEstimate.number || '';
   document.getElementById('est-date').value = _currentEstimate.date || '';
-  document.getElementById('est-client').value = _currentEstimate.client || '';
   document.getElementById('est-requester').value = _currentEstimate.requester || '';
   document.getElementById('est-status').value = _currentEstimate.status || 'draft';
   document.getElementById('est-extra-notes').value = _currentEstimate.extraNotes || '';
-  refreshEstClientList();
   refreshEstRequesterList();
   refreshEstSupplierList();
   _renderEstItems();
@@ -4137,7 +4129,6 @@ function estUpdateTplText(i, oldText, newText) {
 function _collectEstEditForm() {
   if (!_currentEstimate) return null;
   _currentEstimate.date = document.getElementById('est-date').value || new Date().toISOString().slice(0,10);
-  _currentEstimate.client = document.getElementById('est-client').value.trim();
   _currentEstimate.requester = document.getElementById('est-requester').value.trim();
   _currentEstimate.status = document.getElementById('est-status').value || 'draft';
   _currentEstimate.extraNotes = document.getElementById('est-extra-notes').value || '';
@@ -4156,26 +4147,58 @@ function _collectEstEditForm() {
 async function saveEstimate() {
   const e = _collectEstEditForm();
   if (!e) return;
-  console.log('selectedTemplateTexts:', e.selectedTemplateTexts);
-  if (!e.client) { showToast('宛先を入力してください', 'error'); return; }
   // 空行削除
-  e.items = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
-  if (e.items.length === 0) { showToast('明細を1行以上入力してください', 'error'); return; }
+  const validItems = (e.items||[]).filter(it => (it.material||'').trim() || (it.size||'').trim() || (it.qty||'').trim());
+  if (validItems.length === 0) { showToast('明細を1行以上入力してください', 'error'); return; }
 
-  if (_currentEstimate.status === 'draft') {
-    _currentEstimate.status = 'pending';
-    document.getElementById('est-status').value = 'pending';
-  }
   DB.estimates = DB.estimates || [];
-  const idx = DB.estimates.findIndex(x=>x.id===e.id);
-  const before = idx >= 0 ? _deepClone(DB.estimates[idx]) : null;
-  if (idx >= 0) DB.estimates[idx] = _deepClone(e);
-  else DB.estimates.push(_deepClone(e));
-  recordHistory(idx>=0?'update':'create', 'estimate', e.number+' '+e.client, before, _deepClone(e));
+
+  if (!e.isNew) {
+    // 既存レコードの編集：通常通り上書き
+    e.items = validItems;
+    const idx = DB.estimates.findIndex(x=>x.id===e.id);
+    const before = idx >= 0 ? _deepClone(DB.estimates[idx]) : null;
+    if (idx >= 0) DB.estimates[idx] = _deepClone(e);
+    else DB.estimates.push(_deepClone(e));
+    recordHistory(idx>=0?'update':'create', 'estimate', e.number+' '+e.client, before, _deepClone(e));
+    save();
+    _currentEstimate.isNew = false;
+    showToast('✅ 見積を保存しました', 'success');
+    renderEstimateList();
+    return;
+  }
+
+  // 新規作成：発注先ごとに分割して保存
+  const supplierGroups = {};
+  validItems.forEach(it => {
+    const s = (it.supplier||'').trim() || '（発注先未設定）';
+    if (!supplierGroups[s]) supplierGroups[s] = [];
+    supplierGroups[s].push(it);
+  });
+  const suppliers = Object.keys(supplierGroups);
+  const today = new Date();
+  suppliers.forEach(supplierName => {
+    const yearSeq = (DB.estimates||[]).filter(x=>(x.number||'').startsWith('E'+today.getFullYear())).length + 1;
+    const rec = {
+      id: genId(),
+      number: 'E' + today.getFullYear() + '-' + String(yearSeq).padStart(4,'0'),
+      date: e.date,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      client: supplierName,
+      requester: e.requester,
+      items: supplierGroups[supplierName],
+      selectedTemplateTexts: e.selectedTemplateTexts || [],
+      extraNotes: e.extraNotes || '',
+      status: 'pending',
+      faxSent: false,
+    };
+    DB.estimates.push(rec);
+    recordHistory('create', 'estimate', rec.number + ' ' + supplierName, null, _deepClone(rec));
+  });
   save();
-  _currentEstimate.isNew = false;
-  showToast('✅ 見積を保存しました', 'success');
-  renderEstimateList();
+  showToast('✅ 見積を ' + suppliers.length + ' 件（発注先別）保存しました', 'success');
+  backToEstList();
 }
 
 function deleteEstimate() {
