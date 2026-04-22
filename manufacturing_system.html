@@ -642,7 +642,7 @@
         <button class="btn btn-ghost btn-sm" onclick="showSection('products')">← 一覧へ</button>
       </div>
       <div class="card">
-        <div style="margin-bottom:20px;font-size:13px;font-weight:700;color:var(--accent);">基本情報</div>
+        <div style="margin-bottom:16px;padding:8px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:13px;font-weight:700;color:#1e40af;">📋 基本情報</div>
         <div class="form-grid">
           <div class="form-group">
             <label>図番 *</label>
@@ -687,7 +687,7 @@
         <div style="font-size:11px;color:var(--text3);margin-top:6px;">※ テーブルが空の場合は上記の基本単価が使われます</div>
 
         <hr class="divider">
-        <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">材料情報</div>
+        <div style="margin-bottom:16px;padding:8px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;color:#166534;">🪨 材料情報</div>
         <div class="form-grid">
           <div class="form-group">
             <label>材料発注先</label>
@@ -710,10 +710,10 @@
 
         <datalist id="pf-outsource-list"></datalist>
         <hr class="divider">
-        <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">外注先</div>
+        <div style="margin-bottom:16px;padding:8px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;font-weight:700;color:#9a3412;">🔧 外注先</div>
         <div id="outsource-rows">
           <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="0">
-            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先1</div>
+            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先1</div>
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
@@ -737,7 +737,7 @@
               </div>
             </div>
           </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="1">
-            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先2</div>
+            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先2</div>
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
@@ -761,7 +761,7 @@
               </div>
             </div>
           </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="2">
-            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:10px;">外注先3</div>
+            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先3</div>
             <div class="form-grid">
               <div class="form-group">
                 <label>外注先名</label>
@@ -4206,10 +4206,15 @@ function estAddFromHistory(item) {
   if (!_currentEstimate) return;
   _currentEstimate.items = _currentEstimate.items || [];
   _currentEstimate.items.push({
-    material: item.material||'', size: item.size||'', qty: item.qty||'',
-    chamfer: item.chamfer||'', delivery: item.delivery||'',
+    material: item.material||'',
+    size: item.size||'',
+    qty: item.qty||'',
+    chamfer: item.chamfer||'',
+    delivery: item.delivery||'',
+    supplier: item.supplier||'',
   });
   _renderEstItems();
+  closeModal('est-history-modal');
   showToast('明細を追加しました','success');
 }
 
