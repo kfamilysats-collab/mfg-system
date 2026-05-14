@@ -3738,8 +3738,7 @@ function odInitMsal() {
     msalInstance = new msal.PublicClientApplication({
       auth: {
         clientId: cfg.clientId,
-        authority: `https://login.microsoftonline.com/${cfg.tenantId}`,
-        redirectUri: 'https://kanoa-6c5b5.web.app'
+        authority: `https://login.microsoftonline.com/${cfg.tenantId}`
       },
       cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
     });
