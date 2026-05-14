@@ -3751,10 +3751,7 @@ async function odLogin() {
   const msal = odInitMsal();
   if (!msal) { showToast('先にIDを保存してください','error'); return; }
   try {
-    const resp = await msal.loginPopup({ scopes: ['Files.ReadWrite', 'User.Read'] });
-    odAccount = resp.account;
-    odUpdateStatus(true, odAccount.username);
-    showToast('ログインしました: ' + odAccount.username);
+    await msal.loginRedirect({ scopes: ['Files.ReadWrite', 'User.Read'] });
   } catch(e) {
     if (e.errorCode !== 'user_cancelled') showToast('ログイン失敗: '+e.message,'error');
   }
@@ -3762,7 +3759,7 @@ async function odLogin() {
 
 function odLogout() {
   if (!msalInstance) return;
-  msalInstance.logoutPopup();
+  msalInstance.logoutRedirect();
   odAccount = null;
   odUpdateStatus(false);
   showToast('ログアウトしました');
@@ -3893,11 +3890,11 @@ function initOneDriveSection() {
   if (!msalInstance && cfg.clientId && cfg.tenantId) {
     const m = odInitMsal();
     if (m) {
-      const accounts = m.getAllAccounts();
-      if (accounts.length > 0) {
-        odAccount = accounts[0];
-        odUpdateStatus(true, odAccount.username);
-      }
+      m.handleRedirectPromise().then(resp => {
+        const account = resp && resp.account ? resp.account : (m.getAllAccounts()[0] || null);
+        if (account) { odAccount = account; odUpdateStatus(true, odAccount.username); }
+        if (resp && resp.account) showToast('ログインしました: ' + resp.account.username);
+      }).catch(e => showToast('ログイン失敗: ' + e.message, 'error'));
     }
   } else if (odAccount) {
     odUpdateStatus(true, odAccount.username);
@@ -5134,21 +5131,8 @@ document.documentElement.style.setProperty('font-size','17px');
           b.style.pointerEvents='auto';
           return;
         }
-        // 通常のloginPopupを呼ぶ（odLoginは内部でshowToastするだけなので直接呼んでOK）
-        var resp=await window.msalInstance.loginPopup({scopes:['Files.ReadWrite','User.Read']});
-        window.odAccount=resp.account;
-        if(typeof odUpdateStatus==='function'){
-          try{odUpdateStatus(true,window.odAccount.username);}catch(e){}
-        }
-        _hideReloginBanner();
-        if(typeof showToast==='function')showToast('ログインしました');
-        // 自動でodLoadを実行（confirmは抑制）
-        if(window.odLoad){
-          var origConfirm=window.confirm;
-          window.confirm=function(){return true;};
-          try{await window.odLoad();}
-          finally{window.confirm=origConfirm;}
-        }
+        // loginRedirect（リダイレクト方式）でログイン
+        await window.msalInstance.loginRedirect({scopes:['Files.ReadWrite','User.Read']});
       }catch(e){
         b.innerHTML=orig;
         b.style.pointerEvents='auto';
