@@ -3742,6 +3742,7 @@ function odInitMsal() {
       },
       cache: { cacheLocation: 'localStorage', storeAuthStateInCookie: false }
     });
+    Object.keys(sessionStorage).filter(k => k.includes('msal') || k.includes('interaction')).forEach(k => sessionStorage.removeItem(k));
     return msalInstance;
   } catch(e) { showToast('MSAL初期化エラー: '+e.message,'error'); return null; }
 }
