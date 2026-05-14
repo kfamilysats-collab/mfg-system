@@ -3889,6 +3889,7 @@ function initOneDriveSection() {
   if (!msalInstance && cfg.clientId && cfg.tenantId) {
     const m = odInitMsal();
     if (m) {
+      Object.keys(sessionStorage).filter(k => k.includes('interaction')).forEach(k => sessionStorage.removeItem(k));
       m.handleRedirectPromise().then(resp => {
         const account = resp && resp.account ? resp.account : (m.getAllAccounts()[0] || null);
         if (account) { odAccount = account; odUpdateStatus(true, odAccount.username); }
