@@ -5987,45 +5987,51 @@ function _buildOrdPageHtml(ord, pageRows, pageIdx, totalPages, isLastPage) {
 
 // ===== Firebase Auth =====
 (function() {
-  const firebaseConfig = {
-    apiKey: "AIzaSyB6jgsOHuhUIgMx84kYjJq0ZqEmfcThMck",
-    authDomain: "kanoa-6c5b5.firebaseapp.com",
-    projectId: "kanoa-6c5b5",
-    appId: "1:483744980976:web:4f77446a71c271d04fc735",
-  };
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
+  const isFirebase = location.hostname.includes('web.app');
+  if (isFirebase) {
+    const firebaseConfig = {
+      apiKey: "AIzaSyB6jgsOHuhUIgMx84kYjJq0ZqEmfcThMck",
+      authDomain: "kanoa-6c5b5.firebaseapp.com",
+      projectId: "kanoa-6c5b5",
+      appId: "1:483744980976:web:4f77446a71c271d04fc735",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-  auth.onAuthStateChanged(function(user) {
-    const overlay = document.getElementById("auth-overlay");
-    const logoutBtn = document.getElementById("logout-btn");
-    if (user) {
-      overlay.classList.add("hidden");
-      logoutBtn.style.display = "block";
-    } else {
-      overlay.classList.remove("hidden");
-      logoutBtn.style.display = "none";
-    }
-  });
-
-  window.doLogin = function() {
-    const email = document.getElementById("login-email").value.trim();
-    const pass  = document.getElementById("login-password").value;
-    const errEl = document.getElementById("auth-error");
-    errEl.textContent = "";
-    if (!email || !pass) { errEl.textContent = "メールとパスワードを入力してください"; return; }
-    auth.signInWithEmailAndPassword(email, pass).catch(function(e) {
-      errEl.textContent = "ログインに失敗しました：" + e.message;
+    auth.onAuthStateChanged(function(user) {
+      const overlay = document.getElementById("auth-overlay");
+      const logoutBtn = document.getElementById("logout-btn");
+      if (user) {
+        overlay.classList.add("hidden");
+        logoutBtn.style.display = "block";
+      } else {
+        overlay.classList.remove("hidden");
+        logoutBtn.style.display = "none";
+      }
     });
-  };
 
-  window.doLogout = function() {
-    auth.signOut();
-  };
+    window.doLogin = function() {
+      const email = document.getElementById("login-email").value.trim();
+      const pass  = document.getElementById("login-password").value;
+      const errEl = document.getElementById("auth-error");
+      errEl.textContent = "";
+      if (!email || !pass) { errEl.textContent = "メールとパスワードを入力してください"; return; }
+      auth.signInWithEmailAndPassword(email, pass).catch(function(e) {
+        errEl.textContent = "ログインに失敗しました：" + e.message;
+      });
+    };
 
-  document.getElementById("login-password").addEventListener("keydown", function(e) {
-    if (e.key === "Enter") window.doLogin();
-  });
+    window.doLogout = function() {
+      auth.signOut();
+    };
+
+    document.getElementById("login-password").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") window.doLogin();
+    });
+  } else {
+    document.getElementById("auth-overlay").classList.add("hidden");
+    document.getElementById("logout-btn").style.display = "none";
+  }
 })();
 
 </script></body>
