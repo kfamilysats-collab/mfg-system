@@ -793,11 +793,21 @@
           <select id="filter-outsource" onchange="filterProducts(document.getElementById('product-search').value)" style="width:180px;">
             <option value="">全外注先</option>
           </select>
+          <button class="btn btn-ghost btn-sm" id="price-list-toggle" onclick="togglePriceListMode()" style="margin-left:auto;">📄 価格表を印刷</button>
+        </div>
+        <!-- 価格表印刷モードのアクションバー（モードON時のみ表示） -->
+        <div id="price-list-bar" style="display:none;margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+          <span style="font-size:13px;font-weight:700;color:#2563eb;">📄 価格表印刷モード</span>
+          <button class="btn btn-ghost btn-xs" onclick="priceListCheckAll(true)">全選択</button>
+          <button class="btn btn-ghost btn-xs" onclick="priceListCheckAll(false)">全解除</button>
+          <span style="font-size:13px;color:#374151;">選択中：<strong id="price-list-count" style="color:#2563eb;">0</strong>件</span>
+          <button class="btn btn-primary btn-sm" id="price-list-print-btn" onclick="printPriceList()" style="margin-left:auto;" disabled>🖨 選択した製品を印刷</button>
         </div>
         <div class="table-wrap">
           <table style="table-layout:auto;width:100%;">
             <thead>
               <tr>
+                <th id="th-print-check" style="display:none;width:40px;text-align:center;white-space:nowrap;"><input type="checkbox" id="price-list-check-all" onchange="priceListCheckAll(this.checked)" title="全選択"></th>
                 <th style="min-width:100px;white-space:nowrap;">図番</th>
                 <th style="min-width:140px;white-space:nowrap;">品名</th>
                 <th style="min-width:160px;white-space:nowrap;">受注先</th>
@@ -1925,6 +1935,8 @@ function renderDashboard() {
 
 // ===== PRODUCTS =====
 let filteredProducts = [];
+let priceListMode = false;            // 価格表印刷モードのON/OFF
+let selectedForPrint = new Set();     // 印刷対象に選択された製品のid
 function renderProducts() {
   filteredProducts = [...DB.products];
   document.getElementById('product-count-label').textContent = `${DB.products.length}件の製品`;
@@ -1969,8 +1981,16 @@ function filterProducts(q) {
     return true;
   });
   document.getElementById('product-count-label').textContent = `${filteredProducts.length}件（全${DB.products.length}件中）`;
-  document.getElementById('product-tbody').innerHTML = filteredProducts.length ? filteredProducts.map(p=>`
-    <tr onclick="showProductDetail('${p.id}')" style="cursor:pointer;">
+  document.getElementById('product-tbody').innerHTML = filteredProducts.length ? filteredProducts.map(p=>{
+    const checkCell = priceListMode
+      ? `<td style="text-align:center;white-space:nowrap;"><input type="checkbox" class="print-check" ${selectedForPrint.has(p.id)?'checked':''} onchange="event.stopPropagation();togglePrintSelect('${p.id}',this.checked)" onclick="event.stopPropagation()"></td>`
+      : '';
+    const rowClick = priceListMode
+      ? `onclick="togglePrintSelectRow('${p.id}')" style="cursor:pointer;${selectedForPrint.has(p.id)?'background:#eff6ff;':''}"`
+      : `onclick="showProductDetail('${p.id}')" style="cursor:pointer;"`;
+    return `
+    <tr ${rowClick}>
+      ${checkCell}
       <td style="white-space:nowrap;"><span class="badge badge-blue">${p.fignum}</span></td>
       <td style="white-space:nowrap;">${p.name}</td>
       <td style="white-space:nowrap;min-width:160px;">${p.client||'—'}</td>
@@ -1978,9 +1998,97 @@ function filterProducts(q) {
       <td style="white-space:nowrap;text-align:right;">¥${fmt(p.price)}</td>
       <td class="hide-mobile" style="white-space:nowrap;text-align:center;">${p.claimUrl?`<span class="badge badge-red">あり</span>`:'—'}</td>
       <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showProductDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();editProduct('${p.id}')">編集</button></td>
-    </tr>
-  `).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">製品なし</div></div></td></tr>';
+    </tr>`;
+  }).join('') : `<tr><td colspan="${priceListMode?8:7}"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">製品なし</div></div></td></tr>`;
+  if (priceListMode) updatePriceListCount();
 }
+
+// ===== 価格表印刷モード =====
+function togglePriceListMode() {
+  priceListMode = !priceListMode;
+  selectedForPrint.clear();
+  document.getElementById('price-list-bar').style.display = priceListMode ? 'flex' : 'none';
+  document.getElementById('th-print-check').style.display = priceListMode ? 'table-cell' : 'none';
+  const btn = document.getElementById('price-list-toggle');
+  btn.textContent = priceListMode ? '✕ 印刷モードを終了' : '📄 価格表を印刷';
+  btn.classList.toggle('btn-primary', priceListMode);
+  btn.classList.toggle('btn-ghost', !priceListMode);
+  const ca = document.getElementById('price-list-check-all');
+  if (ca) ca.checked = false;
+  filterProducts(document.getElementById('product-search').value);
+}
+
+function togglePrintSelect(id, checked) {
+  if (checked) selectedForPrint.add(id); else selectedForPrint.delete(id);
+  filterProducts(document.getElementById('product-search').value);
+}
+
+function togglePrintSelectRow(id) {
+  if (selectedForPrint.has(id)) selectedForPrint.delete(id); else selectedForPrint.add(id);
+  filterProducts(document.getElementById('product-search').value);
+}
+
+function priceListCheckAll(checked) {
+  if (checked) filteredProducts.forEach(p=>selectedForPrint.add(p.id));
+  else filteredProducts.forEach(p=>selectedForPrint.delete(p.id));
+  const ca = document.getElementById('price-list-check-all');
+  if (ca) ca.checked = checked;
+  filterProducts(document.getElementById('product-search').value);
+}
+
+function updatePriceListCount() {
+  const cnt = selectedForPrint.size;
+  const label = document.getElementById('price-list-count');
+  if (label) label.textContent = cnt;
+  const btn = document.getElementById('price-list-print-btn');
+  if (btn) btn.disabled = cnt === 0;
+}
+
+function printPriceList() {
+  // 選択された製品を、表示中の並び順で抽出
+  const rows = filteredProducts.filter(p=>selectedForPrint.has(p.id));
+  if (!rows.length) { showToast('製品が選択されていません','error'); return; }
+  const body = rows.map((p,i)=>`
+    <tr>
+      <td class="no">${i+1}</td>
+      <td class="fignum">${escapeHtml(p.fignum||'')}</td>
+      <td class="name">${escapeHtml(p.name||'')}</td>
+      <td class="price">¥${fmt(p.price||0)}</td>
+    </tr>`).join('');
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>製品価格一覧</title>
+  <style>
+    @page { size: A4 portrait; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo',sans-serif; color:#111; margin:0; }
+    h1 { font-size: 16px; font-weight: 700; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background:#f0f2f8; border:1px solid #555; padding:7px 9px; text-align:left; font-weight:700; }
+    td { border:1px solid #777; padding:6px 9px; }
+    td.no { text-align:center; width:40px; color:#555; }
+    td.fignum { font-family:'Courier New',monospace; white-space:nowrap; }
+    td.price { text-align:right; white-space:nowrap; font-weight:700; }
+    th.no { text-align:center; width:40px; }
+    th.price { text-align:right; }
+  </style></head><body>
+    <h1>製品価格一覧</h1>
+    <table>
+      <thead><tr>
+        <th class="no">No.</th>
+        <th>図番（品番）</th>
+        <th>品名</th>
+        <th class="price">製品単価</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  if (!w) { showToast('ポップアップがブロックされました。ブラウザの設定を確認してください','error'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
 function showProductDetail(id) {
   const p = DB.products.find(x=>x.id===id);
