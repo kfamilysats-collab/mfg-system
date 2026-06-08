@@ -801,7 +801,10 @@
           <button class="btn btn-ghost btn-xs" onclick="priceListCheckAll(true)">全選択</button>
           <button class="btn btn-ghost btn-xs" onclick="priceListCheckAll(false)">全解除</button>
           <span style="font-size:13px;color:#374151;">選択中：<strong id="price-list-count" style="color:#2563eb;">0</strong>件</span>
-          <button class="btn btn-primary btn-sm" id="price-list-print-btn" onclick="printPriceList()" style="margin-left:auto;" disabled>🖨 選択した製品を印刷</button>
+          <div style="margin-left:auto;display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" id="price-list-print-btn" onclick="printPriceList()" disabled>🖨 印刷</button>
+            <button class="btn btn-primary btn-sm" id="price-list-excel-btn" onclick="exportPriceListExcel()" disabled style="background:#059669;border-color:#059669;">📊 Excel</button>
+          </div>
         </div>
         <div class="table-wrap">
           <table style="table-layout:auto;width:100%;">
@@ -2042,15 +2045,16 @@ function updatePriceListCount() {
   if (label) label.textContent = cnt;
   const btn = document.getElementById('price-list-print-btn');
   if (btn) btn.disabled = cnt === 0;
+  const xbtn = document.getElementById('price-list-excel-btn');
+  if (xbtn) xbtn.disabled = cnt === 0;
 }
 
 function printPriceList() {
   // 選択された製品を、表示中の並び順で抽出
   const rows = filteredProducts.filter(p=>selectedForPrint.has(p.id));
   if (!rows.length) { showToast('製品が選択されていません','error'); return; }
-  const body = rows.map((p,i)=>`
+  const body = rows.map(p=>`
     <tr>
-      <td class="no">${i+1}</td>
       <td class="fignum">${escapeHtml(p.fignum||'')}</td>
       <td class="name">${escapeHtml(p.name||'')}</td>
       <td class="price">¥${fmt(p.price||0)}</td>
@@ -2064,16 +2068,13 @@ function printPriceList() {
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th { background:#f0f2f8; border:1px solid #555; padding:7px 9px; text-align:left; font-weight:700; }
     td { border:1px solid #777; padding:6px 9px; }
-    td.no { text-align:center; width:40px; color:#555; }
     td.fignum { font-family:'Courier New',monospace; white-space:nowrap; }
     td.price { text-align:right; white-space:nowrap; font-weight:700; }
-    th.no { text-align:center; width:40px; }
     th.price { text-align:right; }
   </style></head><body>
     <h1>製品価格一覧</h1>
     <table>
       <thead><tr>
-        <th class="no">No.</th>
         <th>図番（品番）</th>
         <th>品名</th>
         <th class="price">製品単価</th>
@@ -2089,6 +2090,23 @@ function printPriceList() {
 }
 
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function exportPriceListExcel() {
+  // 選択された製品を、表示中の並び順で抽出
+  const rows = filteredProducts.filter(p=>selectedForPrint.has(p.id));
+  if (!rows.length) { showToast('製品が選択されていません','error'); return; }
+  const aoaRows = rows.map(p=>[p.fignum||'', p.name||'', p.price||0]);
+  const ws = _buildStyledSheet({
+    title: '製品価格一覧',
+    headers: ['図番（品番）','品名','製品単価'],
+    rows: aoaRows,
+    colWidths: [18, 32, 14],
+    currencyCols: [2]   // 3列目（単価）を¥フォーマットに
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '価格一覧');
+  XLSX.writeFile(wb, '製品価格一覧.xlsx');
+}
 
 function showProductDetail(id) {
   const p = DB.products.find(x=>x.id===id);
