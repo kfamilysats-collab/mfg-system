@@ -2055,8 +2055,9 @@ function printPriceList() {
   if (!rows.length) { showToast('製品が選択されていません','error'); return; }
   const body = rows.map(p=>`
     <tr>
-      <td class="fignum">${escapeHtml(p.fignum||'')}</td>
       <td class="name">${escapeHtml(p.name||'')}</td>
+      <td class="fignum">${escapeHtml(p.fignum||'')}</td>
+      <td class="price">¥${fmt(p.matPrice||0)}</td>
       <td class="price">¥${fmt(p.price||0)}</td>
     </tr>`).join('');
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>製品価格一覧</title>
@@ -2075,8 +2076,9 @@ function printPriceList() {
     <h1>製品価格一覧</h1>
     <table>
       <thead><tr>
-        <th>図番（品番）</th>
         <th>品名</th>
+        <th>図番（品番）</th>
+        <th class="price">材料単価</th>
         <th class="price">製品単価</th>
       </tr></thead>
       <tbody>${body}</tbody>
@@ -2095,13 +2097,13 @@ function exportPriceListExcel() {
   // 選択された製品を、表示中の並び順で抽出
   const rows = filteredProducts.filter(p=>selectedForPrint.has(p.id));
   if (!rows.length) { showToast('製品が選択されていません','error'); return; }
-  const aoaRows = rows.map(p=>[p.fignum||'', p.name||'', p.price||0]);
+  const aoaRows = rows.map(p=>[p.name||'', p.fignum||'', p.matPrice||0, p.price||0]);
   const ws = _buildStyledSheet({
     title: '製品価格一覧',
-    headers: ['図番（品番）','品名','製品単価'],
+    headers: ['品名','図番（品番）','材料単価','製品単価'],
     rows: aoaRows,
-    colWidths: [18, 32, 14],
-    currencyCols: [2]   // 3列目（単価）を¥フォーマットに
+    colWidths: [32, 18, 14, 14],
+    currencyCols: [2, 3]   // 材料単価・製品単価を¥フォーマットに
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '価格一覧');
