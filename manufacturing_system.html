@@ -70,7 +70,7 @@
   /* Tables */
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,0.5); vertical-align: middle; }
   tr:hover td { background: rgba(61,127,255,0.04); }
   #product-tbody tr:hover td { background: rgba(61,127,255,0.10); }
@@ -93,7 +93,7 @@
   .form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
-  label { font-size: 12px; color: var(--text2); font-weight: 600; }
+  label { font-size: 14px; color: var(--text2); font-weight: 600; }
   input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; font-family: inherit; width: 100%; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 70px; }
@@ -882,103 +882,43 @@
 
         <hr class="divider">
         <div style="margin-bottom:16px;padding:8px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;color:#166534;">🪨 材料情報</div>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>材料発注先</label>
-            <input type="text" id="pf-mat-supplier" list="pf-mat-supplier-list" placeholder="材料の仕入先">
-            <datalist id="pf-mat-supplier-list"></datalist>
-          </div>
-          <div class="form-group">
-            <label>材料名</label>
-            <input type="text" id="pf-mat-name" placeholder="例：S45C丸棒">
-          </div>
-          <div class="form-group">
-            <label>寸法</label>
-            <input type="text" id="pf-mat-size" placeholder="例：φ50×100">
-          </div>
-          <div class="form-group">
-            <label>材料単価・基本（円）</label>
-            <input type="number" id="pf-mat-price" placeholder="数量別テーブルがない場合">
-          </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:12px;color:var(--text2);">※「行追加」で材料を複数登録できます。利益計算では全材料の合計が材料費になります。</div>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addMaterialRow()" style="color:#166534;border:1px solid #bbf7d0;background:#f0fdf4;white-space:nowrap;">＋ 行追加</button>
         </div>
-
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:13px;">
+            <thead><tr>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料発注先</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料名</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">寸法</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料単価（円）</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;width:44px;text-align:center;"></th>
+            </tr></thead>
+            <tbody id="material-rows"></tbody>
+          </table>
+        </div>
+        <datalist id="pf-mat-supplier-list"></datalist>
         <datalist id="pf-outsource-list"></datalist>
         <hr class="divider">
         <div style="margin-bottom:16px;padding:8px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;font-weight:700;color:#9a3412;">🔧 外注先</div>
-        <div id="outsource-rows">
-          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="0">
-            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先1</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>外注先名</label>
-                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
-              </div>
-              <div class="form-group">
-                <label>材料</label>
-                <select class="os-material-type">
-                  <option value="">選択してください</option>
-                  <option value="材料支給">材料支給</option>
-                  <option value="材込み">材込み</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>加工内容（備考）</label>
-                <input type="text" class="os-note" placeholder="加工内容を入力">
-              </div>
-              <div class="form-group">
-                <label>金額（円）</label>
-                <input type="number" class="os-price" placeholder="0">
-              </div>
-            </div>
-          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="1">
-            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先2</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>外注先名</label>
-                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
-              </div>
-              <div class="form-group">
-                <label>材料</label>
-                <select class="os-material-type">
-                  <option value="">選択してください</option>
-                  <option value="材料支給">材料支給</option>
-                  <option value="材込み">材込み</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>加工内容（備考）</label>
-                <input type="text" class="os-note" placeholder="加工内容を入力">
-              </div>
-              <div class="form-group">
-                <label>金額（円）</label>
-                <input type="number" class="os-price" placeholder="0">
-              </div>
-            </div>
-          </div>          <div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;" class="outsource-row" data-idx="2">
-            <div style="font-size:12px;font-weight:700;color:#9a3412;margin-bottom:10px;">外注先3</div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>外注先名</label>
-                <input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名">
-              </div>
-              <div class="form-group">
-                <label>材料</label>
-                <select class="os-material-type">
-                  <option value="">選択してください</option>
-                  <option value="材料支給">材料支給</option>
-                  <option value="材込み">材込み</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>加工内容（備考）</label>
-                <input type="text" class="os-note" placeholder="加工内容を入力">
-              </div>
-              <div class="form-group">
-                <label>金額（円）</label>
-                <input type="number" class="os-price" placeholder="0">
-              </div>
-            </div>
-          </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px;">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addOutsourceRow()" style="color:#9a3412;border:1px solid #fed7aa;background:#fff7ed;white-space:nowrap;">＋ 行追加</button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:13px;">
+            <thead><tr>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">外注先名</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">加工内容（備考）</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">金額（円）</th>
+              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;width:44px;text-align:center;"></th>
+            </tr></thead>
+            <tbody id="outsource-rows">
+          </tbody>
+          </table>
+        </div>
+</div>
         </div>
 
         <hr class="divider">
@@ -994,16 +934,18 @@
             </div>
           </div>
           <div class="form-group full">
-            <label>📄 図面（OneDriveリンク）</label>
-            <input type="url" id="pf-drawing-url" placeholder="OneDriveでファイルを右クリック→リンクのコピー（Excel・PDF・Word等すべてOK）">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;">
+              <label style="margin:0;">📄 図面（OneDriveリンク）</label>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addDrawingRow()" style="white-space:nowrap;">＋ 図面を追加</button>
+            </div>
+            <div id="drawing-rows"></div>
           </div>
           <div class="form-group full">
-            <label>⚠️ クレーム資料（OneDriveリンク）</label>
-            <input type="url" id="pf-claim-url" placeholder="OneDriveでファイルを右クリック→リンクのコピー（Excel・PDF・Word等すべてOK）">
-          </div>
-          <div class="form-group">
-            <label>クレーム概要</label>
-            <input type="text" id="pf-claim-note" placeholder="クレームの内容（あれば）">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:10px;">
+              <label style="margin:0;">⚠️ クレーム資料（OneDriveリンク）</label>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="addClaimRow()" style="white-space:nowrap;">＋ クレームを追加</button>
+            </div>
+            <div id="claim-rows"></div>
           </div>
         </div>
 
@@ -1823,6 +1765,12 @@ function showSection(name) {
   closeSidebar();
   if (name === 'dashboard') renderDashboard();
   if (name === 'products') renderProducts();
+  if (name === 'product-form') {
+    if(!document.querySelector('#material-rows .material-row')) addMaterialRow();
+    if(!document.querySelector('#outsource-rows .outsource-row')) addOutsourceRow();
+    if(!document.querySelector('#drawing-rows .drawing-row')) addDrawingRow();
+    if(!document.querySelector('#claim-rows .claim-row')) addClaimRow();
+  }
   if (name === 'production') renderProduction();
   if (name === 'sales') renderSales();
   if (name === 'profit') renderProfit();
@@ -2057,7 +2005,7 @@ function printPriceList() {
     <tr>
       <td class="name">${escapeHtml(p.name||'')}</td>
       <td class="fignum">${escapeHtml(p.fignum||'')}</td>
-      <td class="price">¥${fmt(p.matPrice||0)}</td>
+      <td class="price">¥${fmt(getMatPriceTotal(p))}</td>
       <td class="price">¥${fmt(p.price||0)}</td>
     </tr>`).join('');
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>製品価格一覧</title>
@@ -2097,7 +2045,7 @@ function exportPriceListExcel() {
   // 選択された製品を、表示中の並び順で抽出
   const rows = filteredProducts.filter(p=>selectedForPrint.has(p.id));
   if (!rows.length) { showToast('製品が選択されていません','error'); return; }
-  const aoaRows = rows.map(p=>[p.name||'', p.fignum||'', p.matPrice||0, p.price||0]);
+  const aoaRows = rows.map(p=>[p.name||'', p.fignum||'', getMatPriceTotal(p), p.price||0]);
   const ws = _buildStyledSheet({
     title: '製品価格一覧',
     headers: ['品名','図番（品番）','材料単価','製品単価'],
@@ -2146,7 +2094,9 @@ function showProductDetail(id) {
       ${card(green,'材料発注先',p.matSupplier)}
       ${card(green,'材料名',p.matName)}
       ${card(green,'寸法',p.matSize)}
-      ${card(green,'材料単価','¥'+fmt(p.matPrice))}
+      ${card(green, (Array.isArray(p.extraMaterials)&&p.extraMaterials.length?'材料単価（メイン）':'材料単価'), '¥'+fmt(p.matPrice))}
+      ${(p.extraMaterials||[]).map((m,i)=>card(green,`追加材料${i+1}${m.name?'（'+escapeHtml(m.name)+'）':''}`,'¥'+fmt(m.price||0))).join('')}
+      ${(Array.isArray(p.extraMaterials)&&p.extraMaterials.length)?card('#f59e0b','材料単価 合計','¥'+fmt(getMatPriceTotal(p))):''}
     </div>
 
     ${outsourceCards ? sectionLabel('■ 外注情報','#d97706') : ''}
@@ -2204,23 +2154,20 @@ function editProduct(id) {
   document.getElementById('pf-name').value = p.name;
   document.getElementById('pf-client').value = p.client||'';
   document.getElementById('pf-price').value = p.price||'';
-  document.getElementById('pf-mat-supplier').value = p.matSupplier||'';
-  document.getElementById('pf-mat-name').value = p.matName||'';
-  document.getElementById('pf-mat-size').value = p.matSize||'';
-  document.getElementById('pf-mat-price').value = p.matPrice||'';
+  const _mrows=[];
+  if(p.matName||p.matSupplier||p.matSize||p.matPrice) _mrows.push({supplier:p.matSupplier,name:p.matName,size:p.matSize,price:p.matPrice});
+  if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>_mrows.push(m));
+  document.getElementById('material-rows').innerHTML='';
+  if(_mrows.length) _mrows.forEach(m=>addMaterialRow(m)); else addMaterialRow();
   document.getElementById('pf-note').value = p.note||'';
-  document.getElementById('pf-drawing-url').value = p.drawingUrl||'';
-  document.getElementById('pf-claim-url').value = p.claimUrl||'';
-  document.getElementById('pf-claim-note').value = p.claimNote||'';
-  const osRows = document.querySelectorAll('.outsource-row');
-  if (p.outsource) p.outsource.forEach((o,i)=>{
-    if (osRows[i]) {
-      osRows[i].querySelector('.os-name').value = o.name||'';
-      osRows[i].querySelector('.os-material-type').value = o.materialType||'';
-      osRows[i].querySelector('.os-note').value = o.note||'';
-      osRows[i].querySelector('.os-price').value = o.price||'';
-    }
-  });
+  const _drows = Array.isArray(p.drawings)&&p.drawings.length ? p.drawings : (p.drawingUrl?[{url:p.drawingUrl,note:''}]:[]);
+  document.getElementById('drawing-rows').innerHTML='';
+  if(_drows.length) _drows.forEach(x=>addDrawingRow(x)); else addDrawingRow();
+  const _crows = Array.isArray(p.claims)&&p.claims.length ? p.claims : ((p.claimUrl||p.claimNote)?[{url:p.claimUrl||'',note:p.claimNote||''}]:[]);
+  document.getElementById('claim-rows').innerHTML='';
+  if(_crows.length) _crows.forEach(x=>addClaimRow(x)); else addClaimRow();
+  document.getElementById('outsource-rows').innerHTML='';
+  if(Array.isArray(p.outsource)&&p.outsource.length) p.outsource.forEach(o=>addOutsourceRow(o)); else addOutsourceRow();
   renderPriceRows(p.priceTable||[]);
 }
 
@@ -2279,12 +2226,118 @@ function initProductForm() {
   renderPriceRows([]);
 }
 
+// ===== 追加材料（複数材料対応） =====
+function addExtraMaterial(data){
+  const box = document.getElementById('extra-materials');
+  const div = document.createElement('div');
+  div.className = 'extra-mat-row';
+  div.style.cssText = 'border:1px solid #bbf7d0;border-radius:10px;padding:14px;margin:10px 0;background:#f7fdf9;';
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#166534;">追加材料</div>
+      <button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('.extra-mat-row').remove()" style="color:#dc2626;">✕ 削除</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>材料発注先</label>
+        <input type="text" class="em-supplier" list="pf-mat-supplier-list" placeholder="材料の仕入先" value="${escapeHtml(data&&data.supplier||'')}">
+      </div>
+      <div class="form-group">
+        <label>材料名</label>
+        <input type="text" class="em-name" placeholder="例：A5052板" value="${escapeHtml(data&&data.name||'')}">
+      </div>
+      <div class="form-group">
+        <label>寸法</label>
+        <input type="text" class="em-size" placeholder="例：t5×100×200" value="${escapeHtml(data&&data.size||'')}">
+      </div>
+      <div class="form-group">
+        <label>材料単価（円）</label>
+        <input type="number" class="em-price" placeholder="0" value="${data&&data.price?data.price:''}">
+      </div>
+    </div>`;
+  box.appendChild(div);
+}
+function getExtraMaterials(){
+  return [...document.querySelectorAll('#extra-materials .extra-mat-row')].map(r=>({
+    supplier: r.querySelector('.em-supplier').value.trim(),
+    name: r.querySelector('.em-name').value.trim(),
+    size: r.querySelector('.em-size').value.trim(),
+    price: parseFloat(r.querySelector('.em-price').value)||0
+  })).filter(m=>m.name||m.supplier||m.price);
+}
+function getExtraMatSum(p){
+  let t=0; if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>t+=(m.price||0)); return t;
+}
+function getMatPriceTotal(p){
+  return (p.matPrice||0) + getExtraMatSum(p);
+}
+
+function _rowDelBtn(){return '<td style="text-align:center;"><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest(\'tr\').remove()" style="color:#dc2626;">×</button></td>';}
+function addMaterialRow(data){
+  const tb=document.getElementById('material-rows');const tr=document.createElement('tr');tr.className='material-row';
+  tr.innerHTML=`<td><input type="text" class="mat-supplier" list="pf-mat-supplier-list" placeholder="材料の仕入先" value="${escapeHtml(data&&data.supplier||'')}"></td>`
+    +`<td><input type="text" class="mat-name" placeholder="例：S45C丸棒" value="${escapeHtml(data&&data.name||'')}"></td>`
+    +`<td><input type="text" class="mat-size" placeholder="例：φ50×100" value="${escapeHtml(data&&data.size||'')}"></td>`
+    +`<td><input type="number" class="mat-price" placeholder="0" value="${data&&data.price?data.price:''}"></td>`
+    +_rowDelBtn();
+  tb.appendChild(tr);
+}
+function getMaterialRows(){
+  return [...document.querySelectorAll('#material-rows .material-row')].map(r=>({
+    supplier:r.querySelector('.mat-supplier').value.trim(),
+    name:r.querySelector('.mat-name').value.trim(),
+    size:r.querySelector('.mat-size').value.trim(),
+    price:parseFloat(r.querySelector('.mat-price').value)||0
+  })).filter(m=>m.name||m.supplier||m.price);
+}
+function addOutsourceRow(data){
+  const tb=document.getElementById('outsource-rows');const tr=document.createElement('tr');tr.className='outsource-row';
+  const mt=data&&data.materialType||'';
+  tr.innerHTML=`<td><input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名" value="${escapeHtml(data&&data.name||'')}"></td>`
+    +`<td><select class="os-material-type"><option value="">選択</option><option value="材料支給"${mt==='材料支給'?' selected':''}>材料支給</option><option value="材込み"${mt==='材込み'?' selected':''}>材込み</option></select></td>`
+    +`<td><input type="text" class="os-note" placeholder="加工内容を入力" value="${escapeHtml(data&&data.note||'')}"></td>`
+    +`<td><input type="number" class="os-price" placeholder="0" value="${data&&data.price?data.price:''}"></td>`
+    +_rowDelBtn();
+  tb.appendChild(tr);
+}
+function addDrawingRow(data){
+  const box=document.getElementById('drawing-rows');const div=document.createElement('div');div.className='drawing-row';
+  div.style.cssText='border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;position:relative;';
+  div.innerHTML=`<div style="margin-bottom:8px;"><label style="display:block;margin-bottom:4px;">図面リンク（URL）</label><input type="url" class="dr-url" placeholder="OneDriveリンク（右クリック→リンクのコピー）" value="${escapeHtml(data&&data.url||'')}"></div>`
+    +`<div><label style="display:block;margin-bottom:4px;">説明</label><input type="text" class="dr-note" placeholder="図面の説明（あれば）" value="${escapeHtml(data&&data.note||'')}"></div>`
+    +`<button type="button" onclick="this.closest('.drawing-row').remove()" style="position:absolute;top:8px;right:8px;color:#dc2626;background:none;border:none;cursor:pointer;font-size:18px;line-height:1;">×</button>`;
+  box.appendChild(div);
+}
+function getDrawings(){
+  return [...document.querySelectorAll('#drawing-rows .drawing-row')].map(r=>({
+    url:r.querySelector('.dr-url').value.trim(),
+    note:r.querySelector('.dr-note').value.trim()
+  })).filter(x=>x.url||x.note);
+}
+function addClaimRow(data){
+  const box=document.getElementById('claim-rows');const div=document.createElement('div');div.className='claim-row';
+  div.style.cssText='border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;position:relative;';
+  div.innerHTML=`<div style="margin-bottom:8px;"><label style="display:block;margin-bottom:4px;">クレーム資料リンク（URL）</label><input type="url" class="cl-url" placeholder="OneDriveリンク（右クリック→リンクのコピー）" value="${escapeHtml(data&&data.url||'')}"></div>`
+    +`<div><label style="display:block;margin-bottom:4px;">概要・説明</label><input type="text" class="cl-note" placeholder="クレームの概要・説明" value="${escapeHtml(data&&data.note||'')}"></div>`
+    +`<button type="button" onclick="this.closest('.claim-row').remove()" style="position:absolute;top:8px;right:8px;color:#dc2626;background:none;border:none;cursor:pointer;font-size:18px;line-height:1;">×</button>`;
+  box.appendChild(div);
+}
+function getClaims(){
+  return [...document.querySelectorAll('#claim-rows .claim-row')].map(r=>({
+    url:r.querySelector('.cl-url').value.trim(),
+    note:r.querySelector('.cl-note').value.trim()
+  })).filter(x=>x.url||x.note);
+}
+
 function clearProductForm() {
-  ['pf-fignum','pf-name','pf-client','pf-price','pf-mat-supplier','pf-mat-name','pf-mat-size','pf-mat-price','pf-note','pf-drawing-url','pf-claim-url','pf-claim-note'].forEach(id=>{
+  ['pf-fignum','pf-name','pf-client','pf-price','pf-note'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) { el.value=''; delete el.dataset.editId; }
   });
-  document.querySelectorAll('.os-name,.os-material-type,.os-note,.os-price').forEach(el=>el.value='');
+  document.getElementById('material-rows').innerHTML=''; addMaterialRow();
+  document.getElementById('outsource-rows').innerHTML=''; addOutsourceRow();
+  document.getElementById('drawing-rows').innerHTML=''; addDrawingRow();
+  document.getElementById('claim-rows').innerHTML=''; addClaimRow();
   document.getElementById('pform-title').textContent = '製品登録';
   renderPriceRows([]);
 }
@@ -2300,6 +2353,9 @@ function saveProduct() {
     price: parseFloat(r.querySelector('.os-price').value)||0
   })).filter(o=>o.name);
 
+  const _mats = getMaterialRows();
+  const _draws = getDrawings();
+  const _clms = getClaims();
   const priceTable = getPriceRows().sort((a,b)=>a.qty-b.qty);
 
   const prod = {
@@ -2307,15 +2363,18 @@ function saveProduct() {
     fignum, name,
     client: document.getElementById('pf-client').value.trim(),
     price: parseFloat(document.getElementById('pf-price').value)||0,
-    matSupplier: document.getElementById('pf-mat-supplier').value.trim(),
-    matName: document.getElementById('pf-mat-name').value.trim(),
-    matSize: document.getElementById('pf-mat-size').value.trim(),
-    matPrice: parseFloat(document.getElementById('pf-mat-price').value)||0,
+    matSupplier: _mats[0]?_mats[0].supplier:'',
+    matName: _mats[0]?_mats[0].name:'',
+    matSize: _mats[0]?_mats[0].size:'',
+    matPrice: _mats[0]?_mats[0].price:0,
+    extraMaterials: _mats.slice(1),
     priceTable,
     note: document.getElementById('pf-note').value.trim(),
-    drawingUrl: document.getElementById('pf-drawing-url').value.trim(),
-    claimUrl: document.getElementById('pf-claim-url').value.trim(),
-    claimNote: document.getElementById('pf-claim-note').value.trim(),
+    drawings: _draws,
+    claims: _clms,
+    drawingUrl: (_draws[0]||{}).url||'',
+    claimUrl: (_clms[0]||{}).url||'',
+    claimNote: (_clms[0]||{}).note||'',
     outsource: os
   };
 
@@ -2515,7 +2574,7 @@ function autoFillProduct() {
     document.getElementById('rf-client').value = prod.client||'';
     const looked = lookupPrice(prod.priceTable, qty, prod.price, prod.matPrice);
     document.getElementById('rf-price').value = looked.price||'';
-    document.getElementById('rf-mat-price').value = looked.matPrice||'';
+    document.getElementById('rf-mat-price').value = (looked.matPrice||0) + getExtraMatSum(prod) || '';
 
     if (looked.row && prod.priceTable && prod.priceTable.length > 0) {
       priceHint.style.display = 'block';
