@@ -844,8 +844,8 @@
         <div style="margin-bottom:16px;padding:8px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;font-size:13px;font-weight:700;color:#1e40af;">📋 基本情報</div>
         <div class="form-grid">
           <div class="form-group">
-            <label>図番 *</label>
-            <input type="text" id="pf-fignum" placeholder="例：DWG-001">
+            <label>図番</label>
+            <input type="text" id="pf-fignum" placeholder="例：DWG-001（なくてもOK）">
           </div>
           <div class="form-group">
             <label>品名 *</label>
@@ -2240,6 +2240,8 @@ function printWorksheet(p, qtys, due){
     stepRows += `<tr>${cells}</tr>`;
   }
 
+  const _fit = (s) => { const n = (s||'').length; return n>16 ? 'xs' : (n>10 ? 's' : ''); };
+
   const ofCard = (label, val, tone) => {
     const t = tone==='green' ? 'ofcard-green' : (tone==='blue' ? 'ofcard-blue' : '');
     return `<div class="ofcard ${t}"><div class="oflabel">${label}</div><div class="ofval">${val||'&nbsp;'}</div></div>`;
@@ -2257,7 +2259,9 @@ function printWorksheet(p, qtys, due){
 
     .head td { padding:6px 8px; }
     .head .lbl { background:#f5f5f5; font-weight:700; white-space:nowrap; width:42px; font-size:10px; padding:5px 6px; }
-    .head .val { font-size:13px; font-weight:700; padding:5px 7px; }
+    .head .val { font-size:13px; font-weight:700; padding:5px 7px; word-break:break-all; }
+    .head .val.s { font-size:11px; }
+    .head .val.xs { font-size:9.5px; line-height:1.35; }
 
     .band { font-weight:700; padding:5px 9px; font-size:12px; border-left:4px solid; }
     .b-worker { background:#fff7ed; border-color:#d97706; color:#9a3412; }
@@ -2296,9 +2300,9 @@ function printWorksheet(p, qtys, due){
 
     <table class="head">
       <tr>
-        <td class="lbl">発注先</td><td class="val">${escapeHtml(p.client||'')}</td>
-        <td class="lbl">図番</td><td class="val">${escapeHtml(p.fignum||'')}</td>
-        <td class="lbl">品名</td><td class="val">${escapeHtml(p.name||'')}</td>
+        <td class="lbl">発注先</td><td class="val ${_fit(p.client)}">${escapeHtml(p.client||'')}</td>
+        <td class="lbl">図番</td><td class="val ${_fit(p.fignum)}">${escapeHtml(p.fignum||'')}</td>
+        <td class="lbl">品名</td><td class="val ${_fit(p.name)}">${escapeHtml(p.name||'')}</td>
         <td class="lbl">納期</td><td class="val">${escapeHtml(due||'')}</td>
       </tr>
     </table>
@@ -2657,6 +2661,7 @@ function clearProductForm() {
 function saveProduct() {
   const fignum = document.getElementById('pf-fignum').value.trim();
   const name = document.getElementById('pf-name').value.trim();
+  if (!name) { showToast('品名は必須です', 'error'); document.getElementById('pf-name').focus(); return; }
   const editId = document.getElementById('pf-fignum').dataset.editId;
   const os = [...document.querySelectorAll('.outsource-row')].map(r=>({
     name: r.querySelector('.os-name').value.trim(),
@@ -2699,7 +2704,7 @@ function saveProduct() {
     DB.products[idx] = prod;
     showToast('更新しました');
   } else {
-    if (DB.products.find(p=>p.fignum===fignum)) { showToast('この図番はすでに存在します', 'error'); return; }
+    if (fignum && DB.products.find(p=>p.fignum===fignum)) { showToast('この図番はすでに存在します', 'error'); return; }
     DB.products.push(prod);
     showToast('登録しました');
   }
