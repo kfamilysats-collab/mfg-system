@@ -1400,16 +1400,13 @@
 </div>
 
 <div class="modal-overlay" id="worksheet-modal">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal" style="max-width:620px;">
     <div class="modal-header">
       <div class="modal-title">📝 作業書を作成</div>
       <button class="modal-close" onclick="closeModal('worksheet-modal')">✕</button>
     </div>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;" id="ws-info"></div>
-    <div class="form-group" style="margin-bottom:14px;">
-      <label>作業数量（個数）*</label>
-      <input type="number" id="ws-qty" value="1" min="1" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ws-due').focus();}">
-    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;" id="ws-info"></div>
+    <div id="ws-mat-area"></div>
     <div class="form-group" style="margin-bottom:20px;">
       <label>納期（空欄でもOK）</label>
       <input type="text" id="ws-due" placeholder="例：7/25、R7/7/25 など" onkeydown="if(event.key==='Enter'){event.preventDefault();submitWorksheet();}">
@@ -2109,26 +2106,72 @@ function createWorksheet(id){
   const p = DB.products.find(x=>x.id===id);
   if(!p){ showToast('製品が見つかりません','error'); return; }
   window._wsProductId = id;
-  document.getElementById('ws-qty').value = '1';
-  document.getElementById('ws-due').value = '';
   document.getElementById('ws-info').textContent = `${p.fignum||''} / ${p.name||''}`;
+  document.getElementById('ws-due').value = '';
+
+  // 材料一覧（メイン＋追加）
+  const mats = _getMatsOf(p);
+  const NUM = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'];
+  const box = document.getElementById('ws-mat-area');
+
+  if(mats.length <= 1){
+    // 材料が1個以下 → シンプルな数量入力
+    box.innerHTML = `
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>作業数量（個数）*</label>
+        <input type="number" class="ws-qty-input" data-idx="0" value="1" min="1">
+      </div>`;
+  } else {
+    // 材料が複数 → 表で材料ごとに個数入力
+    const rows = mats.map((m,i)=>`
+      <tr>
+        <td style="text-align:center;font-weight:700;color:#166534;white-space:nowrap;">${NUM[i]||(i+1)}</td>
+        <td style="font-size:13px;">${escapeHtml(m.supplier||'—')}</td>
+        <td style="font-size:13px;">${escapeHtml(m.name||'—')}</td>
+        <td style="font-size:13px;">${escapeHtml(m.size||'—')}</td>
+        <td style="white-space:nowrap;"><input type="number" class="ws-qty-input" data-idx="${i}" value="1" min="0" style="width:78px;text-align:right;"> ヶ</td>
+      </tr>`).join('');
+    box.innerHTML = `
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">※ 材料ごとに注文数を入力してください</div>
+      <div style="overflow-x:auto;margin-bottom:16px;">
+        <table style="width:100%;font-size:13px;">
+          <thead><tr>
+            <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:center;width:34px;"></th>
+            <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:left;">材料発注先</th>
+            <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:left;">材料名</th>
+            <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:left;">材料寸法</th>
+            <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:right;">個数</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
   openModal('worksheet-modal');
-  setTimeout(()=>{ const el=document.getElementById('ws-qty'); if(el){ el.focus(); el.select(); } }, 100);
+  setTimeout(()=>{ const el=document.querySelector('.ws-qty-input'); if(el){ el.focus(); el.select(); } }, 100);
+}
+
+// 材料一覧（メイン＋追加）を取得
+function _getMatsOf(p){
+  const mats=[];
+  if(p.matName||p.matSupplier||p.matSize||p.matPrice) mats.push({supplier:p.matSupplier,name:p.matName,size:p.matSize,price:p.matPrice});
+  if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>mats.push(m));
+  return mats;
 }
 
 // モーダルの「作成・印刷」ボタンから呼ばれる（クリック直後なのでポップアップブロックされない）
 function submitWorksheet(){
   const p = DB.products.find(x=>x.id===window._wsProductId);
   if(!p){ showToast('製品が見つかりません','error'); return; }
-  const qty = parseInt(document.getElementById('ws-qty').value,10);
-  if(!qty || qty<=0){ showToast('数量は1以上の数字を入力してください','error'); return; }
+  const inputs = [...document.querySelectorAll('.ws-qty-input')];
+  const qtys = inputs.map(el=>parseInt(el.value,10)||0);
+  if(!qtys.some(q=>q>0)){ showToast('個数を1以上で入力してください','error'); return; }
   const due = document.getElementById('ws-due').value.trim();
   closeModal('worksheet-modal');
   closeModal('product-detail-modal');
-  printWorksheet(p, qty, due);
+  printWorksheet(p, qtys, due);
 }
 
-function printWorksheet(p, qty, due){
+function printWorksheet(p, qtys, due){
   const rec = _latestProduction(p.fignum);
   const steps = (rec && Array.isArray(rec.steps)) ? rec.steps : [];
 
@@ -2156,6 +2199,18 @@ function printWorksheet(p, qty, due){
       const val = escapeHtml(m[key]||'');
       if(!val) return '';
       return multi ? `<span class="minline">${NUM[i]||(i+1)} ${val}</span>` : `<span class="minline">${val}</span>`;
+    }).filter(Boolean);
+    return items.length ? items.join('') : '&nbsp;';
+  };
+
+  // 材料注文数：材料ごとに ①10ヶ ②5ヶ
+  const qtyArr = Array.isArray(qtys) ? qtys : [qtys];
+  const qtyInline = () => {
+    if(!mats.length) return (qtyArr[0]||0)+' ヶ';
+    const items = mats.map((m,i)=>{
+      const q = qtyArr[i]||0;
+      if(!q) return '';
+      return multi ? `<span class="minline">${NUM[i]||(i+1)} ${q} ヶ</span>` : `<span class="minline">${q} ヶ</span>`;
     }).filter(Boolean);
     return items.length ? items.join('') : '&nbsp;';
   };
@@ -2205,9 +2260,11 @@ function printWorksheet(p, qty, due){
     .sub { font-size:11px; font-weight:700; color:#9a3412; margin:8px 0 4px; }
     .blk { margin-bottom:14px; }
 
-    .wk .lbl { background:#fafafa; font-weight:700; white-space:nowrap; width:100px; font-size:12px; }
-    .wk td { height:44px; }
-    .mc { text-align:center; font-weight:700; font-size:15px; padding:11px 2px; }
+    .wk .lbl { background:#fafafa; font-weight:700; white-space:nowrap; font-size:12px; }
+    .wk td { height:58px; }
+    .datecell { font-size:16px; font-weight:700; letter-spacing:1px; }
+    .datecell .sp { display:inline-block; width:52px; }
+    .mc { text-align:center; font-weight:700; font-size:15px; padding:15px 2px; }
 
     .stepcell { width:20%; height:54px; vertical-align:top; padding:6px 4px; background:#fffbf5; }
     .steplabel { font-size:10px; color:#9a3412; margin-bottom:8px; }
@@ -2244,9 +2301,9 @@ function printWorksheet(p, qty, due){
       <div class="band b-worker">★ 作業員記入欄</div>
       <table class="wk" style="margin-top:7px;">
         <tr>
-          <td class="lbl">加工完了日</td>
-          <td style="font-size:14px;">R&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/</td>
-          <td class="lbl">加工担当者</td>
+          <td class="lbl" style="width:90px;">加工完了日</td>
+          <td class="datecell" style="width:38%;">R<span class="sp"></span>/<span class="sp"></span>/<span class="sp"></span></td>
+          <td class="lbl" style="width:90px;">加工担当者</td>
           <td></td>
         </tr>
       </table>
@@ -2266,7 +2323,7 @@ function printWorksheet(p, qty, due){
       <div class="ofgrid">
         ${ofCard('材料名', matList('name'), 'green')}
         ${ofCard('材料寸法', matList('size'), 'green')}
-        ${ofCard('材料注文数', qty+' ヶ')}
+        ${ofCard('材料注文数', qtyInline(), 'green')}
         ${ofCard('材料単価', matList('price', m=>m.price?('¥'+fmt(m.price)):''), 'green')}
         ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'blue')}
         ${ofCard('外注先', osText)}
