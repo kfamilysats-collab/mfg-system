@@ -2206,11 +2206,11 @@ function printWorksheet(p, qtys, due){
   // 材料注文数：材料ごとに ①10ヶ ②5ヶ
   const qtyArr = Array.isArray(qtys) ? qtys : [qtys];
   const qtyInline = () => {
-    if(!mats.length) return (qtyArr[0]||0)+' ヶ';
+    if(!mats.length) return `<div class="mline">${(qtyArr[0]||0)} ヶ</div>`;
     const items = mats.map((m,i)=>{
       const q = qtyArr[i]||0;
       if(!q) return '';
-      return multi ? `<span class="minline">${NUM[i]||(i+1)} ${q} ヶ</span>` : `<span class="minline">${q} ヶ</span>`;
+      return multi ? `<div class="mline">${NUM[i]||(i+1)} ${q} ヶ</div>` : `<div class="mline">${q} ヶ</div>`;
     }).filter(Boolean);
     return items.length ? items.join('') : '&nbsp;';
   };
@@ -2275,7 +2275,7 @@ function printWorksheet(p, qtys, due){
     .stepcell { width:20%; height:54px; vertical-align:top; padding:6px 4px; background:#fffbf5; }
     .steplabel { font-size:10px; color:#9a3412; margin-bottom:8px; }
     .steptime { font-size:13px; text-align:center; white-space:nowrap; }
-    .steptime .num { display:inline-block; min-width:26px; border-bottom:1.5px solid #000; text-align:center; font-weight:700; font-size:14px; }
+    .steptime .num { display:inline-block; min-width:34px; text-align:center; font-weight:700; font-size:15px; }
     .blank { display:inline-block; border-bottom:1.5px solid #000; }
 
     .ofgrid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:9px; }
