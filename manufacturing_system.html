@@ -2195,8 +2195,8 @@ function printWorksheet(p, qty, due){
     td { border:1px solid #333; padding:8px 10px; }
 
     .head td { padding:6px 8px; }
-    .head .lbl { background:#f5f5f5; font-weight:700; white-space:nowrap; width:46px; font-size:11px; }
-    .head .val { font-size:14px; font-weight:700; }
+    .head .lbl { background:#f5f5f5; font-weight:700; white-space:nowrap; width:42px; font-size:10px; padding:5px 6px; }
+    .head .val { font-size:13px; font-weight:700; padding:5px 7px; }
 
     .band { font-weight:700; padding:5px 9px; font-size:12px; border-left:4px solid; }
     .b-worker { background:#fff7ed; border-color:#d97706; color:#9a3412; }
@@ -2233,6 +2233,7 @@ function printWorksheet(p, qty, due){
 
     <table class="head">
       <tr>
+        <td class="lbl">発注先</td><td class="val">${escapeHtml(p.client||'')}</td>
         <td class="lbl">図番</td><td class="val">${escapeHtml(p.fignum||'')}</td>
         <td class="lbl">品名</td><td class="val">${escapeHtml(p.name||'')}</td>
         <td class="lbl">納期</td><td class="val">${escapeHtml(due||'')}</td>
