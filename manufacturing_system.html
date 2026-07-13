@@ -2159,11 +2159,14 @@ function printWorksheet(p, qty, due){
     stepRows += `<tr>${cells}</tr>`;
   }
 
-  const ofCard = (label, val) => `
-    <div class="ofcard">
+  const ofCard = (label, val, tone) => {
+    const t = tone==='green' ? 'ofcard-green' : (tone==='blue' ? 'ofcard-blue' : '');
+    return `
+    <div class="ofcard ${t}">
       <div class="oflabel">${label}</div>
       <div class="ofval">${val||'&nbsp;'}</div>
     </div>`;
+  };
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>作業書 ${escapeHtml(p.fignum||'')}</title>
   <style>
@@ -2188,17 +2191,21 @@ function printWorksheet(p, qty, due){
 
     .wk .lbl { background:#fafafa; font-weight:700; white-space:nowrap; width:110px; font-size:13px; }
     .wk td { height:46px; }
-    .mc { text-align:center; font-weight:700; font-size:17px; padding:14px 4px; }
+    .mc { text-align:center; font-weight:700; font-size:15px; padding:11px 2px; }
 
-    .stepcell { width:20%; height:62px; vertical-align:top; padding:8px 6px; }
-    .steplabel { font-size:11px; color:#555; margin-bottom:10px; }
-    .steptime { font-size:14px; text-align:center; white-space:nowrap; }
-    .steptime .num { display:inline-block; min-width:30px; border-bottom:1.5px solid #000; text-align:center; font-weight:700; font-size:15px; }
+    .stepcell { width:20%; height:56px; vertical-align:top; padding:7px 4px; }
+    .steplabel { font-size:10px; color:#555; margin-bottom:8px; }
+    .steptime { font-size:13px; text-align:center; white-space:nowrap; }
+    .steptime .num { display:inline-block; min-width:26px; border-bottom:1.5px solid #000; text-align:center; font-weight:700; font-size:14px; }
     .blank { display:inline-block; border-bottom:1.5px solid #000; }
 
     .ofgrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
     .ofcard { border:1px solid #333; border-radius:4px; padding:9px 12px; background:#fff; }
-    .oflabel { font-size:11px; color:#1e40af; font-weight:700; margin-bottom:5px; }
+    .ofcard-green { background:#f0fdf4; border-color:#059669; border-left:5px solid #059669; }
+    .ofcard-green .oflabel { color:#166534; }
+    .ofcard-blue { background:#eff6ff; border-color:#2563eb; border-left:5px solid #2563eb; }
+    .ofcard-blue .oflabel { color:#1e40af; }
+    .oflabel { font-size:11px; color:#555; font-weight:700; margin-bottom:5px; }
     .ofval { font-size:16px; font-weight:700; min-height:22px; }
 
     .memobox { border:1px solid #333; padding:12px; min-height:80px; font-size:14px; line-height:1.9; background:#fffef5; margin-top:10px; }
@@ -2237,11 +2244,11 @@ function printWorksheet(p, qty, due){
     <div class="blk">
       <div class="band b-office">★ 事務記入欄</div>
       <div class="ofgrid">
-        ${ofCard('材料発注先', escapeHtml(matSupplier))}
-        ${ofCard('材料名', escapeHtml(matName))}
-        ${ofCard('材料寸法', escapeHtml(matSize))}
-        ${ofCard('材料単価', matTotal?('¥'+fmt(matTotal)+' 円'):'')}
-        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)+' 円'):'')}
+        ${ofCard('材料発注先', escapeHtml(matSupplier), 'green')}
+        ${ofCard('材料名', escapeHtml(matName), 'green')}
+        ${ofCard('材料寸法', escapeHtml(matSize), 'green')}
+        ${ofCard('材料単価', matTotal?('¥'+fmt(matTotal)+' 円'):'', 'green')}
+        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)+' 円'):'', 'blue')}
         ${ofCard('材料注文数', qty+' ヶ')}
         ${ofCard('納期', escapeHtml(due||''))}
         ${ofCard('外注先', osText)}
