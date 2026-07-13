@@ -2149,6 +2149,17 @@ function printWorksheet(p, qty, due){
     }).filter(Boolean).join('') || '&nbsp;';
   };
 
+  // 横1列で ①A ②B と並べる
+  const matInline = (key) => {
+    if(!mats.length) return '&nbsp;';
+    const items = mats.map((m,i)=>{
+      const val = escapeHtml(m[key]||'');
+      if(!val) return '';
+      return multi ? `<span class="minline">${NUM[i]||(i+1)} ${val}</span>` : `<span class="minline">${val}</span>`;
+    }).filter(Boolean);
+    return items.length ? items.join('') : '&nbsp;';
+  };
+
   const os = (p.outsource||[]).filter(o=>o && (o.name||o.note||o.price));
   const osText = os.length ? os.map(o=>`${escapeHtml(o.name||'')}${o.note?'（'+escapeHtml(o.note)+'）':''}`).join('<br>') : '';
 
@@ -2213,7 +2224,7 @@ function printWorksheet(p, qty, due){
     .oflabel { font-size:10px; color:#555; font-weight:700; margin-bottom:4px; }
     .ofval { font-size:15px; font-weight:700; min-height:20px; }
     .mline { font-size:14px; font-weight:700; line-height:1.6; }
-    .mtotal { font-size:12px; font-weight:700; color:#166534; border-top:1px solid #059669; margin-top:4px; padding-top:3px; }
+    .minline { display:inline-block; font-size:14px; font-weight:700; margin-right:22px; }
 
     .memobox { border:1px solid #333; padding:11px; min-height:74px; font-size:13px; line-height:1.8; background:#fffef5; margin-top:9px; }
   </style></head><body>
@@ -2233,9 +2244,9 @@ function printWorksheet(p, qty, due){
       <table class="wk" style="margin-top:7px;">
         <tr>
           <td class="lbl">加工完了日</td>
-          <td style="font-size:14px;">R&nbsp;<span class="blank" style="min-width:50px;">&nbsp;</span>&nbsp;/&nbsp;<span class="blank" style="min-width:42px;">&nbsp;</span>&nbsp;/&nbsp;<span class="blank" style="min-width:42px;">&nbsp;</span></td>
+          <td style="font-size:14px;">R&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/</td>
           <td class="lbl">加工担当者</td>
-          <td><span class="blank" style="min-width:140px;">&nbsp;</span></td>
+          <td></td>
         </tr>
       </table>
       <table class="wk" style="margin-top:-1px;">
@@ -2248,13 +2259,15 @@ function printWorksheet(p, qty, due){
 
     <div class="blk">
       <div class="band b-office">★ 事務記入欄</div>
+      <div style="margin-top:9px;">
+        ${ofCard('材料発注先', matInline('supplier'), 'green')}
+      </div>
       <div class="ofgrid">
-        ${ofCard('材料発注先', matList('supplier'), 'green')}
         ${ofCard('材料名', matList('name'), 'green')}
         ${ofCard('材料寸法', matList('size'), 'green')}
-        ${ofCard('材料単価', matList('price', m=>m.price?('¥'+fmt(m.price)):'') + (multi&&matTotal?`<div class="mtotal">合計 ¥${fmt(matTotal)}</div>`:''), 'green')}
-        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'blue')}
         ${ofCard('材料注文数', qty+' ヶ')}
+        ${ofCard('材料単価', matList('price', m=>m.price?('¥'+fmt(m.price)):''), 'green')}
+        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'blue')}
         ${ofCard('外注先', osText)}
       </div>
     </div>
