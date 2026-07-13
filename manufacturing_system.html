@@ -2096,65 +2096,60 @@ function createWorksheet(id){
 function printWorksheet(p, qty){
   const rec = _latestProduction(p.fignum);
   const steps = (rec && Array.isArray(rec.steps)) ? rec.steps : [];
-  const machine = rec ? (rec.machine||'') : '';
 
-  // 材料（メイン＋追加）をまとめる
+  // 材料（メイン＋追加）
   const mats=[];
   if(p.matName||p.matSupplier||p.matSize||p.matPrice) mats.push({supplier:p.matSupplier,name:p.matName,size:p.matSize,price:p.matPrice});
   if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>mats.push(m));
-  const matName = mats.map(m=>m.name).filter(Boolean).join(' / ') || '';
-  const matSize = mats.map(m=>m.size).filter(Boolean).join(' / ') || '';
-  const matSupplier = mats.map(m=>m.supplier).filter(Boolean).join(' / ') || '';
+  const matName = mats.map(m=>m.name).filter(Boolean).join(' / ');
+  const matSize = mats.map(m=>m.size).filter(Boolean).join(' / ');
   const matTotal = getMatPriceTotal(p);
 
-  // 機械 A〜I（毎回決まらないので空欄。作業員が丸をつける）
-  const MACHINES = ['A','B','C','D','E','F','G','H','I'];
-  const machineCells = MACHINES.map(mc=>`<td class="mc">${mc}</td>`).join('');
+  // 材料発注先：登録があればその会社だけ。無ければ空欄（作業員が記入）
+  const supList = [...new Set(mats.map(m=>m.supplier).filter(Boolean))];
+  const supplierText = supList.join(' / ');
 
-  // 材料発注先（★事務記入欄）：マスタから取得。無ければPDF準拠の既定
-  let suppliers = [];
-  if (DB.suppliers && Array.isArray(DB.suppliers.materials)) {
-    suppliers = DB.suppliers.materials.map(s=>typeof s==='string'?s:(s.name||'')).filter(Boolean);
-  }
-  if (!suppliers.length) suppliers = ['加藤','藤巻','橋本','近藤','芝村','ﾚｰｻﾞｰﾏｯｸｽ','みやび','SHINJIN','材料支給'];
-  const supplierCells = suppliers.map(s=>`<td class="wk">${escapeHtml(s)}</td>`).join('');
+  // 機械 A〜I（毎回決まらないので空欄。丸をつけてもらう）
+  const machineCells = ['A','B','C','D','E','F','G','H','I']
+    .map(mc=>`<td class="mc">${mc}</td>`).join('');
 
-  // 10工程分（実績があれば埋める、無ければ空欄で手書き）
-  let rows='';
+  // 10工程（2行×5列）。実績があれば印字、無ければ空欄
+  let stepRows='';
   for(let r=0;r<2;r++){
     let cells='';
     for(let c=1;c<=5;c++){
-      const i = r*5+c;              // 1〜10工程
+      const i = r*5+c;
       const t = _parseStepTime(steps[i-1]);
       cells += `<td class="stepcell">
         <div class="steplabel">${i}工程目</div>
         <div class="steptime"><span class="num">${t?t.min:''}</span> 分 <span class="num">${t?t.sec:''}</span> 秒</div>
       </td>`;
     }
-    rows += `<tr>${cells}</tr>`;
+    stepRows += `<tr>${cells}</tr>`;
   }
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>作業書 ${escapeHtml(p.fignum||'')}</title>
   <style>
-    @page { size: A4 portrait; margin: 12mm; }
+    @page { size: A4 portrait; margin: 14mm; }
     * { box-sizing: border-box; }
-    body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo',sans-serif; color:#000; margin:0; font-size:12px; }
-    h1 { font-size:20px; text-align:center; margin:0 0 10px; letter-spacing:8px; border:2px solid #000; padding:6px; }
-    table { width:100%; border-collapse:collapse; margin-bottom:8px; }
-    td, th { border:1px solid #000; padding:5px 6px; }
-    .lbl { background:#e8e8e8; font-weight:700; white-space:nowrap; width:90px; }
-    .val { font-size:14px; font-weight:700; }
-    .sec-title { background:#333; color:#fff; font-weight:700; padding:4px 8px; margin:10px 0 4px; font-size:13px; }
-    .mc { text-align:center; width:11%; font-weight:700; font-size:14px; padding:8px 4px; }
-    .wk { text-align:center; font-size:12px; padding:6px 4px; }
-    .stepcell { width:20%; vertical-align:top; padding:6px; height:52px; }
-    .steplabel { font-size:11px; color:#333; margin-bottom:6px; }
-    .steptime { font-size:13px; text-align:center; }
-    .steptime .num { display:inline-block; min-width:26px; border-bottom:1px solid #999; text-align:center; font-weight:700; }
-    .blank { display:inline-block; min-width:70px; border-bottom:1px solid #999; }
-    .memo { height:56px; vertical-align:top; font-size:12px; line-height:1.6; }
+    body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo','MS PGothic',sans-serif; color:#000; margin:0; font-size:12px; }
+    h1 { font-size:22px; text-align:center; margin:0 0 14px; letter-spacing:12px; font-weight:700; }
+    table { width:100%; border-collapse:collapse; margin-bottom:12px; }
+    td, th { border:1px solid #000; padding:7px 8px; }
+    .lbl { background:#f2f2f2; font-weight:700; white-space:nowrap; width:110px; }
+    .val { font-size:13px; font-weight:700; }
+    .sec { font-size:12px; font-weight:700; margin:14px 0 5px; }
+    .mc { text-align:center; width:11.1%; font-weight:700; font-size:14px; padding:9px 4px; }
+    .stepcell { width:20%; height:50px; vertical-align:top; padding:7px 6px; }
+    .steplabel { font-size:10px; color:#333; margin-bottom:7px; }
+    .steptime { font-size:12px; text-align:center; white-space:nowrap; }
+    .steptime .num { display:inline-block; min-width:24px; border-bottom:1px solid #000; text-align:center; font-weight:700; }
+    .blank { display:inline-block; min-width:60px; border-bottom:1px solid #000; }
+    .memo { height:60px; vertical-align:top; font-size:12px; line-height:1.7; }
+    .note { font-size:9px; color:#555; margin-top:8px; }
   </style></head><body>
-    <h1>作業書</h1>
+
+    <h1>作 業 書</h1>
 
     <table>
       <tr>
@@ -2170,7 +2165,7 @@ function printWorksheet(p, qty){
         <td class="lbl">材料寸法</td><td>${escapeHtml(matSize)}</td>
       </tr>
       <tr>
-        <td class="lbl">材料発注先</td><td>${escapeHtml(matSupplier)}</td>
+        <td class="lbl">材料発注先</td><td>${escapeHtml(supplierText)}</td>
         <td class="lbl">材料単価</td><td class="val">${matTotal?('¥'+fmt(matTotal)):''} 円</td>
       </tr>
       <tr>
@@ -2179,37 +2174,33 @@ function printWorksheet(p, qty){
       </tr>
     </table>
 
-    <div class="sec-title">★作業員記入欄</div>
+    <div class="sec">★作業員記入欄</div>
     <table>
       <tr>
         <td class="lbl">加工完了日</td>
-        <td colspan="3">R&nbsp;&nbsp;<span class="blank"></span>/<span class="blank"></span>/<span class="blank"></span></td>
-      </tr>
-      <tr>
-        <td class="lbl">機械</td>
-        <td colspan="3" style="padding:0;">
-          <table style="margin:0;border:none;"><tr>${machineCells}</tr></table>
-        </td>
-      </tr>
-      <tr>
+        <td>R&nbsp;<span class="blank" style="min-width:44px;"></span>/<span class="blank" style="min-width:36px;"></span>/<span class="blank" style="min-width:36px;"></span></td>
         <td class="lbl">加工担当者</td>
-        <td colspan="3"><span class="blank" style="min-width:220px;"></span></td>
+        <td><span class="blank" style="min-width:150px;"></span></td>
       </tr>
     </table>
 
-    <table>${rows}</table>
+    <table>
+      <tr><td class="lbl" style="width:70px;">機械</td>${machineCells}</tr>
+    </table>
 
-    <div class="sec-title">★事務記入欄</div>
-    <table><tr>${supplierCells}</tr></table>
+    <table>${stepRows}</table>
 
-    <div class="sec-title">🔧 作業員へのメモ</div>
+    <div class="sec">★事務記入欄</div>
+    <table>
+      <tr><td class="memo">&nbsp;</td></tr>
+    </table>
+
+    <div class="sec">🔧 作業員へのメモ</div>
     <table>
       <tr><td class="memo">${p.workerNote ? escapeHtml(p.workerNote).replace(/\n/g,'<br>') : '&nbsp;'}</td></tr>
     </table>
 
-    <div style="font-size:10px;color:#555;margin-top:6px;">
-      ※ 印字されている工程時間は直近の実績値です。空欄は作業後に記入してください。
-    </div>
+    <div class="note">※ 印字されている工程時間は直近の実績値です。空欄は作業後に記入してください。</div>
 
     <script>window.onload=function(){window.print();}<\/script>
   </body></html>`;
@@ -3402,8 +3393,9 @@ function deleteWorker(idx) {
 function updateDataLists() {
   // 受注先（client）タグ付きの会社のみ
   const clientNames = DB.companies.filter(c=>(c.types||[]).includes('client')).map(c=>c.name);
-  // 材料発注先（material）タグ付きの会社のみ
+  // 材料発注先（material）タグ付きの会社のみ ＋「材料支給」を常に候補に追加
   const materialNames = DB.companies.filter(c=>(c.types||[]).includes('material')).map(c=>c.name);
+  if (!materialNames.includes('材料支給')) materialNames.push('材料支給');
 
   const cl = document.getElementById('pf-client-list');
   if (cl) cl.innerHTML = clientNames.map(n=>`<option value="${n}">`).join('');
