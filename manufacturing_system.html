@@ -2216,7 +2216,13 @@ function printWorksheet(p, qtys, due){
   };
 
   const os = (p.outsource||[]).filter(o=>o && (o.name||o.note||o.price));
-  const osText = os.length ? os.map(o=>`${escapeHtml(o.name||'')}${o.note?'（'+escapeHtml(o.note)+'）':''}`).join('<br>') : '';
+  const osMulti = os.length > 1;
+  const osText = os.length
+    ? os.map((o,i)=>{
+        const label = `${escapeHtml(o.name||'')}${o.note?'（'+escapeHtml(o.note)+'）':''}`;
+        return osMulti ? `<div class="mline">${NUM[i]||(i+1)} ${label}</div>` : `<div class="mline">${label}</div>`;
+      }).join('')
+    : '';
 
   const machineCells = ['A','B','C','D','E','F','G','H','I'].map(mc=>`<td class="mc">${mc}</td>`).join('');
 
