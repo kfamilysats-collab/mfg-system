@@ -2090,10 +2090,12 @@ function createWorksheet(id){
   if(qtyInput===null) return;
   const qty = parseInt(qtyInput,10);
   if(!qty || qty<=0){ showToast('数量は1以上の数字を入力してください','error'); return; }
-  printWorksheet(p, qty);
+  const due = prompt('納期を入力してください（空欄でもOK）\n例：7/25、R7/7/25 など', '');
+  if(due===null) return;
+  printWorksheet(p, qty, due.trim());
 }
 
-function printWorksheet(p, qty){
+function printWorksheet(p, qty, due){
   const rec = _latestProduction(p.fignum);
   const steps = (rec && Array.isArray(rec.steps)) ? rec.steps : [];
 
@@ -2103,17 +2105,20 @@ function printWorksheet(p, qty){
   if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>mats.push(m));
   const matName = mats.map(m=>m.name).filter(Boolean).join(' / ');
   const matSize = mats.map(m=>m.size).filter(Boolean).join(' / ');
+  const matSupplier = [...new Set(mats.map(m=>m.supplier).filter(Boolean))].join(' / ');
   const matTotal = getMatPriceTotal(p);
 
-  // 材料発注先：登録があればその会社だけ。無ければ空欄（作業員が記入）
-  const supList = [...new Set(mats.map(m=>m.supplier).filter(Boolean))];
-  const supplierText = supList.join(' / ');
+  // 外注先
+  const os = (p.outsource||[]).filter(o=>o && (o.name||o.note||o.price));
+  const osText = os.length
+    ? os.map(o=>`${escapeHtml(o.name||'')}${o.note?'（'+escapeHtml(o.note)+'）':''}`).join(' / ')
+    : '';
 
-  // 機械 A〜I（毎回決まらないので空欄。丸をつけてもらう）
+  // 機械 A〜I（丸をつけてもらう）
   const machineCells = ['A','B','C','D','E','F','G','H','I']
     .map(mc=>`<td class="mc">${mc}</td>`).join('');
 
-  // 10工程（2行×5列）。実績があれば印字、無ければ空欄
+  // 10工程（2行×5列）
   let stepRows='';
   for(let r=0;r<2;r++){
     let cells='';
@@ -2130,75 +2135,94 @@ function printWorksheet(p, qty){
 
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>作業書 ${escapeHtml(p.fignum||'')}</title>
   <style>
-    @page { size: A4 portrait; margin: 14mm; }
-    * { box-sizing: border-box; }
+    @page { size: A4 portrait; margin: 13mm; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo','MS PGothic',sans-serif; color:#000; margin:0; font-size:12px; }
-    h1 { font-size:22px; text-align:center; margin:0 0 14px; letter-spacing:12px; font-weight:700; }
-    table { width:100%; border-collapse:collapse; margin-bottom:12px; }
-    td, th { border:1px solid #000; padding:7px 8px; }
-    .lbl { background:#f2f2f2; font-weight:700; white-space:nowrap; width:110px; }
-    .val { font-size:13px; font-weight:700; }
-    .sec { font-size:12px; font-weight:700; margin:14px 0 5px; }
-    .mc { text-align:center; width:11.1%; font-weight:700; font-size:14px; padding:9px 4px; }
-    .stepcell { width:20%; height:50px; vertical-align:top; padding:7px 6px; }
+    h1 { font-size:22px; text-align:center; margin:0 0 10px; letter-spacing:12px; font-weight:700; }
+    table { width:100%; border-collapse:collapse; }
+    td, th { border:1px solid #000; padding:7px 9px; }
+    .head { margin-bottom:14px; }
+    .head .lbl { background:#eee; font-weight:700; white-space:nowrap; width:70px; }
+    .head .val { font-size:15px; font-weight:700; }
+
+    .band { color:#fff; font-weight:700; padding:6px 10px; font-size:13px; margin-bottom:0; }
+    .band-worker { background:#d97706; }
+    .band-step   { background:#059669; }
+    .band-office { background:#2563eb; }
+    .band-memo   { background:#ca8a04; }
+    .blk { margin-bottom:14px; }
+
+    .wk .lbl { background:#fff7ed; font-weight:700; white-space:nowrap; width:100px; }
+    .of .lbl { background:#eff6ff; font-weight:700; white-space:nowrap; width:100px; }
+    .of .val { font-weight:700; }
+
+    .mc { text-align:center; font-weight:700; font-size:14px; padding:9px 4px; }
+    .stepcell { width:20%; height:48px; vertical-align:top; padding:7px 6px; background:#f0fdf4; }
     .steplabel { font-size:10px; color:#333; margin-bottom:7px; }
     .steptime { font-size:12px; text-align:center; white-space:nowrap; }
     .steptime .num { display:inline-block; min-width:24px; border-bottom:1px solid #000; text-align:center; font-weight:700; }
     .blank { display:inline-block; min-width:60px; border-bottom:1px solid #000; }
-    .memo { height:60px; vertical-align:top; font-size:12px; line-height:1.7; }
+    .memo { height:62px; vertical-align:top; font-size:12px; line-height:1.7; background:#fefce8; }
     .note { font-size:9px; color:#555; margin-top:8px; }
   </style></head><body>
 
     <h1>作 業 書</h1>
 
-    <table>
+    <table class="head">
       <tr>
         <td class="lbl">図番</td><td class="val">${escapeHtml(p.fignum||'')}</td>
         <td class="lbl">品名</td><td class="val">${escapeHtml(p.name||'')}</td>
       </tr>
-      <tr>
-        <td class="lbl">受注先</td><td>${escapeHtml(p.client||'')}</td>
-        <td class="lbl">材料注文個数</td><td class="val">${qty} ヶ</td>
-      </tr>
-      <tr>
-        <td class="lbl">材料名</td><td>${escapeHtml(matName)}</td>
-        <td class="lbl">材料寸法</td><td>${escapeHtml(matSize)}</td>
-      </tr>
-      <tr>
-        <td class="lbl">材料発注先</td><td>${escapeHtml(supplierText)}</td>
-        <td class="lbl">材料単価</td><td class="val">${matTotal?('¥'+fmt(matTotal)):''} 円</td>
-      </tr>
-      <tr>
-        <td class="lbl">製品単価</td><td class="val">${p.price?('¥'+fmt(p.price)):''} 円</td>
-        <td class="lbl">材料支給</td><td></td>
-      </tr>
     </table>
 
-    <div class="sec">★作業員記入欄</div>
-    <table>
-      <tr>
-        <td class="lbl">加工完了日</td>
-        <td>R&nbsp;<span class="blank" style="min-width:44px;"></span>/<span class="blank" style="min-width:36px;"></span>/<span class="blank" style="min-width:36px;"></span></td>
-        <td class="lbl">加工担当者</td>
-        <td><span class="blank" style="min-width:150px;"></span></td>
-      </tr>
-    </table>
+    <div class="blk">
+      <div class="band band-worker">★作業員記入欄</div>
+      <table class="wk">
+        <tr>
+          <td class="lbl">加工完了日</td>
+          <td>R&nbsp;<span class="blank" style="min-width:44px;"></span>/<span class="blank" style="min-width:36px;"></span>/<span class="blank" style="min-width:36px;"></span></td>
+          <td class="lbl">加工担当者</td>
+          <td><span class="blank" style="min-width:140px;"></span></td>
+        </tr>
+      </table>
+      <table class="wk" style="border-top:none;">
+        <tr><td class="lbl">機械</td>${machineCells}</tr>
+      </table>
+    </div>
 
-    <table>
-      <tr><td class="lbl" style="width:70px;">機械</td>${machineCells}</tr>
-    </table>
+    <div class="blk">
+      <div class="band band-step">工程時間</div>
+      <table>${stepRows}</table>
+    </div>
 
-    <table>${stepRows}</table>
+    <div class="blk">
+      <div class="band band-office">★事務記入欄</div>
+      <table class="of">
+        <tr>
+          <td class="lbl">材料発注先</td><td class="val">${escapeHtml(matSupplier)}</td>
+          <td class="lbl">材料名</td><td class="val">${escapeHtml(matName)}</td>
+        </tr>
+        <tr>
+          <td class="lbl">材料単価</td><td class="val">${matTotal?('¥'+fmt(matTotal)):''} 円</td>
+          <td class="lbl">製品単価</td><td class="val">${p.price?('¥'+fmt(p.price)):''} 円</td>
+        </tr>
+        <tr>
+          <td class="lbl">材料注文数</td><td class="val">${qty} ヶ</td>
+          <td class="lbl">材料寸法</td><td class="val">${escapeHtml(matSize)}</td>
+        </tr>
+        <tr>
+          <td class="lbl">納期</td><td class="val">${escapeHtml(due||'')}</td>
+          <td class="lbl">外注先</td><td class="val">${osText}</td>
+        </tr>
+      </table>
+    </div>
 
-    <div class="sec">★事務記入欄</div>
-    <table>
-      <tr><td class="memo">&nbsp;</td></tr>
-    </table>
-
-    <div class="sec">🔧 作業員へのメモ</div>
-    <table>
-      <tr><td class="memo">${p.workerNote ? escapeHtml(p.workerNote).replace(/\n/g,'<br>') : '&nbsp;'}</td></tr>
-    </table>
+    <div class="blk">
+      <div class="band band-memo">🔧 作業員へのメモ</div>
+      <table>
+        <tr><td class="memo">${p.workerNote ? escapeHtml(p.workerNote).replace(/\n/g,'<br>') : '&nbsp;'}</td></tr>
+      </table>
+    </div>
 
     <div class="note">※ 印字されている工程時間は直近の実績値です。空欄は作業後に記入してください。</div>
 
