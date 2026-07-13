@@ -70,7 +70,7 @@
   /* Tables */
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+  th { background: var(--bg3); color: var(--text2); font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
   td { padding: 10px 12px; border-bottom: 1px solid rgba(46,50,80,0.5); vertical-align: middle; }
   tr:hover td { background: rgba(61,127,255,0.04); }
   #product-tbody tr:hover td { background: rgba(61,127,255,0.10); }
@@ -93,8 +93,8 @@
   .form-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group.full { grid-column: 1 / -1; }
-  label { font-size: 14px; color: var(--text2); font-weight: 600; }
-  input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px; outline: none; transition: border-color 0.15s; font-family: inherit; width: 100%; }
+  label { font-size: 15px; color: var(--text2); font-weight: 600; }
+  input, select, textarea { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 16px; outline: none; transition: border-color 0.15s; font-family: inherit; width: 100%; }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   textarea { resize: vertical; min-height: 70px; }
   select option { background: #ffffff; color: #111827; }
@@ -119,7 +119,12 @@
   /* Modal */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; display: none; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; }
+  .modal { background: var(--bg2); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
+  .modal-header { flex-shrink: 0; }
+  .modal-body { overflow-y: auto; flex: 1 1 auto; min-height: 0; padding-right: 4px; }
+  .modal-body::-webkit-scrollbar { width: 8px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .modal-footer-fixed { flex-shrink: 0; padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--border); background: var(--bg2); }
   .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
   .modal-title { font-size: 18px; font-weight: 700; }
   .modal-close { background: none; border: none; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px; }
@@ -867,9 +872,9 @@
           <table style="width:100%;font-size:13px;" id="price-table">
             <thead>
               <tr>
-                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">数量（個〜）</th>
-                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">製品単価（円）</th>
-                <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料単価（円）</th>
+                <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">数量（個〜）</th>
+                <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">製品単価（円）</th>
+                <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料単価（円）</th>
                 <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);font-size:11px;width:50px;"></th>
               </tr>
             </thead>
@@ -889,11 +894,11 @@
         <div style="overflow-x:auto;">
           <table style="width:100%;font-size:13px;">
             <thead><tr>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料発注先</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料名</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">寸法</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料単価（円）</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;width:44px;text-align:center;"></th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料発注先</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料名</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">寸法</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料単価（円）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;width:44px;text-align:center;"></th>
             </tr></thead>
             <tbody id="material-rows"></tbody>
           </table>
@@ -908,11 +913,11 @@
         <div style="overflow-x:auto;">
           <table style="width:100%;font-size:13px;">
             <thead><tr>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">外注先名</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">材料</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">加工内容（備考）</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;">金額（円）</th>
-              <th style="background:var(--bg3);color:var(--text2);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;white-space:nowrap;width:44px;text-align:center;"></th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">外注先名</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">加工内容（備考）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">金額（円）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;width:44px;text-align:center;"></th>
             </tr></thead>
             <tbody id="outsource-rows"></tbody>
           </table>
@@ -921,8 +926,12 @@
         <div style="margin-bottom:16px;font-size:13px;font-weight:700;color:var(--accent);">その他</div>
         <div class="form-grid">
           <div class="form-group full">
-            <label>注意書き</label>
-            <textarea id="pf-note" placeholder="加工上の注意点など"></textarea>
+            <label>📋 メモ（事務員向け）</label>
+            <textarea id="pf-note" placeholder="事務作業上の注意点など"></textarea>
+          </div>
+          <div class="form-group full">
+            <label>🔧 作業員メモ（作業書に印刷されます）</label>
+            <textarea id="pf-worker-note" placeholder="作業員へのアドバイス（例：過去にクレームあり、バリ取り注意 など）"></textarea>
           </div>
           <div class="form-group full">
             <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:12px 14px;font-size:12px;color:#1e3a8a;line-height:1.6;">
@@ -1386,7 +1395,7 @@
       <div class="modal-title" id="detail-title">製品詳細</div>
       <button class="modal-close" onclick="closeModal('product-detail-modal')">✕</button>
     </div>
-    <div id="product-detail-body"></div>
+    <div id="product-detail-body" class="modal-body"></div>
   </div>
 </div>
 
@@ -1396,7 +1405,7 @@
       <div class="modal-title">実績詳細</div>
       <button class="modal-close" onclick="closeModal('prod-detail-modal')">✕</button>
     </div>
-    <div id="prod-detail-body"></div>
+    <div id="prod-detail-body" class="modal-body"></div>
   </div>
 </div>
 
@@ -2054,6 +2063,163 @@ function exportPriceListExcel() {
   XLSX.writeFile(wb, '製品価格一覧.xlsx');
 }
 
+// ===== 作業書（作業指示書）=====
+// 「時:分:秒」or「分:秒」形式 → {min, sec} に変換
+function _parseStepTime(v){
+  if(!v) return null;
+  const parts = String(v).trim().split(':').map(x=>parseInt(x,10)||0);
+  let h=0,m=0,s=0;
+  if(parts.length===3){ h=parts[0]; m=parts[1]; s=parts[2]; }
+  else if(parts.length===2){ m=parts[0]; s=parts[1]; }
+  else return null;
+  return { min: h*60+m, sec: s };
+}
+
+// その製品の最新実績（日付が一番新しいもの）を取得
+function _latestProduction(fignum){
+  const list = (DB.productions||[]).filter(r=>r.fignum===fignum);
+  if(!list.length) return null;
+  return list.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))[0];
+}
+
+// 作業書を作成（数量を聞いて印刷）
+function createWorksheet(id){
+  const p = DB.products.find(x=>x.id===id);
+  if(!p){ showToast('製品が見つかりません','error'); return; }
+  const qtyInput = prompt('作業数量を入力してください（個数）', '1');
+  if(qtyInput===null) return;
+  const qty = parseInt(qtyInput,10);
+  if(!qty || qty<=0){ showToast('数量は1以上の数字を入力してください','error'); return; }
+  printWorksheet(p, qty);
+}
+
+function printWorksheet(p, qty){
+  const rec = _latestProduction(p.fignum);
+  const steps = (rec && Array.isArray(rec.steps)) ? rec.steps : [];
+  const machine = rec ? (rec.machine||'') : '';
+
+  // 材料（メイン＋追加）をまとめる
+  const mats=[];
+  if(p.matName||p.matSupplier||p.matSize||p.matPrice) mats.push({supplier:p.matSupplier,name:p.matName,size:p.matSize,price:p.matPrice});
+  if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>mats.push(m));
+  const matName = mats.map(m=>m.name).filter(Boolean).join(' / ') || '';
+  const matSize = mats.map(m=>m.size).filter(Boolean).join(' / ') || '';
+  const matSupplier = mats.map(m=>m.supplier).filter(Boolean).join(' / ') || '';
+  const matTotal = getMatPriceTotal(p);
+
+  // 機械 A〜I（毎回決まらないので空欄。作業員が丸をつける）
+  const MACHINES = ['A','B','C','D','E','F','G','H','I'];
+  const machineCells = MACHINES.map(mc=>`<td class="mc">${mc}</td>`).join('');
+
+  // 材料発注先（★事務記入欄）：マスタから取得。無ければPDF準拠の既定
+  let suppliers = [];
+  if (DB.suppliers && Array.isArray(DB.suppliers.materials)) {
+    suppliers = DB.suppliers.materials.map(s=>typeof s==='string'?s:(s.name||'')).filter(Boolean);
+  }
+  if (!suppliers.length) suppliers = ['加藤','藤巻','橋本','近藤','芝村','ﾚｰｻﾞｰﾏｯｸｽ','みやび','SHINJIN','材料支給'];
+  const supplierCells = suppliers.map(s=>`<td class="wk">${escapeHtml(s)}</td>`).join('');
+
+  // 10工程分（実績があれば埋める、無ければ空欄で手書き）
+  let rows='';
+  for(let r=0;r<2;r++){
+    let cells='';
+    for(let c=1;c<=5;c++){
+      const i = r*5+c;              // 1〜10工程
+      const t = _parseStepTime(steps[i-1]);
+      cells += `<td class="stepcell">
+        <div class="steplabel">${i}工程目</div>
+        <div class="steptime"><span class="num">${t?t.min:''}</span> 分 <span class="num">${t?t.sec:''}</span> 秒</div>
+      </td>`;
+    }
+    rows += `<tr>${cells}</tr>`;
+  }
+
+  const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>作業書 ${escapeHtml(p.fignum||'')}</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo',sans-serif; color:#000; margin:0; font-size:12px; }
+    h1 { font-size:20px; text-align:center; margin:0 0 10px; letter-spacing:8px; border:2px solid #000; padding:6px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+    td, th { border:1px solid #000; padding:5px 6px; }
+    .lbl { background:#e8e8e8; font-weight:700; white-space:nowrap; width:90px; }
+    .val { font-size:14px; font-weight:700; }
+    .sec-title { background:#333; color:#fff; font-weight:700; padding:4px 8px; margin:10px 0 4px; font-size:13px; }
+    .mc { text-align:center; width:11%; font-weight:700; font-size:14px; padding:8px 4px; }
+    .wk { text-align:center; font-size:12px; padding:6px 4px; }
+    .stepcell { width:20%; vertical-align:top; padding:6px; height:52px; }
+    .steplabel { font-size:11px; color:#333; margin-bottom:6px; }
+    .steptime { font-size:13px; text-align:center; }
+    .steptime .num { display:inline-block; min-width:26px; border-bottom:1px solid #999; text-align:center; font-weight:700; }
+    .blank { display:inline-block; min-width:70px; border-bottom:1px solid #999; }
+    .memo { height:56px; vertical-align:top; font-size:12px; line-height:1.6; }
+  </style></head><body>
+    <h1>作業書</h1>
+
+    <table>
+      <tr>
+        <td class="lbl">図番</td><td class="val">${escapeHtml(p.fignum||'')}</td>
+        <td class="lbl">品名</td><td class="val">${escapeHtml(p.name||'')}</td>
+      </tr>
+      <tr>
+        <td class="lbl">受注先</td><td>${escapeHtml(p.client||'')}</td>
+        <td class="lbl">材料注文個数</td><td class="val">${qty} ヶ</td>
+      </tr>
+      <tr>
+        <td class="lbl">材料名</td><td>${escapeHtml(matName)}</td>
+        <td class="lbl">材料寸法</td><td>${escapeHtml(matSize)}</td>
+      </tr>
+      <tr>
+        <td class="lbl">材料発注先</td><td>${escapeHtml(matSupplier)}</td>
+        <td class="lbl">材料単価</td><td class="val">${matTotal?('¥'+fmt(matTotal)):''} 円</td>
+      </tr>
+      <tr>
+        <td class="lbl">製品単価</td><td class="val">${p.price?('¥'+fmt(p.price)):''} 円</td>
+        <td class="lbl">材料支給</td><td></td>
+      </tr>
+    </table>
+
+    <div class="sec-title">★作業員記入欄</div>
+    <table>
+      <tr>
+        <td class="lbl">加工完了日</td>
+        <td colspan="3">R&nbsp;&nbsp;<span class="blank"></span>/<span class="blank"></span>/<span class="blank"></span></td>
+      </tr>
+      <tr>
+        <td class="lbl">機械</td>
+        <td colspan="3" style="padding:0;">
+          <table style="margin:0;border:none;"><tr>${machineCells}</tr></table>
+        </td>
+      </tr>
+      <tr>
+        <td class="lbl">加工担当者</td>
+        <td colspan="3"><span class="blank" style="min-width:220px;"></span></td>
+      </tr>
+    </table>
+
+    <table>${rows}</table>
+
+    <div class="sec-title">★事務記入欄</div>
+    <table><tr>${supplierCells}</tr></table>
+
+    <div class="sec-title">🔧 作業員へのメモ</div>
+    <table>
+      <tr><td class="memo">${p.workerNote ? escapeHtml(p.workerNote).replace(/\n/g,'<br>') : '&nbsp;'}</td></tr>
+    </table>
+
+    <div style="font-size:10px;color:#555;margin-top:6px;">
+      ※ 印字されている工程時間は直近の実績値です。空欄は作業後に記入してください。
+    </div>
+
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if(!w){ showToast('ポップアップがブロックされました。ブラウザの設定を確認してください','error'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
 function showProductDetail(id) {
   const p = DB.products.find(x=>x.id===id);
   if (!p) return;
@@ -2086,14 +2252,24 @@ function showProductDetail(id) {
     </div>
 
     ${sectionLabel('■ 材料情報','#059669')}
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
-      ${card(green,'材料発注先',p.matSupplier)}
-      ${card(green,'材料名',p.matName)}
-      ${card(green,'寸法',p.matSize)}
-      ${card(green, (Array.isArray(p.extraMaterials)&&p.extraMaterials.length?'材料単価（メイン）':'材料単価'), '¥'+fmt(p.matPrice))}
-      ${(p.extraMaterials||[]).map((m,i)=>card(green,`追加材料${i+1}${m.name?'（'+escapeHtml(m.name)+'）':''}`,'¥'+fmt(m.price||0))).join('')}
-      ${(Array.isArray(p.extraMaterials)&&p.extraMaterials.length)?card('#f59e0b','材料単価 合計','¥'+fmt(getMatPriceTotal(p))):''}
-    </div>
+    ${(()=>{
+      const mats=[];
+      if(p.matName||p.matSupplier||p.matSize||p.matPrice) mats.push({supplier:p.matSupplier,name:p.matName,size:p.matSize,price:p.matPrice});
+      if(Array.isArray(p.extraMaterials)) p.extraMaterials.forEach(m=>mats.push(m));
+      if(!mats.length) return '<div style="color:var(--text2);font-size:13px;">材料未登録</div>';
+      const blocks = mats.map((m,i)=>`
+        <div style="border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#f7fdf9;">
+          <div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:10px;">材料${i+1}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            ${card(green,'材料発注先',m.supplier||'—')}
+            ${card(green,'材料名',m.name||'—')}
+            ${card(green,'寸法',m.size||'—')}
+            ${card(green,'材料単価','¥'+fmt(m.price||0))}
+          </div>
+        </div>`).join('');
+      const total = mats.length>1 ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${card('#f59e0b','材料単価 合計','¥'+fmt(getMatPriceTotal(p)))}</div>` : '';
+      return blocks + total;
+    })()}
 
     ${outsourceCards ? sectionLabel('■ 外注情報','#d97706') : ''}
     ${outsourceCards ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">${outsourceCards}</div>` : ''}
@@ -2132,11 +2308,20 @@ function showProductDetail(id) {
     ${p.note ? `<div style="${cardBase}${red}margin-top:6px;"><div style="${labelStyle}">⚠ 注意書き</div><div style="${valueStyle}white-space:pre-wrap;">${p.note}</div></div>` : ''}
     ${p.claimNote ? `<div style="${cardBase}${red}margin-top:10px;"><div style="${labelStyle}">🚨 クレーム内容</div><div style="${valueStyle}white-space:pre-wrap;">${p.claimNote}</div></div>` : ''}
 
-    <div style="display:flex;gap:8px;margin-top:22px;">
+  `;
+  // 編集・削除ボタンを固定フッターに配置（本文が長くなってもボタンは常に見える）
+  const modalEl = document.getElementById('product-detail-modal').querySelector('.modal');
+  let footer = modalEl.querySelector('.modal-footer-fixed');
+  if (!footer) {
+    footer = document.createElement('div');
+    footer.className = 'modal-footer-fixed';
+    modalEl.appendChild(footer);
+  }
+  footer.innerHTML = `<div style="display:flex;gap:8px;align-items:center;">
       <button class="btn btn-ghost btn-sm" onclick="editProduct('${p.id}');closeModal('product-detail-modal')">編集</button>
       <button class="btn btn-danger btn-sm" onclick="deleteProduct('${p.id}')">削除</button>
-    </div>
-  `;
+      <button class="btn btn-primary btn-sm" onclick="createWorksheet('${p.id}')" style="margin-left:auto;">📝 作業書を作成</button>
+    </div>`;
   openModal('product-detail-modal');
 }
 
@@ -2156,6 +2341,7 @@ function editProduct(id) {
   document.getElementById('material-rows').innerHTML='';
   if(_mrows.length) _mrows.forEach(m=>addMaterialRow(m)); else addMaterialRow();
   document.getElementById('pf-note').value = p.note||'';
+  document.getElementById('pf-worker-note').value = p.workerNote||'';
   const _drows = Array.isArray(p.drawings)&&p.drawings.length ? p.drawings : (p.drawingUrl?[{url:p.drawingUrl,note:''}]:[]);
   document.getElementById('drawing-rows').innerHTML='';
   if(_drows.length) _drows.forEach(x=>addDrawingRow(x)); else addDrawingRow();
@@ -2326,7 +2512,7 @@ function getClaims(){
 }
 
 function clearProductForm() {
-  ['pf-fignum','pf-name','pf-client','pf-price','pf-note'].forEach(id=>{
+  ['pf-fignum','pf-name','pf-client','pf-price','pf-note','pf-worker-note'].forEach(id=>{
     const el = document.getElementById(id);
     if (el) { el.value=''; delete el.dataset.editId; }
   });
@@ -2366,6 +2552,7 @@ function saveProduct() {
     extraMaterials: _mats.slice(1),
     priceTable,
     note: document.getElementById('pf-note').value.trim(),
+    workerNote: document.getElementById('pf-worker-note').value.trim(),
     drawings: _draws,
     claims: _clms,
     drawingUrl: (_draws[0]||{}).url||'',
