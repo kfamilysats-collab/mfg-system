@@ -1399,6 +1399,28 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="worksheet-modal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-header">
+      <div class="modal-title">📝 作業書を作成</div>
+      <button class="modal-close" onclick="closeModal('worksheet-modal')">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;" id="ws-info"></div>
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>作業数量（個数）*</label>
+      <input type="number" id="ws-qty" value="1" min="1" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('ws-due').focus();}">
+    </div>
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>納期（空欄でもOK）</label>
+      <input type="text" id="ws-due" placeholder="例：7/25、R7/7/25 など" onkeydown="if(event.key==='Enter'){event.preventDefault();submitWorksheet();}">
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('worksheet-modal')">キャンセル</button>
+      <button class="btn btn-primary btn-sm" onclick="submitWorksheet()">🖨 作成して印刷</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="prod-detail-modal">
   <div class="modal">
     <div class="modal-header">
@@ -2086,13 +2108,24 @@ function _latestProduction(fignum){
 function createWorksheet(id){
   const p = DB.products.find(x=>x.id===id);
   if(!p){ showToast('製品が見つかりません','error'); return; }
-  const qtyInput = prompt('作業数量を入力してください（個数）', '1');
-  if(qtyInput===null) return;
-  const qty = parseInt(qtyInput,10);
+  window._wsProductId = id;
+  document.getElementById('ws-qty').value = '1';
+  document.getElementById('ws-due').value = '';
+  document.getElementById('ws-info').textContent = `${p.fignum||''} / ${p.name||''}`;
+  openModal('worksheet-modal');
+  setTimeout(()=>{ const el=document.getElementById('ws-qty'); if(el){ el.focus(); el.select(); } }, 100);
+}
+
+// モーダルの「作成・印刷」ボタンから呼ばれる（クリック直後なのでポップアップブロックされない）
+function submitWorksheet(){
+  const p = DB.products.find(x=>x.id===window._wsProductId);
+  if(!p){ showToast('製品が見つかりません','error'); return; }
+  const qty = parseInt(document.getElementById('ws-qty').value,10);
   if(!qty || qty<=0){ showToast('数量は1以上の数字を入力してください','error'); return; }
-  const due = prompt('納期を入力してください（空欄でもOK）\n例：7/25、R7/7/25 など', '');
-  if(due===null) return;
-  printWorksheet(p, qty, due.trim());
+  const due = document.getElementById('ws-due').value.trim();
+  closeModal('worksheet-modal');
+  closeModal('product-detail-modal');
+  printWorksheet(p, qty, due);
 }
 
 function printWorksheet(p, qty, due){
