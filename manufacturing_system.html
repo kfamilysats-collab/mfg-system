@@ -1124,6 +1124,9 @@
         <div><div class="page-title">受注・売上管理</div><div class="page-sub">作業書を作成すると自動で記録されます</div></div>
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="month" id="rc-month" onchange="renderReceipts()" style="width:150px;">
+          <label style="font-size:13px;display:flex;align-items:center;gap:5px;white-space:nowrap;">
+            <input type="checkbox" id="rc-show-all" onchange="renderReceipts()" style="width:auto;"> 全期間
+          </label>
           <button class="btn btn-ghost btn-sm" onclick="exportReceiptsExcel()">📊 Excel出力</button>
         </div>
       </div>
@@ -1782,6 +1785,34 @@ function load() {
     Object.assign(DB, parsed);
     if (!DB.companies) DB.companies = [];
     if (!DB.receipts) DB.receipts = [];
+    // 旧receipts（受注データ）を実績へ一回だけ移行（データ一本化）
+    if (DB.receipts.length) {
+      DB.receipts.forEach(r=>{
+        // productionIdで既に対応する実績があれば、そこへ納期等を引き継ぐ
+        const linked = r.productionId ? DB.productions.find(p=>p.id===r.productionId) : null;
+        if (linked) {
+          if (linked.due === undefined) linked.due = r.due||'';
+          if (linked.shipped === undefined) linked.shipped = !!r.shipped;
+          if (linked.osCost === undefined) linked.osCost = r.osCost||0;
+          if (!linked.materials) linked.materials = r.materials||[];
+          if (!linked.outsourceInfo) linked.outsourceInfo = r.outsource||[];
+          linked.fromWorksheet = true;
+        } else {
+          // 対応する実績がない受注は、実績として新規作成
+          DB.productions.push({
+            id: genId(),
+            date: (r.createdAt||'').slice(0,10) || '',
+            machine: '', fignum: r.fignum||'', name: r.name||'', client: r.client||'',
+            worker: '', qty: r.prodQty||0, price: r.unitPrice||0,
+            matPrice: (r.prodQty ? (r.matCost||0)/r.prodQty : 0),
+            steps: [], fromWorksheet: true, due: r.due||'', shipped: !!r.shipped,
+            osCost: r.osCost||0, materials: r.materials||[], outsourceInfo: r.outsource||[]
+          });
+        }
+      });
+      DB.receipts = [];  // 移行完了、以後は使わない
+      save();
+    }
     // 旧suppliersデータをcompaniesに移行
     if (DB.suppliers && (DB.suppliers.clients||[]).length && DB.companies.length === 0) {
       (DB.suppliers.clients||[]).forEach(s=>{
@@ -2289,44 +2320,33 @@ function submitWorksheet(){
     else if(parts.length===2) due = `${dueYear}/${parts[0]}/${parts[1]}`;
     else due = dueRaw;
   }
-  saveReceipt(p, qtys, prodQty, due);
+  saveWorksheetRecord(p, qtys, prodQty, due);
   closeModal('worksheet-modal');
   closeModal('product-detail-modal');
+  refreshAllViews();
+  showToast('作業書を作成し、作業実績にも登録しました');
   printWorksheet(p, qtys, prodQty, due);
 }
 
-// 作業書作成時に「受注」として記録（売上・利益・買掛・納期管理の元データ）
-function saveReceipt(p, qtys, prodQty, due){
+// 全画面を再描画（データは productions 一本なので、これで全部揃う）
+function refreshAllViews(){
+  try { if (typeof renderProduction === 'function') renderProduction(); } catch(e){}
+  try { if (typeof renderSales === 'function') renderSales(); } catch(e){}
+  try { if (typeof renderProfit === 'function') renderProfit(); } catch(e){}
+  try { if (typeof renderReceipts === 'function' && document.getElementById('rc-tbody')) renderReceipts(); } catch(e){}
+  try { if (typeof renderDelivery === 'function' && document.getElementById('dl-tbody')) renderDelivery(); } catch(e){}
+  try { if (typeof renderDashboard === 'function') renderDashboard(); } catch(e){}
+}
+
+// 作業書作成時に実績として記録（受注・売上・利益・納期・在庫すべてこの1件で管理）
+function saveWorksheetRecord(p, qtys, prodQty, due){
   const mats = _getMatsOf(p);
   const qtyArr = Array.isArray(qtys) ? qtys : [qtys];
-  // 材料費 = 各材料の単価 × その材料の注文数 の合計
   let matCost = 0;
   mats.forEach((m,i)=>{ matCost += (m.price||0) * (qtyArr[i]||0); });
-  // 外注費
   let osCost = 0;
   (p.outsource||[]).forEach(o=>{ osCost += (o.price||0) * prodQty; });
-  const sales = (p.price||0) * prodQty;
-  const r = {
-    id: genId(),
-    createdAt: new Date().toISOString(),
-    due: due||'',
-    productId: p.id,
-    fignum: p.fignum||'',
-    name: p.name||'',
-    client: p.client||'',
-    prodQty: prodQty,
-    unitPrice: p.price||0,
-    sales: sales,
-    matCost: matCost,
-    osCost: osCost,
-    profit: sales - matCost - osCost,
-    shipped: false,
-    materials: mats.map((m,i)=>({ supplier:m.supplier||'', name:m.name||'', size:m.size||'', price:m.price||0, qty:qtyArr[i]||0 })),
-    outsource: (p.outsource||[]).map(o=>({ name:o.name||'', note:o.note||'', price:o.price||0 }))
-  };
-  DB.receipts.push(r);
 
-  // 作業実績にも自動登録（今まで作業書から手入力していた分）
   const lastRec = _latestProduction(p.fignum);
   const today = new Date();
   const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -2340,16 +2360,20 @@ function saveReceipt(p, qtys, prodQty, due){
     worker: '',
     qty: prodQty,
     price: p.price||0,
-    matPrice: mats.reduce((s,m,i)=>s+((m.price||0)*(qtyArr[i]||0)),0) / (prodQty||1),
+    matPrice: prodQty ? (matCost/prodQty) : 0,
     steps: [],
+    // 作業書由来の追加情報（受注・納期・在庫管理用）
     fromWorksheet: true,
-    receiptId: r.id
+    due: due||'',
+    shipped: false,
+    osCost: osCost,
+    materials: mats.map((m,i)=>({ supplier:m.supplier||'', name:m.name||'', size:m.size||'', price:m.price||0, qty:qtyArr[i]||0 })),
+    outsourceInfo: (p.outsource||[]).map(o=>({ name:o.name||'', note:o.note||'', price:o.price||0 }))
   };
   DB.productions.push(prodRec);
-  r.productionId = prodRec.id;
-
+  recordHistory('add','production',`${prodRec.date} ${prodRec.fignum} ${prodRec.name||''}（作業書）`.trim(),null,prodRec);
   save();
-  return r;
+  return prodRec;
 }
 
 function printWorksheet(p, qtys, prodQty, due){
@@ -2373,17 +2397,6 @@ function printWorksheet(p, qtys, prodQty, due){
     }).filter(Boolean).join('') || '&nbsp;';
   };
 
-  // 横1列で ①A ②B と並べる
-  const matInline = (key) => {
-    if(!mats.length) return '&nbsp;';
-    const items = mats.map((m,i)=>{
-      const val = escapeHtml(m[key]||'');
-      if(!val) return '';
-      return multi ? `<span class="minline">${NUM[i]||(i+1)} ${val}</span>` : `<span class="minline">${val}</span>`;
-    }).filter(Boolean);
-    return items.length ? items.join('') : '&nbsp;';
-  };
-
   // 材料注文数：材料ごとに ①10ヶ ②5ヶ
   const qtyArr = Array.isArray(qtys) ? qtys : [qtys];
   const qtyInline = () => {
@@ -2398,12 +2411,6 @@ function printWorksheet(p, qtys, prodQty, due){
 
   const os = (p.outsource||[]).filter(o=>o && (o.name||o.note||o.price));
   const osMulti = os.length > 1;
-  const osText = os.length
-    ? os.map((o,i)=>{
-        const label = `${escapeHtml(o.name||'')}${o.note?'（'+escapeHtml(o.note)+'）':''}`;
-        return osMulti ? `<div class="mline">${NUM[i]||(i+1)} ${label}</div>` : `<div class="mline">${label}</div>`;
-      }).join('')
-    : '';
 
   const machineCells = ['A','B','C','D','E','F','G','H','I'].map(mc=>`<td class="mc">${mc}</td>`).join('');
 
@@ -2422,6 +2429,53 @@ function printWorksheet(p, qtys, prodQty, due){
   }
 
   const _fit = (s) => { const n = (s||'').length; return n>16 ? 'xs' : (n>10 ? 's' : ''); };
+
+  // 材料が2つ以上のときだけ明細を出す
+  const matDetailBlock = () => {
+    if(mats.length < 2) return '';
+    const rows = mats.map((m,i)=>`
+      <tr>
+        <td class="dnum">${NUM[i]||(i+1)}</td>
+        <td>${escapeHtml(m.supplier||'—')}</td>
+        <td>${escapeHtml(m.name||'—')}</td>
+        <td>${escapeHtml(m.size||'—')}</td>
+        <td class="dr">${m.price?('¥'+fmt(m.price)):'—'}</td>
+        <td class="dr">${qtyArr[i]||0} ヶ</td>
+      </tr>`).join('');
+    return `
+    <div class="detailblk">
+      <div class="detailttl">材料明細</div>
+      <table class="dtable">
+        <thead><tr>
+          <th style="width:26px;"></th><th>発注先</th><th>材料名</th><th>寸法</th>
+          <th class="dr" style="width:70px;">単価</th><th class="dr" style="width:56px;">発注数</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  };
+
+  // 外注先があるときだけ出す
+  const osDetailBlock = () => {
+    if(!os.length) return '';
+    const rows = os.map((o,i)=>`
+      <tr>
+        <td class="dnum">${os.length>1?(NUM[i]||(i+1)):''}</td>
+        <td>${escapeHtml(o.name||'—')}</td>
+        <td>${escapeHtml(o.note||'—')}</td>
+        <td class="dr">${o.price?('¥'+fmt(o.price)):'—'}</td>
+      </tr>`).join('');
+    return `
+    <div class="detailblk os">
+      <div class="detailttl os">外注先</div>
+      <table class="dtable">
+        <thead><tr>
+          <th style="width:26px;"></th><th>外注先名</th><th>加工内容</th><th class="dr" style="width:80px;">金額</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  };
 
   const _toneClass = { green:'ofcard-green', blue:'ofcard-blue', purple:'ofcard-purple', orange:'ofcard-orange' };
   const ofCard = (label, val, tone) => {
@@ -2466,7 +2520,18 @@ function printWorksheet(p, qtys, prodQty, due){
 
     .ofgrid1 { display:grid; grid-template-columns:1fr; gap:9px; margin-top:9px; }
     .ofgrid2 { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:9px; }
+    .ofgrid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-top:9px; }
     .ofgrid4 { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; margin-top:9px; }
+    .detailblk { margin-top:10px; border:1px solid #059669; border-radius:4px; overflow:hidden; }
+    .detailblk.os { border-color:#ea580c; }
+    .detailttl { background:#f0fdf4; color:#166534; font-size:11px; font-weight:700; padding:5px 9px; border-bottom:1px solid #059669; }
+    .detailttl.os { background:#fff7ed; color:#9a3412; border-bottom-color:#ea580c; }
+    .dtable { width:100%; border-collapse:collapse; }
+    .dtable th { background:#fafafa; font-size:10px; color:#555; font-weight:700; padding:4px 8px; border:none; border-bottom:1px solid #ccc; text-align:left; }
+    .dtable td { font-size:12px; padding:5px 8px; border:none; border-bottom:1px solid #eee; }
+    .dtable tr:last-child td { border-bottom:none; }
+    .dtable .dnum { text-align:center; font-weight:700; color:#166534; }
+    .dtable .dr { text-align:right; white-space:nowrap; }
     .ofcard { border:1px solid #333; border-radius:4px; padding:8px 10px; background:#fff; }
     .ofcard-green { background:#f0fdf4; border-color:#059669; border-left:4px solid #059669; }
     .ofcard-green .oflabel { color:#166534; }
@@ -2515,10 +2580,8 @@ function printWorksheet(p, qtys, prodQty, due){
 
     <div class="blk">
       <div class="band b-office">★ 事務記入欄</div>
-      <div style="margin-top:9px;">
-        ${ofCard('材料発注先', matInline('supplier'), 'green')}
-      </div>
-      <div class="ofgrid2">
+      <div class="ofgrid3">
+        ${ofCard('材料発注先', matList('supplier'), 'green')}
         ${ofCard('材料名', matList('name'), 'green')}
         ${ofCard('材料寸法', matList('size'), 'green')}
       </div>
@@ -2528,9 +2591,8 @@ function printWorksheet(p, qtys, prodQty, due){
         ${ofCard('納品数', prodQty+' 個', 'blue')}
         ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'purple')}
       </div>
-      <div class="ofgrid1">
-        ${ofCard('外注先', osText, 'orange')}
-      </div>
+      ${matDetailBlock()}
+      ${osDetailBlock()}
     </div>
 
     <div class="blk">
@@ -2576,67 +2638,73 @@ function _mcard(label,val,color){
 
 function renderReceipts(){
   const monthEl = document.getElementById('rc-month');
+  const all = DB.productions||[];
+  // 初回表示：データがある一番新しい月を自動で選ぶ（無ければ今月）
   if(!monthEl.value){
-    const n=new Date();
+    let target = null;
+    all.forEach(r=>{
+      const dt = _prodDate(r);
+      if(dt && (!target || dt > target)) target = dt;
+    });
+    const n = target || new Date();
     monthEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
   }
+  const showAll = document.getElementById('rc-show-all') && document.getElementById('rc-show-all').checked;
   const [yy,mm] = monthEl.value.split('-').map(Number);
-  const list = (DB.receipts||[]).filter(r=>{
-    const dt = _parseDue(r.due) || new Date(r.createdAt);
-    return dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
-  }).sort((a,b)=>{
-    const da=_parseDue(a.due)||new Date(a.createdAt), db_=_parseDue(b.due)||new Date(b.createdAt);
-    return da-db_;
-  });
+  const list = all.filter(r=>{
+    if(showAll) return true;
+    const dt = _prodDate(r);
+    return dt && dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
+  }).sort((a,b)=>(_prodDate(a)||0)-(_prodDate(b)||0));
 
-  const sales = list.reduce((s,r)=>s+(r.sales||0),0);
-  const cost  = list.reduce((s,r)=>s+(r.matCost||0)+(r.osCost||0),0);
-  const profit= list.reduce((s,r)=>s+(r.profit||0),0);
-  const unshipped = list.filter(r=>!r.shipped).length;
+  const sales = list.reduce((s,r)=>s+_recSales(r),0);
+  const cost  = list.reduce((s,r)=>s+_recCost(r),0);
+  const profit= sales - cost;
+  const unshipped = list.filter(r=>r.fromWorksheet && !r.shipped).length;
 
+  const pfx = showAll ? '全期間の' : '今月の';
   document.getElementById('rc-summary').innerHTML =
-    _mcard('今月の売上','¥'+fmt(sales)) +
-    _mcard('今月の原価','¥'+fmt(cost)) +
-    _mcard('今月の利益','¥'+fmt(profit),'#059669') +
+    _mcard(pfx+'売上','¥'+fmt(sales)) +
+    _mcard(pfx+'原価','¥'+fmt(cost)) +
+    _mcard(pfx+'利益','¥'+fmt(profit),'#059669') +
     _mcard('未出荷', unshipped+' 件', unshipped?'#d97706':'');
 
   document.getElementById('rc-tbody').innerHTML = list.length ? list.map(r=>`
-    <tr>
-      <td style="white-space:nowrap;">${escapeHtml(r.due||'—')}</td>
+    <tr onclick="showProdDetail('${r.id}')" style="cursor:pointer;">
+      <td style="white-space:nowrap;">${escapeHtml(r.due||r.date||'—')}</td>
       <td style="white-space:nowrap;">${escapeHtml(r.client||'—')}</td>
       <td>${r.fignum?`<span class="badge badge-blue">${escapeHtml(r.fignum)}</span> `:''}${escapeHtml(r.name||'')}</td>
-      <td style="text-align:right;white-space:nowrap;">${r.prodQty} 個</td>
-      <td style="text-align:right;white-space:nowrap;">¥${fmt(r.sales||0)}</td>
-      <td style="text-align:right;white-space:nowrap;">¥${fmt((r.matCost||0)+(r.osCost||0))}</td>
-      <td style="text-align:right;white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(r.profit||0)}</td>
-      <td style="text-align:center;white-space:nowrap;">${r.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>'}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button>
-        <button class="btn btn-ghost btn-xs" onclick="deleteReceipt('${r.id}')" style="color:#dc2626;">削除</button>
+      <td style="text-align:right;white-space:nowrap;">${r.qty} 個</td>
+      <td style="text-align:right;white-space:nowrap;">¥${fmt(_recSales(r))}</td>
+      <td style="text-align:right;white-space:nowrap;">¥${fmt(_recCost(r))}</td>
+      <td style="text-align:right;white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(_recSales(r)-_recCost(r))}</td>
+      <td style="text-align:center;white-space:nowrap;">${r.fromWorksheet ? (r.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>') : '<span class="badge badge-blue">実績</span>'}</td>
+      <td style="white-space:nowrap;" onclick="event.stopPropagation()">
+        ${r.fromWorksheet?`<button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button>`:''}
       </td>
-    </tr>`).join('') : '<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">この月の受注はありません</div></div></td></tr>';
+    </tr>`).join('') : `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">この月のデータはありません${all.length?`<br><span style="font-size:12px;">（全${all.length}件あります。「全期間」にチェックか、月を変えてください）</span>`:''}</div></div></td></tr>`;
 
-  // 買掛（材料発注先＋外注先ごと）
+  // 買掛（材料発注先＋外注先ごと）：作業書由来の明細から集計
   const pay = {};
   list.forEach(r=>{
     (r.materials||[]).forEach(m=>{
       if(!m.supplier) return;
       pay[m.supplier] = (pay[m.supplier]||0) + (m.price||0)*(m.qty||0);
     });
-    (r.outsource||[]).forEach(o=>{
+    (r.outsourceInfo||[]).forEach(o=>{
       if(!o.name) return;
-      pay[o.name] = (pay[o.name]||0) + (o.price||0)*(r.prodQty||0);
+      pay[o.name] = (pay[o.name]||0) + (o.price||0)*(r.qty||0);
     });
   });
   const payRows = Object.entries(pay).sort((a,b)=>b[1]-a[1]);
   document.getElementById('rc-payable').innerHTML = payRows.length
     ? payRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
       + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(payRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
-    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">データなし</td></tr>';
+    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">作業書から作成したデータのみ集計されます</td></tr>';
 
   // 売上（受注先ごと）
   const rec = {};
-  list.forEach(r=>{ const k=r.client||'（未設定）'; rec[k]=(rec[k]||0)+(r.sales||0); });
+  list.forEach(r=>{ const k=r.client||'（未設定）'; rec[k]=(rec[k]||0)+_recSales(r); });
   const recRows = Object.entries(rec).sort((a,b)=>b[1]-a[1]);
   document.getElementById('rc-receivable').innerHTML = recRows.length
     ? recRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
@@ -2644,27 +2712,28 @@ function renderReceipts(){
     : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">データなし</td></tr>';
 }
 
+// 実績レコードの基準日（納期優先、無ければ作業日）
+function _prodDate(r){
+  return _parseDue(r.due) || (r.date ? new Date(r.date) : null);
+}
+// 実績1件の売上・原価
+function _recSales(r){ return (r.price||0) * (r.qty||0); }
+function _recCost(r){ return (r.matPrice||0) * (r.qty||0) + (r.osCost||0); }
+
 function toggleShipped(id){
-  const r = (DB.receipts||[]).find(x=>x.id===id);
+  const r = (DB.productions||[]).find(x=>x.id===id);
   if(!r) return;
   r.shipped = !r.shipped;
   save();
-  renderReceipts();
-  if(currentSection==='delivery') renderDelivery();
+  if(document.getElementById('rc-tbody')) renderReceipts();
+  if(document.getElementById('dl-tbody')) renderDelivery();
   showToast(r.shipped?'出荷済にしました':'未出荷に戻しました');
-}
-
-function deleteReceipt(id){
-  if(!confirm('この受注記録を削除しますか？')) return;
-  DB.receipts = (DB.receipts||[]).filter(x=>x.id!==id);
-  save();
-  renderReceipts();
-  showToast('削除しました');
 }
 
 function renderDelivery(){
   const showShipped = document.getElementById('dl-show-shipped').checked;
-  let list = (DB.receipts||[]).slice();
+  // 納期管理は作業書由来（納期がある）レコードが対象
+  let list = (DB.productions||[]).filter(r=>r.fromWorksheet);
   if(!showShipped) list = list.filter(r=>!r.shipped);
   list.sort((a,b)=>{
     const da=_parseDue(a.due), db_=_parseDue(b.due);
@@ -2674,17 +2743,17 @@ function renderDelivery(){
     return da-db_;
   });
 
-  let over=0, soon=0, ok=0;
+  let over=0, soon=0, okc=0;
   list.forEach(r=>{
     if(r.shipped) return;
     const dl=_daysLeft(_parseDue(r.due));
     if(dl===null) return;
-    if(dl<0) over++; else if(dl<=7) soon++; else ok++;
+    if(dl<0) over++; else if(dl<=7) soon++; else okc++;
   });
   document.getElementById('dl-summary').innerHTML =
     _mcard('期限切れ', over+' 件', over?'#dc2626':'') +
     _mcard('7日以内', soon+' 件', soon?'#d97706':'') +
-    _mcard('余裕あり', ok+' 件') +
+    _mcard('余裕あり', okc+' 件') +
     _mcard('未出荷合計', list.filter(r=>!r.shipped).length+' 件');
 
   document.getElementById('dl-tbody').innerHTML = list.length ? list.map(r=>{
@@ -2697,42 +2766,45 @@ function renderDelivery(){
       else if(dl<=7){ left=`あと${dl}日`; color='color:#d97706;font-weight:700;'; }
       else left=`あと${dl}日`;
     } else if(r.shipped) left='—';
-    return `<tr>
+    return `<tr onclick="showProdDetail('${r.id}')" style="cursor:pointer;">
       <td style="white-space:nowrap;">${escapeHtml(r.due||'未設定')}</td>
       <td style="white-space:nowrap;${color}">${left}</td>
       <td style="white-space:nowrap;">${escapeHtml(r.client||'—')}</td>
       <td>${r.fignum?`<span class="badge badge-blue">${escapeHtml(r.fignum)}</span> `:''}${escapeHtml(r.name||'')}</td>
-      <td style="text-align:right;white-space:nowrap;">${r.prodQty} 個</td>
+      <td style="text-align:right;white-space:nowrap;">${r.qty} 個</td>
       <td style="text-align:center;white-space:nowrap;">${r.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>'}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button></td>
+      <td style="white-space:nowrap;" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🚚</div><div class="empty-text">未出荷の受注はありません</div></div></td></tr>';
 }
 
 function exportReceiptsExcel(){
   const monthEl = document.getElementById('rc-month');
+  const showAll = document.getElementById('rc-show-all') && document.getElementById('rc-show-all').checked;
   const [yy,mm] = (monthEl.value||'').split('-').map(Number);
-  const list = (DB.receipts||[]).filter(r=>{
-    const dt = _parseDue(r.due) || new Date(r.createdAt);
-    return dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
+  const list = (DB.productions||[]).filter(r=>{
+    if(showAll) return true;
+    const dt = _prodDate(r);
+    return dt && dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
   });
-  if(!list.length){ showToast('この月のデータがありません','error'); return; }
+  if(!list.length){ showToast('この期間のデータがありません','error'); return; }
   const rows = list.map(r=>[
-    r.due||'', r.client||'', r.fignum||'', r.name||'',
-    r.prodQty||0, r.unitPrice||0, r.sales||0,
-    r.matCost||0, r.osCost||0, r.profit||0,
-    r.shipped?'出荷済':'未出荷'
+    r.due||r.date||'', r.client||'', r.fignum||'', r.name||'',
+    r.qty||0, r.price||0, _recSales(r),
+    (r.matPrice||0)*(r.qty||0), r.osCost||0, _recSales(r)-_recCost(r),
+    r.fromWorksheet ? (r.shipped?'出荷済':'未出荷') : '実績'
   ]);
+  const label = showAll ? '全期間' : `${yy}年${mm}月`;
   const ws = _buildStyledSheet({
-    title: `受注・売上 ${yy}年${mm}月`,
-    headers: ['納期','発注先','図番','品名','納品数','製品単価','売上','材料費','外注費','利益','状態'],
+    title: `受注・売上 ${label}`,
+    headers: ['納期/日付','発注先','図番','品名','納品数','製品単価','売上','材料費','外注費','利益','状態'],
     rows: rows,
     colWidths: [12,22,16,26,9,12,14,12,12,14,10],
     currencyCols: [5,6,7,8,9]
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '受注売上');
-  XLSX.writeFile(wb, `受注売上_${yy}年${mm}月.xlsx`);
+  XLSX.writeFile(wb, `受注売上_${label}.xlsx`);
 }
 
 function showProductDetail(id) {
@@ -3173,7 +3245,7 @@ function deleteProd(id) {
   const _hBefore = DB.productions.find(p=>p.id===id);
   DB.productions = DB.productions.filter(p=>p.id!==id);
   if (_hBefore) recordHistory('delete','production',`${_hBefore.date||''} ${_hBefore.fignum||''} ${_hBefore.name||''}`.trim(),_hBefore,null);
-  save(); showToast('削除しました'); renderProduction();
+  save(); refreshAllViews(); showToast('削除しました（全画面に反映）');
 }
 
 function editProduction(id) {
@@ -3397,6 +3469,11 @@ function saveProduction() {
     if (idx >= 0) {
       _hBefore = _deepClone(DB.productions[idx]);
       _hAction = 'edit';
+      // 作業書由来の情報（納期・出荷状態・材料明細・外注費）は編集後も引き継ぐ
+      const keep = DB.productions[idx];
+      ['fromWorksheet','due','shipped','osCost','materials','outsourceInfo'].forEach(k=>{
+        if (keep[k] !== undefined && p[k] === undefined) p[k] = keep[k];
+      });
       DB.productions[idx] = p;
     } else {
       DB.productions.push(p);
@@ -3407,7 +3484,8 @@ function saveProduction() {
   if (!DB.machines.includes(machine)) DB.machines.push(machine);
   recordHistory(_hAction,'production',`${p.date} ${p.fignum} ${p.name||''}`.trim(),_hBefore,p);
   save();
-  showToast(editingId ? '更新しました' : '登録しました');
+  refreshAllViews();
+  showToast(editingId ? '更新しました（全画面に反映）' : '登録しました');
   clearProductionForm();
   showSection('production');
 }
