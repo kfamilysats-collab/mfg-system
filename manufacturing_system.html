@@ -1136,7 +1136,7 @@
               <th style="white-space:nowrap;">納期</th>
               <th style="white-space:nowrap;">発注先</th>
               <th style="white-space:nowrap;">図番 / 品名</th>
-              <th style="white-space:nowrap;text-align:right;">製品数</th>
+              <th style="white-space:nowrap;text-align:right;">納品数</th>
               <th style="white-space:nowrap;text-align:right;">売上</th>
               <th style="white-space:nowrap;text-align:right;">原価</th>
               <th style="white-space:nowrap;text-align:right;">利益</th>
@@ -1182,7 +1182,7 @@
               <th style="white-space:nowrap;">残り</th>
               <th style="white-space:nowrap;">発注先</th>
               <th style="white-space:nowrap;">図番 / 品名</th>
-              <th style="white-space:nowrap;text-align:right;">製品数</th>
+              <th style="white-space:nowrap;text-align:right;">納品数</th>
               <th style="white-space:nowrap;text-align:center;">状態</th>
               <th style="white-space:nowrap;"></th>
             </tr></thead>
@@ -1488,16 +1488,15 @@
     </div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:6px;" id="ws-info"></div>
     <div style="font-size:12px;color:var(--text2);background:var(--bg3);border-radius:8px;padding:8px 11px;margin-bottom:16px;">
-      📦 <strong>材料の発注数</strong>＝材料屋さんに頼む数 ／ 🔧 <strong>製品数</strong>＝実際に作る製品の数
+      📦 <strong>材料発注数</strong>＝材料屋さんに頼む数 ／ 🚚 <strong>納品数</strong>＝お客様に納める製品の数
     </div>
     <div id="ws-mat-area"></div>
-    <div class="form-group" style="margin-bottom:14px;">
-      <label>製品数（個）*</label>
-      <input type="number" id="ws-prod-qty" value="1" min="1">
-    </div>
     <div class="form-group" style="margin-bottom:20px;">
       <label>納期（空欄でもOK）</label>
-      <input type="text" id="ws-due" placeholder="例：7/25、R7/7/25 など" onkeydown="if(event.key==='Enter'){event.preventDefault();submitWorksheet();}">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="ws-due-year" style="width:110px;"></select>
+        <input type="text" id="ws-due" placeholder="例：7/25 または 7月25日" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();submitWorksheet();}">
+      </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('worksheet-modal')">キャンセル</button>
@@ -2207,11 +2206,17 @@ function createWorksheet(id){
   const box = document.getElementById('ws-mat-area');
 
   if(mats.length <= 1){
-    // 材料が1個以下 → シンプルな数量入力
+    // 材料が1個以下 → 材料発注数と納品数を横並び2分割
     box.innerHTML = `
-      <div class="form-group" style="margin-bottom:14px;">
-        <label>材料の発注数（ヶ）*</label>
-        <input type="number" class="ws-qty-input" data-idx="0" value="1" min="1">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #059669;border-radius:8px;padding:11px 13px;">
+          <label style="color:#166534;font-size:13px;display:block;margin-bottom:6px;">📦 材料発注数（ヶ）*</label>
+          <input type="number" class="ws-qty-input" data-idx="0" value="1" min="1">
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;padding:11px 13px;">
+          <label style="color:#1e40af;font-size:13px;display:block;margin-bottom:6px;">🚚 納品数（個）*</label>
+          <input type="number" id="ws-prod-qty" value="1" min="1">
+        </div>
       </div>`;
   } else {
     // 材料が複数 → 表で材料ごとに個数入力
@@ -2224,8 +2229,8 @@ function createWorksheet(id){
         <td style="white-space:nowrap;"><input type="number" class="ws-qty-input" data-idx="${i}" value="1" min="0" style="width:78px;text-align:right;"> ヶ</td>
       </tr>`).join('');
     box.innerHTML = `
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">※ 材料ごとに発注数を入力してください</div>
-      <div style="overflow-x:auto;margin-bottom:16px;">
+      <div style="font-size:12px;color:#166534;font-weight:700;margin-bottom:8px;">📦 材料発注数（材料ごとに入力）</div>
+      <div style="overflow-x:auto;margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #059669;border-radius:8px;padding:10px 12px;">
         <table style="width:100%;font-size:13px;">
           <thead><tr>
             <th style="background:transparent;border-bottom:1px solid var(--border);font-size:12px;padding:5px 8px;text-align:center;width:34px;"></th>
@@ -2236,7 +2241,21 @@ function createWorksheet(id){
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
+      </div>
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;padding:11px 13px;margin-bottom:16px;">
+        <label style="color:#1e40af;font-size:13px;display:block;margin-bottom:6px;">🚚 納品数（個）*</label>
+        <input type="number" id="ws-prod-qty" value="1" min="1" style="max-width:200px;">
       </div>`;
+  }
+  // 納期の年セレクト（今年を基準に前後を並べる。年が変われば自動で今年に）
+  const ySel = document.getElementById('ws-due-year');
+  if(ySel){
+    const nowY = new Date().getFullYear();
+    let opts = '';
+    for(let y=nowY-1; y<=nowY+3; y++){
+      opts += `<option value="${y}"${y===nowY?' selected':''}>${y}年</option>`;
+    }
+    ySel.innerHTML = opts;
   }
   openModal('worksheet-modal');
   setTimeout(()=>{ const el=document.querySelector('.ws-qty-input'); if(el){ el.focus(); el.select(); } }, 100);
@@ -2256,10 +2275,20 @@ function submitWorksheet(){
   if(!p){ showToast('製品が見つかりません','error'); return; }
   const inputs = [...document.querySelectorAll('.ws-qty-input')];
   const qtys = inputs.map(el=>parseInt(el.value,10)||0);
-  if(!qtys.some(q=>q>0)){ showToast('材料注文数を1以上で入力してください','error'); return; }
+  if(!qtys.some(q=>q>0)){ showToast('材料発注数を1以上で入力してください','error'); return; }
   const prodQty = parseInt(document.getElementById('ws-prod-qty').value,10)||0;
-  if(!prodQty || prodQty<=0){ showToast('製品数を1以上で入力してください','error'); return; }
-  const due = document.getElementById('ws-due').value.trim();
+  if(!prodQty || prodQty<=0){ showToast('納品数を1以上で入力してください','error'); return; }
+  // 納期：年セレクト＋月日入力を「2026/7/25」形式に統一
+  const dueRaw = document.getElementById('ws-due').value.trim();
+  const dueYear = document.getElementById('ws-due-year').value;
+  let due = '';
+  if(dueRaw){
+    const md = dueRaw.replace(/[年月]/g,'/').replace(/日/g,'').replace(/\s/g,'');
+    const parts = md.split(/[\/\-\.]/).map(x=>parseInt(x,10)).filter(x=>!isNaN(x));
+    if(parts.length>=3) due = `${parts[0]<100?2000+parts[0]:parts[0]}/${parts[1]}/${parts[2]}`;
+    else if(parts.length===2) due = `${dueYear}/${parts[0]}/${parts[1]}`;
+    else due = dueRaw;
+  }
   saveReceipt(p, qtys, prodQty, due);
   closeModal('worksheet-modal');
   closeModal('product-detail-modal');
@@ -2494,10 +2523,10 @@ function printWorksheet(p, qtys, prodQty, due){
         ${ofCard('材料寸法', matList('size'), 'green')}
       </div>
       <div class="ofgrid4">
-        ${ofCard('材料注文数', qtyInline(), 'green')}
+        ${ofCard('材料発注数', qtyInline(), 'green')}
         ${ofCard('材料単価', matList('price', m=>m.price?('¥'+fmt(m.price)):''), 'green')}
-        ${ofCard('製品数', prodQty+' 個', 'purple')}
-        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'blue')}
+        ${ofCard('納品数', prodQty+' 個', 'blue')}
+        ${ofCard('製品単価', p.price?('¥'+fmt(p.price)):'', 'purple')}
       </div>
       <div class="ofgrid1">
         ${ofCard('外注先', osText, 'orange')}
@@ -2696,7 +2725,7 @@ function exportReceiptsExcel(){
   ]);
   const ws = _buildStyledSheet({
     title: `受注・売上 ${yy}年${mm}月`,
-    headers: ['納期','発注先','図番','品名','製品数','製品単価','売上','材料費','外注費','利益','状態'],
+    headers: ['納期','発注先','図番','品名','納品数','製品単価','売上','材料費','外注費','利益','状態'],
     rows: rows,
     colWidths: [12,22,16,26,9,12,14,12,12,14,10],
     currencyCols: [5,6,7,8,9]
