@@ -2688,7 +2688,7 @@ function renderReceipts(){
   const pay = {};
   list.forEach(r=>{
     (r.materials||[]).forEach(m=>{
-      if(!m.supplier) return;
+      if(!m.supplier || m.supplier==='材料支給') return;  // 支給材は支払い対象外
       pay[m.supplier] = (pay[m.supplier]||0) + (m.price||0)*(m.qty||0);
     });
     (r.outsourceInfo||[]).forEach(o=>{
@@ -2696,7 +2696,7 @@ function renderReceipts(){
       pay[o.name] = (pay[o.name]||0) + (o.price||0)*(r.qty||0);
     });
   });
-  const payRows = Object.entries(pay).sort((a,b)=>b[1]-a[1]);
+  const payRows = Object.entries(pay).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   document.getElementById('rc-payable').innerHTML = payRows.length
     ? payRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
       + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(payRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
