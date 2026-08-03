@@ -461,9 +461,6 @@
         <div class="nav-item" onclick="showSection('profit')">
           <span class="nav-icon">📈</span>利益レポート
         </div>
-        <div class="nav-item" onclick="showSection('receipts')">
-          <span class="nav-icon">🧾</span>受注・売上管理
-        </div>
         <div class="nav-item" onclick="showSection('delivery')">
           <span class="nav-icon">🚚</span>納期管理
         </div>
@@ -923,7 +920,7 @@
               <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">外注先名</th>
               <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料</th>
               <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">加工内容（備考）</th>
-              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">金額（円）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">金額（円）<span style="font-weight:400;font-size:12px;color:var(--text2);">※1個あたり／1式を選択</span></th>
               <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;width:44px;text-align:center;"></th>
             </tr></thead>
             <tbody id="outsource-rows"></tbody>
@@ -990,19 +987,37 @@
             <option value="">全機械</option>
           </select>
         </div>
+        <div id="prod-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:4px 0 16px;"></div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>日付</th><th>機械</th><th>図番</th><th>品名</th>
+                <th>日付</th><th class="hide-mobile">納期</th><th>機械</th><th>図番</th><th>品名</th>
                 <th class="hide-mobile">受注先</th>
-                <th>数量</th><th class="hide-mobile">工程数</th>
+                <th>数量</th>
                 <th class="hide-mobile">合計時間</th>
-                <th>金額</th><th>操作</th>
+                <th>売上</th><th class="hide-mobile">利益</th>
+                <th>状態</th><th>操作</th>
               </tr>
             </thead>
             <tbody id="prod-tbody"></tbody>
           </table>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">💸 買掛（支払い予定）</div>
+            <div class="table-wrap"><table style="width:100%;">
+              <thead><tr><th>支払先</th><th style="text-align:right;">金額</th></tr></thead>
+              <tbody id="prod-payable"></tbody>
+            </table></div>
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">💰 売上（受注先ごと）</div>
+            <div class="table-wrap"><table style="width:100%;">
+              <thead><tr><th>受注先</th><th style="text-align:right;">金額</th></tr></thead>
+              <tbody id="prod-receivable"></tbody>
+            </table></div>
+          </div>
         </div>
       </div>
     </section>
@@ -1115,56 +1130,6 @@
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">製品別年間売上</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-product-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>図番</th><th>品名</th><th>受注先</th><th>件数</th><th>売上</th><th>材料費</th><th>外注費</th><th>粗利</th><th>粗利率</th><th>工程時間</th></tr></thead><tbody id="sa-product-tbody"></tbody><tfoot id="sa-product-tfoot"></tfoot></table></div></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">機械別年間稼働</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-machine-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>機械</th><th>稼働時間</th><th>件数</th><th>売上</th></tr></thead><tbody id="sa-machine-tbody"></tbody></table></div></div>
         <div class="card" style="margin-bottom:16px;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;"><div class="card-title" style="margin:0;">材料発注先別年間支払い</div><input type="text" placeholder="🔍 検索..." oninput="_filterTable(this,'sa-mat-tbody')" style="max-width:200px;padding:6px 10px;font-size:12px;"></div><div class="table-wrap"><table><thead><tr><th>材料発注先</th><th>件数</th><th>支払</th><th>割合</th></tr></thead><tbody id="sa-mat-tbody"></tbody></table></div></div>
-      </div>
-    </section>
-
-    <!-- ===== 受注・売上管理 ===== -->
-    <section class="section" id="sec-receipts">
-      <div class="page-header">
-        <div><div class="page-title">受注・売上管理</div><div class="page-sub">作業書を作成すると自動で記録されます</div></div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="month" id="rc-month" onchange="renderReceipts()" style="width:150px;">
-          <label style="font-size:13px;display:flex;align-items:center;gap:5px;white-space:nowrap;">
-            <input type="checkbox" id="rc-show-all" onchange="renderReceipts()" style="width:auto;"> 全期間
-          </label>
-          <button class="btn btn-ghost btn-sm" onclick="exportReceiptsExcel()">📊 Excel出力</button>
-        </div>
-      </div>
-      <div class="card">
-        <div id="rc-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;"></div>
-        <div style="font-size:14px;font-weight:700;margin:18px 0 8px;">受注一覧</div>
-        <div class="table-wrap">
-          <table style="width:100%;">
-            <thead><tr>
-              <th style="white-space:nowrap;">納期</th>
-              <th style="white-space:nowrap;">発注先</th>
-              <th style="white-space:nowrap;">図番 / 品名</th>
-              <th style="white-space:nowrap;text-align:right;">納品数</th>
-              <th style="white-space:nowrap;text-align:right;">売上</th>
-              <th style="white-space:nowrap;text-align:right;">原価</th>
-              <th style="white-space:nowrap;text-align:right;">利益</th>
-              <th style="white-space:nowrap;text-align:center;">状態</th>
-              <th style="white-space:nowrap;"></th>
-            </tr></thead>
-            <tbody id="rc-tbody"></tbody>
-          </table>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">💸 買掛（支払い予定）</div>
-            <div class="table-wrap"><table style="width:100%;">
-              <thead><tr><th>支払先</th><th style="text-align:right;">金額</th></tr></thead>
-              <tbody id="rc-payable"></tbody>
-            </table></div>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700;margin-bottom:8px;">💰 売上（受注先ごと）</div>
-            <div class="table-wrap"><table style="width:100%;">
-              <thead><tr><th>受注先</th><th style="text-align:right;">金額</th></tr></thead>
-              <tbody id="rc-receivable"></tbody>
-            </table></div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -1909,7 +1874,6 @@ function showSection(name) {
   closeSidebar();
   if (name === 'dashboard') renderDashboard();
   if (name === 'products') renderProducts();
-  if (name === 'receipts') renderReceipts();
   if (name === 'delivery') renderDelivery();
   if (name === 'product-form') {
     if(!document.querySelector('#material-rows .material-row')) addMaterialRow();
@@ -2333,7 +2297,6 @@ function refreshAllViews(){
   try { if (typeof renderProduction === 'function') renderProduction(); } catch(e){}
   try { if (typeof renderSales === 'function') renderSales(); } catch(e){}
   try { if (typeof renderProfit === 'function') renderProfit(); } catch(e){}
-  try { if (typeof renderReceipts === 'function' && document.getElementById('rc-tbody')) renderReceipts(); } catch(e){}
   try { if (typeof renderDelivery === 'function' && document.getElementById('dl-tbody')) renderDelivery(); } catch(e){}
   try { if (typeof renderDashboard === 'function') renderDashboard(); } catch(e){}
 }
@@ -2345,7 +2308,7 @@ function saveWorksheetRecord(p, qtys, prodQty, due){
   let matCost = 0;
   mats.forEach((m,i)=>{ matCost += (m.price||0) * (qtyArr[i]||0); });
   let osCost = 0;
-  (p.outsource||[]).forEach(o=>{ osCost += (o.price||0) * prodQty; });
+  (p.outsource||[]).forEach(o=>{ osCost += (o.price||0) * (o.priceUnit==='total' ? 1 : prodQty); });
 
   const lastRec = _latestProduction(p.fignum);
   const today = new Date();
@@ -2368,7 +2331,7 @@ function saveWorksheetRecord(p, qtys, prodQty, due){
     shipped: false,
     osCost: osCost,
     materials: mats.map((m,i)=>({ supplier:m.supplier||'', name:m.name||'', size:m.size||'', price:m.price||0, qty:qtyArr[i]||0 })),
-    outsourceInfo: (p.outsource||[]).map(o=>({ name:o.name||'', note:o.note||'', price:o.price||0 }))
+    outsourceInfo: (p.outsource||[]).map(o=>({ name:o.name||'', note:o.note||'', price:o.price||0, priceUnit:o.priceUnit||'per' }))
   };
   DB.productions.push(prodRec);
   recordHistory('add','production',`${prodRec.date} ${prodRec.fignum} ${prodRec.name||''}（作業書）`.trim(),null,prodRec);
@@ -2463,7 +2426,7 @@ function printWorksheet(p, qtys, prodQty, due){
         <td class="dnum">${os.length>1?(NUM[i]||(i+1)):''}</td>
         <td>${escapeHtml(o.name||'—')}</td>
         <td>${escapeHtml(o.note||'—')}</td>
-        <td class="dr">${o.price?('¥'+fmt(o.price)):'—'}</td>
+        <td class="dr">${o.price?('¥'+fmt(o.price)+(o.priceUnit==='total'?'（1式）':'／個')):'—'}</td>
       </tr>`).join('');
     return `
     <div class="detailblk os">
@@ -2609,7 +2572,7 @@ function printWorksheet(p, qtys, prodQty, due){
   w.document.close();
 }
 
-// ===== 受注・売上管理 / 納期管理 =====
+// ===== 納期管理・集計ヘルパー =====
 // 納期文字列 → Date（"7/25" "2026/7/25" "R8/7/25" などを解釈）
 function _parseDue(s){
   if(!s) return null;
@@ -2636,82 +2599,6 @@ function _mcard(label,val,color){
   </div>`;
 }
 
-function renderReceipts(){
-  const monthEl = document.getElementById('rc-month');
-  const all = DB.productions||[];
-  // 初回表示：データがある一番新しい月を自動で選ぶ（無ければ今月）
-  if(!monthEl.value){
-    let target = null;
-    all.forEach(r=>{
-      const dt = _prodDate(r);
-      if(dt && (!target || dt > target)) target = dt;
-    });
-    const n = target || new Date();
-    monthEl.value = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
-  }
-  const showAll = document.getElementById('rc-show-all') && document.getElementById('rc-show-all').checked;
-  const [yy,mm] = monthEl.value.split('-').map(Number);
-  const list = all.filter(r=>{
-    if(showAll) return true;
-    const dt = _prodDate(r);
-    return dt && dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
-  }).sort((a,b)=>(_prodDate(a)||0)-(_prodDate(b)||0));
-
-  const sales = list.reduce((s,r)=>s+_recSales(r),0);
-  const cost  = list.reduce((s,r)=>s+_recCost(r),0);
-  const profit= sales - cost;
-  const unshipped = list.filter(r=>r.fromWorksheet && !r.shipped).length;
-
-  const pfx = showAll ? '全期間の' : '今月の';
-  document.getElementById('rc-summary').innerHTML =
-    _mcard(pfx+'売上','¥'+fmt(sales)) +
-    _mcard(pfx+'原価','¥'+fmt(cost)) +
-    _mcard(pfx+'利益','¥'+fmt(profit),'#059669') +
-    _mcard('未出荷', unshipped+' 件', unshipped?'#d97706':'');
-
-  document.getElementById('rc-tbody').innerHTML = list.length ? list.map(r=>`
-    <tr onclick="showProdDetail('${r.id}')" style="cursor:pointer;">
-      <td style="white-space:nowrap;">${escapeHtml(r.due||r.date||'—')}</td>
-      <td style="white-space:nowrap;">${escapeHtml(r.client||'—')}</td>
-      <td>${r.fignum?`<span class="badge badge-blue">${escapeHtml(r.fignum)}</span> `:''}${escapeHtml(r.name||'')}</td>
-      <td style="text-align:right;white-space:nowrap;">${r.qty} 個</td>
-      <td style="text-align:right;white-space:nowrap;">¥${fmt(_recSales(r))}</td>
-      <td style="text-align:right;white-space:nowrap;">¥${fmt(_recCost(r))}</td>
-      <td style="text-align:right;white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(_recSales(r)-_recCost(r))}</td>
-      <td style="text-align:center;white-space:nowrap;">${r.fromWorksheet ? (r.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>') : '<span class="badge badge-blue">実績</span>'}</td>
-      <td style="white-space:nowrap;" onclick="event.stopPropagation()">
-        ${r.fromWorksheet?`<button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button>`:''}
-      </td>
-    </tr>`).join('') : `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">🧾</div><div class="empty-text">この月のデータはありません${all.length?`<br><span style="font-size:12px;">（全${all.length}件あります。「全期間」にチェックか、月を変えてください）</span>`:''}</div></div></td></tr>`;
-
-  // 買掛（材料発注先＋外注先ごと）：作業書由来の明細から集計
-  const pay = {};
-  list.forEach(r=>{
-    (r.materials||[]).forEach(m=>{
-      if(!m.supplier || m.supplier==='材料支給') return;  // 支給材は支払い対象外
-      pay[m.supplier] = (pay[m.supplier]||0) + (m.price||0)*(m.qty||0);
-    });
-    (r.outsourceInfo||[]).forEach(o=>{
-      if(!o.name) return;
-      pay[o.name] = (pay[o.name]||0) + (o.price||0)*(r.qty||0);
-    });
-  });
-  const payRows = Object.entries(pay).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('rc-payable').innerHTML = payRows.length
-    ? payRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
-      + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(payRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
-    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">作業書から作成したデータのみ集計されます</td></tr>';
-
-  // 売上（受注先ごと）
-  const rec = {};
-  list.forEach(r=>{ const k=r.client||'（未設定）'; rec[k]=(rec[k]||0)+_recSales(r); });
-  const recRows = Object.entries(rec).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('rc-receivable').innerHTML = recRows.length
-    ? recRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
-      + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(recRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
-    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">データなし</td></tr>';
-}
-
 // 実績レコードの基準日（納期優先、無ければ作業日）
 function _prodDate(r){
   return _parseDue(r.due) || (r.date ? new Date(r.date) : null);
@@ -2725,8 +2612,7 @@ function toggleShipped(id){
   if(!r) return;
   r.shipped = !r.shipped;
   save();
-  if(document.getElementById('rc-tbody')) renderReceipts();
-  if(document.getElementById('dl-tbody')) renderDelivery();
+  refreshAllViews();
   showToast(r.shipped?'出荷済にしました':'未出荷に戻しました');
 }
 
@@ -2776,35 +2662,6 @@ function renderDelivery(){
       <td style="white-space:nowrap;" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🚚</div><div class="empty-text">未出荷の受注はありません</div></div></td></tr>';
-}
-
-function exportReceiptsExcel(){
-  const monthEl = document.getElementById('rc-month');
-  const showAll = document.getElementById('rc-show-all') && document.getElementById('rc-show-all').checked;
-  const [yy,mm] = (monthEl.value||'').split('-').map(Number);
-  const list = (DB.productions||[]).filter(r=>{
-    if(showAll) return true;
-    const dt = _prodDate(r);
-    return dt && dt.getFullYear()===yy && (dt.getMonth()+1)===mm;
-  });
-  if(!list.length){ showToast('この期間のデータがありません','error'); return; }
-  const rows = list.map(r=>[
-    r.due||r.date||'', r.client||'', r.fignum||'', r.name||'',
-    r.qty||0, r.price||0, _recSales(r),
-    (r.matPrice||0)*(r.qty||0), r.osCost||0, _recSales(r)-_recCost(r),
-    r.fromWorksheet ? (r.shipped?'出荷済':'未出荷') : '実績'
-  ]);
-  const label = showAll ? '全期間' : `${yy}年${mm}月`;
-  const ws = _buildStyledSheet({
-    title: `受注・売上 ${label}`,
-    headers: ['納期/日付','発注先','図番','品名','納品数','製品単価','売上','材料費','外注費','利益','状態'],
-    rows: rows,
-    colWidths: [12,22,16,26,9,12,14,12,12,14,10],
-    currencyCols: [5,6,7,8,9]
-  });
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, '受注売上');
-  XLSX.writeFile(wb, `受注売上_${label}.xlsx`);
 }
 
 function showProductDetail(id) {
@@ -3065,7 +2922,7 @@ function addOutsourceRow(data){
   tr.innerHTML=`<td><input type="text" class="os-name" list="pf-outsource-list" placeholder="外注会社名" value="${escapeHtml(data&&data.name||'')}"></td>`
     +`<td><select class="os-material-type"><option value="">選択</option><option value="材料支給"${mt==='材料支給'?' selected':''}>材料支給</option><option value="材込み"${mt==='材込み'?' selected':''}>材込み</option></select></td>`
     +`<td><input type="text" class="os-note" placeholder="加工内容を入力" value="${escapeHtml(data&&data.note||'')}"></td>`
-    +`<td><input type="number" class="os-price" placeholder="0" value="${data&&data.price?data.price:''}"></td>`
+    +`<td style="white-space:nowrap;"><input type="number" class="os-price" placeholder="0" value="${data&&data.price?data.price:''}" style="max-width:110px;"> <select class="os-price-unit" style="width:96px;"><option value="per"${(data&&data.priceUnit)!=='total'?' selected':''}>1個あたり</option><option value="total"${(data&&data.priceUnit)==='total'?' selected':''}>1式</option></select></td>`
     +_rowDelBtn();
   tb.appendChild(tr);
 }
@@ -3118,6 +2975,7 @@ function saveProduct() {
   const editId = document.getElementById('pf-fignum').dataset.editId;
   const os = [...document.querySelectorAll('.outsource-row')].map(r=>({
     name: r.querySelector('.os-name').value.trim(),
+    priceUnit: (r.querySelector('.os-price-unit')||{}).value || 'per',
     materialType: r.querySelector('.os-material-type').value,
     note: r.querySelector('.os-note').value.trim(),
     price: parseFloat(r.querySelector('.os-price').value)||0
@@ -3203,20 +3061,67 @@ function filterProduction(q) {
     .filter(p=>(!q || p.machine.toLowerCase().includes(q) || p.fignum.toLowerCase().includes(q) || (p.name||'').toLowerCase().includes(q)) && (!machine || p.machine===machine))
     .sort((a,b)=>b.date.localeCompare(a.date));
 
+  // サマリー（表示中の年・絞り込み後）
+  const sales = prods.reduce((s,p)=>s+_recSales(p),0);
+  const cost  = prods.reduce((s,p)=>s+_recCost(p),0);
+  const unshipped = prods.filter(p=>p.fromWorksheet && !p.shipped).length;
+  const sm = document.getElementById('prod-summary');
+  if (sm) sm.innerHTML =
+    _mcard('売上','¥'+fmt(sales)) +
+    _mcard('原価','¥'+fmt(cost)) +
+    _mcard('利益','¥'+fmt(sales-cost),'#059669') +
+    _mcard('未出荷', unshipped+' 件', unshipped?'#d97706':'');
+
   document.getElementById('prod-tbody').innerHTML = prods.length ? prods.map(p=>`
     <tr>
-      <td>${fmtDate(p.date)}</td>
-      <td>${p.machine}</td>
+      <td style="white-space:nowrap;">${fmtDate(p.date)}</td>
+      <td class="hide-mobile" style="white-space:nowrap;">${escapeHtml(p.due||'—')}</td>
+      <td>${p.machine||'—'}</td>
       <td><span class="badge badge-blue">${p.fignum}</span></td>
       <td>${p.name||''}</td>
       <td class="hide-mobile">${p.client||'—'}</td>
-      <td>${fmt(p.qty)}個</td>
-      <td class="hide-mobile">${p.steps?p.steps.length:0}工程</td>
-      <td class="hide-mobile">${fmtDuration(stepsToSeconds(p.steps))}</td>
-      <td>¥${fmt((p.price||0)*(p.qty||0))}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button> <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button> <button class="btn btn-danger btn-xs" onclick="deleteProd('${p.id}')">削除</button></td>
+      <td style="white-space:nowrap;">${fmt(p.qty)}個</td>
+      <td class="hide-mobile" style="white-space:nowrap;">${fmtDuration(stepsToSeconds(p.steps))}</td>
+      <td style="white-space:nowrap;">¥${fmt(_recSales(p))}</td>
+      <td class="hide-mobile" style="white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(_recSales(p)-_recCost(p))}</td>
+      <td style="white-space:nowrap;text-align:center;">${p.fromWorksheet ? (p.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>') : '<span class="badge badge-blue">手動</span>'}</td>
+      <td style="white-space:nowrap;">
+        ${p.fromWorksheet?`<button class="btn btn-ghost btn-xs" onclick="toggleShipped('${p.id}')">${p.shipped?'戻す':'出荷'}</button> `:''}
+        <button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button>
+        <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button>
+        <button class="btn btn-ghost btn-xs" onclick="deleteProd('${p.id}')" style="color:#dc2626;">削除</button>
+      </td>
     </tr>
-  `).join('') : '<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+  `).join('') : '<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+
+  // 買掛（表示中の年）
+  const pay = {};
+  prods.forEach(r=>{
+    (r.materials||[]).forEach(m=>{
+      if(!m.supplier || m.supplier==='材料支給') return;
+      pay[m.supplier] = (pay[m.supplier]||0) + (m.price||0)*(m.qty||0);
+    });
+    (r.outsourceInfo||[]).forEach(o=>{
+      if(!o.name) return;
+      pay[o.name] = (pay[o.name]||0) + (o.price||0)*(o.priceUnit==='total' ? 1 : (r.qty||0));
+    });
+  });
+  const payRows = Object.entries(pay).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const payEl = document.getElementById('prod-payable');
+  if (payEl) payEl.innerHTML = payRows.length
+    ? payRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
+      + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(payRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
+    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">作業書から作成したデータのみ集計されます</td></tr>';
+
+  // 売上（受注先ごと・表示中の年）
+  const rec = {};
+  prods.forEach(r=>{ const k=r.client||'（未設定）'; rec[k]=(rec[k]||0)+_recSales(r); });
+  const recRows = Object.entries(rec).filter(([k,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const recEl = document.getElementById('prod-receivable');
+  if (recEl) recEl.innerHTML = recRows.length
+    ? recRows.map(([k,v])=>`<tr><td>${escapeHtml(k)}</td><td style="text-align:right;white-space:nowrap;">¥${fmt(v)}</td></tr>`).join('')
+      + `<tr style="font-weight:700;"><td>合計</td><td style="text-align:right;">¥${fmt(recRows.reduce((s,x)=>s+x[1],0))}</td></tr>`
+    : '<tr><td colspan="2" style="color:var(--text2);font-size:13px;">データなし</td></tr>';
 }
 
 function showProdDetail(id) {
