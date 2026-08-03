@@ -1532,6 +1532,17 @@
         <label>住所</label>
         <input type="text" id="sup-address" placeholder="例：大阪府大阪市〇〇区〇〇1-2-3">
       </div>
+      <div class="form-group">
+        <label>締め日（売上集計用）</label>
+        <select id="sup-closing">
+          <option value="">末締め（デフォルト）</option>
+          <option value="5">5日締め</option>
+          <option value="10">10日締め</option>
+          <option value="15">15日締め</option>
+          <option value="20">20日締め</option>
+          <option value="25">25日締め</option>
+        </select>
+      </div>
       <div class="form-group full">
         <label>備考</label>
         <textarea id="sup-memo" placeholder="取引条件・注意事項など" style="min-height:60px;"></textarea>
@@ -2573,6 +2584,29 @@ function printWorksheet(p, qtys, prodQty, due){
 }
 
 // ===== 納期管理・集計ヘルパー =====
+// 売上月の判定：納期（無ければ作業日）を基準に、取引先の締め日で月を割り当てる
+// 例）20日締め：7/21〜8/20 →「8月分」。末締め：8/1〜8/31 →「8月分」
+// 集計画面から作業実績へジャンプ（図番で絞り込んだ状態で開く）
+function jumpToProduction(fignum){
+  showSection('production');
+  const el = document.getElementById('prod-search');
+  if(el){ el.value = fignum; filterProduction(fignum); }
+}
+
+function _salesYM(r){
+  const base = _parseDue(r.due) || (r.date ? new Date(r.date) : null);
+  if(!base) return null;
+  let y = base.getFullYear(), m = base.getMonth()+1;
+  // 取引先の締め日を取得（未設定＝末締め）
+  const comp = (DB.companies||[]).find(c=>c.name===r.client);
+  const closing = comp && comp.closing ? parseInt(comp.closing,10) : 0;  // 0=末締め
+  if(closing > 0 && base.getDate() > closing){
+    m++;
+    if(m>12){ m=1; y++; }
+  }
+  return { y, m };
+}
+
 // 納期文字列 → Date（"7/25" "2026/7/25" "R8/7/25" などを解釈）
 function _parseDue(s){
   if(!s) return null;
@@ -3503,7 +3537,7 @@ function _enrichProducts(prodAgg) {
 function _clientRow(e,grand){var pct=grand?(e[1].total/grand*100).toFixed(1):'0.0';return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';}
 function _matRow(e,grand){var pct=grand?(e[1].total/grand*100).toFixed(1):'0.0';return '<tr><td>'+e[0]+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].total)+'</td><td>'+pct+'%</td></tr>';}
 function _machineRow(e){return '<tr><td>'+e[0]+'</td><td>'+fmtDuration(e[1].sec)+'</td><td>'+e[1].count+'件</td><td>¥'+fmt(e[1].sales)+'</td></tr>';}
-function _productRow(r,showTime){return '<tr><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td>¥'+fmt(r.gross)+'</td><td>'+r.rate.toFixed(1)+'%</td>'+(showTime?'<td>'+fmtDuration(r.sec)+'</td>':'')+'</tr>';}
+function _productRow(r,showTime){return '<tr onclick="jumpToProduction(\''+r.fignum+'\')" style="cursor:pointer;" title="クリックで作業実績を開く"><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td>¥'+fmt(r.gross)+'</td><td>'+r.rate.toFixed(1)+'%</td>'+(showTime?'<td>'+fmtDuration(r.sec)+'</td>':'')+'</tr>';}
 function _productTotals(list,showTime){if(!list.length)return '';var t=list.reduce(function(a,r){a.count+=r.count;a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;a.sec+=r.sec;return a;},{count:0,sales:0,mat:0,os:0,gross:0,sec:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td colspan="3">合計</td><td>'+t.count+'件</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(1)+'%</td>'+(showTime?'<td>'+fmtDuration(t.sec)+'</td>':'')+'</tr>';}
 var _noData4='<tr><td colspan="4" style="text-align:center;color:var(--text3);">データなし</td></tr>';
 var _noData9='<tr><td colspan="9" style="text-align:center;color:var(--text3);">データなし</td></tr>';
@@ -3514,10 +3548,15 @@ function renderSales() {
   document.getElementById('sales-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===salesYear?'active':'')+'" onclick="setSalesYear(\''+y+'\')">'+y+'年</div>';}).join('');
   _renderMonthTabs('sales-month-tabs', salesMonth, 'setSalesMonth');
   document.getElementById('sales-month-tabs').style.display = salesView==='monthly' ? '' : 'none';
-  var yProds = DB.productions.filter(function(p){return p.date.startsWith(salesYear);});
+  var yProds = DB.productions.filter(function(p){
+    var ym = _salesYM(p);
+    return ym && String(ym.y)===String(salesYear);
+  });
   var selMonth = salesMonth;
-  var mm = String(selMonth).padStart(2,'0');
-  var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
+  var mProds = yProds.filter(function(p){
+    var ym = _salesYM(p);
+    return ym && ym.m===parseInt(selMonth,10);
+  });
 
   // ===== 月別ビュー =====
   var ma = _aggProds(mProds);
@@ -3587,7 +3626,7 @@ function _profitAgg(prods) {
     return {fignum:v.fignum,name:v.name||(prod&&prod.name)||'',client:getClient(v.fignum),count:v.count,sales:v.sales,mat:matCost,os:osCost,gross:gross,rate:rate};
   }).sort(function(a,b){return b.sales-a.sales;});
 }
-function _profitRow(r){return '<tr><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td style="color:'+(r.gross>=0?'var(--accent2)':'var(--accent3)')+'">¥'+fmt(r.gross)+'</td><td><span class="badge '+(r.rate>=30?'badge-green':r.rate>=10?'badge-yellow':'badge-red')+'">'+r.rate.toFixed(0)+'%</span></td></tr>';}
+function _profitRow(r){return '<tr onclick="jumpToProduction(\''+r.fignum+'\')" style="cursor:pointer;" title="クリックで作業実績を開く"><td><span class="badge badge-blue">'+r.fignum+'</span></td><td>'+r.name+'</td><td>'+r.client+'</td><td>'+r.count+'件</td><td>¥'+fmt(r.sales)+'</td><td>¥'+fmt(r.mat)+'</td><td>¥'+fmt(r.os)+'</td><td style="color:'+(r.gross>=0?'var(--accent2)':'var(--accent3)')+'">¥'+fmt(r.gross)+'</td><td><span class="badge '+(r.rate>=30?'badge-green':r.rate>=10?'badge-yellow':'badge-red')+'">'+r.rate.toFixed(0)+'%</span></td></tr>';}
 function _profitTotals(list){if(!list.length)return '';var t=list.reduce(function(a,r){a.count+=r.count;a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;return a;},{count:0,sales:0,mat:0,os:0,gross:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td colspan="3">合計</td><td>'+t.count+'件</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}
 function _clientProfitRows(prodList){var cp={};prodList.forEach(function(r){var k=r.client;if(!cp[k])cp[k]={sales:0,mat:0,os:0,gross:0};cp[k].sales+=r.sales;cp[k].mat+=r.mat;cp[k].os+=r.os;cp[k].gross+=r.gross;});return Object.entries(cp).sort(function(a,b){return b[1].sales-a[1].sales;}).map(function(e){var v=e[1],rate=v.sales>0?v.gross/v.sales*100:0;return '<tr><td>'+e[0]+'</td><td>¥'+fmt(v.sales)+'</td><td>¥'+fmt(v.mat)+'</td><td>¥'+fmt(v.os)+'</td><td style="color:'+(v.gross>=0?'var(--accent2)':'var(--accent3)')+'">¥'+fmt(v.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}).join('');}
 function _clientProfitTotals(prodList){if(!prodList.length)return '';var t=prodList.reduce(function(a,r){a.sales+=r.sales;a.mat+=r.mat;a.os+=r.os;a.gross+=r.gross;return a;},{sales:0,mat:0,os:0,gross:0});var rate=t.sales>0?t.gross/t.sales*100:0;return '<tr style="font-weight:700;border-top:2px solid var(--border);"><td>合計</td><td>¥'+fmt(t.sales)+'</td><td>¥'+fmt(t.mat)+'</td><td>¥'+fmt(t.os)+'</td><td>¥'+fmt(t.gross)+'</td><td>'+rate.toFixed(0)+'%</td></tr>';}
@@ -3597,10 +3636,15 @@ function renderProfit() {
   document.getElementById('profit-year-tabs').innerHTML = years.map(function(y){return '<div class="year-tab '+(y===profitYear?'active':'')+'" onclick="setProfitYear(\''+y+'\')">'+y+'年</div>';}).join('');
   _renderMonthTabs('profit-month-tabs', profitMonth, 'setProfitMonth');
   document.getElementById('profit-month-tabs').style.display = profitView==='monthly' ? '' : 'none';
-  var yProds = DB.productions.filter(function(p){return p.date.startsWith(profitYear);});
+  var yProds = DB.productions.filter(function(p){
+    var ym = _salesYM(p);
+    return ym && String(ym.y)===String(profitYear);
+  });
   var selMonth = profitMonth;
-  var mm = String(selMonth).padStart(2,'0');
-  var mProds = yProds.filter(function(p){return p.date.slice(5,7)===mm;});
+  var mProds = yProds.filter(function(p){
+    var ym = _salesYM(p);
+    return ym && ym.m===parseInt(selMonth,10);
+  });
   var _nd='<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">📈</div><div class="empty-text">データなし</div></div></td></tr>';
   var _nd6='<tr><td colspan="6" style="text-align:center;color:var(--text3);">データなし</td></tr>';
 
@@ -3750,7 +3794,7 @@ function deleteSupplier(id) {
 
 function openSupplierModal() {
   document.getElementById('sup-modal-title').textContent = '取引先追加';
-  ['sup-name','sup-kana','sup-contact','sup-tel','sup-email','sup-zip','sup-address','sup-memo'].forEach(id=>document.getElementById(id).value='');
+  ['sup-name','sup-kana','sup-contact','sup-tel','sup-email','sup-zip','sup-address','sup-memo','sup-closing'].forEach(id=>document.getElementById(id).value='');
   ['sup-type-client','sup-type-material','sup-type-other'].forEach(id=>document.getElementById(id).checked=false);
   document.getElementById('sup-edit-id').value='';
   openModal('supplier-modal');
@@ -3768,6 +3812,7 @@ function editSupplier(id) {
   document.getElementById('sup-zip').value = c.zip||'';
   document.getElementById('sup-address').value = c.address||'';
   document.getElementById('sup-memo').value = c.memo||'';
+  document.getElementById('sup-closing').value = c.closing||'';
   document.getElementById('sup-type-client').checked = (c.types||[]).includes('client');
   document.getElementById('sup-type-material').checked = (c.types||[]).includes('material');
   document.getElementById('sup-type-other').checked = (c.types||[]).includes('other');
@@ -3789,7 +3834,8 @@ function saveSupplier() {
     email: document.getElementById('sup-email').value.trim(),
     zip: document.getElementById('sup-zip').value.trim(),
     address: document.getElementById('sup-address').value.trim(),
-    memo: document.getElementById('sup-memo').value.trim()
+    memo: document.getElementById('sup-memo').value.trim(),
+    closing: document.getElementById('sup-closing').value
   };
   const editId = document.getElementById('sup-edit-id').value;
   let _hBefore = null, _hAction = 'add';
