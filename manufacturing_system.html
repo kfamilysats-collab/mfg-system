@@ -1072,10 +1072,49 @@
             <div id="rf-price-hint" style="font-size:11px;color:var(--accent2);margin-top:3px;display:none;"></div>
           </div>
           <div class="form-group">
-            <label>材料単価（円）</label>
+            <label>材料単価（円）<span style="font-weight:400;font-size:11px;color:var(--text2);">※明細入力時は自動計算</span></label>
             <input type="number" id="rf-mat-price" placeholder="0">
             <div id="rf-mat-price-hint" style="font-size:11px;color:var(--accent2);margin-top:3px;display:none;"></div>
           </div>
+          <div class="form-group">
+            <label>納期</label>
+            <input type="text" id="rf-due" placeholder="例：2026/9/7">
+          </div>
+        </div>
+
+        <hr class="divider">
+        <div style="margin-bottom:12px;padding:8px 14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:13px;font-weight:700;color:#166534;display:flex;justify-content:space-between;align-items:center;">
+          <span>🪨 材料明細（発注先・単価・発注数）</span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addRecMaterialRow()" style="color:#166534;border:1px solid #bbf7d0;background:#fff;">＋ 行追加</button>
+        </div>
+        <div style="overflow-x:auto;margin-bottom:16px;">
+          <table style="width:100%;font-size:13px;">
+            <thead><tr>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料発注先</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">材料名</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">寸法</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">単価（円）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">発注数（ヶ）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;width:44px;text-align:center;"></th>
+            </tr></thead>
+            <tbody id="rec-material-rows"></tbody>
+          </table>
+        </div>
+
+        <div style="margin-bottom:12px;padding:8px 14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;font-size:13px;font-weight:700;color:#9a3412;display:flex;justify-content:space-between;align-items:center;">
+          <span>🔧 外注先</span>
+          <button type="button" class="btn btn-ghost btn-sm" onclick="addRecOutsourceRow()" style="color:#9a3412;border:1px solid #fed7aa;background:#fff;">＋ 行追加</button>
+        </div>
+        <div style="overflow-x:auto;margin-bottom:16px;">
+          <table style="width:100%;font-size:13px;">
+            <thead><tr>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">外注先名</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">加工内容</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;">金額（円）</th>
+              <th style="background:transparent;color:var(--text2);padding:4px 10px 6px;text-align:left;border-bottom:none;font-size:15px;font-weight:600;white-space:nowrap;width:44px;text-align:center;"></th>
+            </tr></thead>
+            <tbody id="rec-outsource-rows"></tbody>
+          </table>
         </div>
 
         <hr class="divider">
@@ -3169,8 +3208,49 @@ function showProdDetail(id) {
       <div><div style="color:var(--text2);font-size:11px;">品名</div><div>${p.name||''}</div></div>
       <div><div style="color:var(--text2);font-size:11px;">作業員</div><div>${p.worker||'—'}</div></div>
       <div><div style="color:var(--text2);font-size:11px;">数量</div><div>${fmt(p.qty)}個</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">金額</div><div>¥${fmt((p.price||0)*(p.qty||0))}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">受注先</div><div>${p.client||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">納期</div><div>${p.due||'—'}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">売上</div><div style="font-weight:700;">¥${fmt(_recSales(p))}</div></div>
+      <div><div style="color:var(--text2);font-size:11px;">利益</div><div style="font-weight:700;color:#059669;">¥${fmt(_recSales(p)-_recCost(p))}</div></div>
     </div>
+    ${(p.materials&&p.materials.length)?`
+      <div style="font-size:12px;font-weight:700;color:#166534;background:#f0fdf4;border-radius:6px;padding:5px 10px;margin-bottom:6px;">🪨 材料明細</div>
+      <div style="overflow-x:auto;margin-bottom:14px;"><table style="width:100%;font-size:12px;">
+        <thead><tr>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">発注先</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">材料名</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">寸法</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">単価</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">発注数</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">小計</th>
+        </tr></thead>
+        <tbody>${p.materials.map(m=>`<tr>
+          <td style="padding:5px 8px;">${escapeHtml(m.supplier||'—')}</td>
+          <td style="padding:5px 8px;">${escapeHtml(m.name||'—')}</td>
+          <td style="padding:5px 8px;">${escapeHtml(m.size||'—')}</td>
+          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">¥${fmt(m.price||0)}</td>
+          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">${m.qty||0} ヶ</td>
+          <td style="padding:5px 8px;text-align:right;white-space:nowrap;font-weight:700;">¥${fmt((m.price||0)*(m.qty||0))}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    `:''}
+    ${(p.outsourceInfo&&p.outsourceInfo.length)?`
+      <div style="font-size:12px;font-weight:700;color:#9a3412;background:#fff7ed;border-radius:6px;padding:5px 10px;margin-bottom:6px;">🔧 外注先</div>
+      <div style="overflow-x:auto;margin-bottom:14px;"><table style="width:100%;font-size:12px;">
+        <thead><tr>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">外注先名</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">加工内容</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">金額</th>
+          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">小計</th>
+        </tr></thead>
+        <tbody>${p.outsourceInfo.map(o=>`<tr>
+          <td style="padding:5px 8px;">${escapeHtml(o.name||'—')}</td>
+          <td style="padding:5px 8px;">${escapeHtml(o.note||'—')}</td>
+          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">¥${fmt(o.price||0)}${o.priceUnit==='total'?'（1式）':'／個'}</td>
+          <td style="padding:5px 8px;text-align:right;white-space:nowrap;font-weight:700;">¥${fmt((o.price||0)*(o.priceUnit==='total'?1:(p.qty||0)))}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    `:''}
     ${p.steps&&p.steps.length?`
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">工程時間</div>
       <div class="process-steps">${p.steps.map((s,i)=>`<div class="step-badge">工程${i+1}: <span class="step-time">${s}</span></div>`).join('')}</div>
@@ -3185,6 +3265,52 @@ function deleteProd(id) {
   DB.productions = DB.productions.filter(p=>p.id!==id);
   if (_hBefore) recordHistory('delete','production',`${_hBefore.date||''} ${_hBefore.fignum||''} ${_hBefore.name||''}`.trim(),_hBefore,null);
   save(); refreshAllViews(); showToast('削除しました（全画面に反映）');
+}
+
+// ===== 実績フォームの材料明細・外注先 =====
+function addRecMaterialRow(data){
+  const tb=document.getElementById('rec-material-rows');const tr=document.createElement('tr');tr.className='rec-material-row';
+  tr.innerHTML=`<td><input type="text" class="rm-supplier" list="pf-mat-supplier-list" placeholder="材料の仕入先" value="${escapeHtml(data&&data.supplier||'')}"></td>`
+    +`<td><input type="text" class="rm-name" placeholder="例：S45C丸棒" value="${escapeHtml(data&&data.name||'')}"></td>`
+    +`<td><input type="text" class="rm-size" placeholder="例：φ50×100" value="${escapeHtml(data&&data.size||'')}"></td>`
+    +`<td><input type="number" class="rm-price" placeholder="0" value="${data&&data.price?data.price:''}" oninput="recalcRecMatPrice()"></td>`
+    +`<td><input type="number" class="rm-qty" placeholder="0" value="${data&&data.qty?data.qty:''}" oninput="recalcRecMatPrice()"></td>`
+    +`<td style="text-align:center;"><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('tr').remove();recalcRecMatPrice()" style="color:#dc2626;">×</button></td>`;
+  tb.appendChild(tr);
+}
+function getRecMaterials(){
+  return [...document.querySelectorAll('#rec-material-rows .rec-material-row')].map(r=>({
+    supplier:r.querySelector('.rm-supplier').value.trim(),
+    name:r.querySelector('.rm-name').value.trim(),
+    size:r.querySelector('.rm-size').value.trim(),
+    price:parseFloat(r.querySelector('.rm-price').value)||0,
+    qty:parseInt(r.querySelector('.rm-qty').value,10)||0
+  })).filter(m=>m.supplier||m.name||m.price||m.qty);
+}
+// 材料明細から材料単価（1個あたり）を自動計算して反映
+function recalcRecMatPrice(){
+  const mats=getRecMaterials();
+  if(!mats.length) return;
+  const qty=parseInt(document.getElementById('rf-qty').value,10)||0;
+  if(!qty) return;
+  const matCost=mats.reduce((s,m)=>s+(m.price||0)*(m.qty||0),0);
+  document.getElementById('rf-mat-price').value = Math.round(matCost/qty*100)/100;
+}
+function addRecOutsourceRow(data){
+  const tb=document.getElementById('rec-outsource-rows');const tr=document.createElement('tr');tr.className='rec-outsource-row';
+  tr.innerHTML=`<td><input type="text" class="ro-name" list="pf-outsource-list" placeholder="外注会社名" value="${escapeHtml(data&&data.name||'')}"></td>`
+    +`<td><input type="text" class="ro-note" placeholder="加工内容" value="${escapeHtml(data&&data.note||'')}"></td>`
+    +`<td style="white-space:nowrap;"><input type="number" class="ro-price" placeholder="0" value="${data&&data.price?data.price:''}" style="max-width:110px;"> <select class="ro-price-unit" style="width:96px;"><option value="per"${(data&&data.priceUnit)!=='total'?' selected':''}>1個あたり</option><option value="total"${(data&&data.priceUnit)==='total'?' selected':''}>1式</option></select></td>`
+    +`<td style="text-align:center;"><button type="button" class="btn btn-ghost btn-xs" onclick="this.closest('tr').remove()" style="color:#dc2626;">×</button></td>`;
+  tb.appendChild(tr);
+}
+function getRecOutsource(){
+  return [...document.querySelectorAll('#rec-outsource-rows .rec-outsource-row')].map(r=>({
+    name:r.querySelector('.ro-name').value.trim(),
+    note:r.querySelector('.ro-note').value.trim(),
+    price:parseFloat(r.querySelector('.ro-price').value)||0,
+    priceUnit:(r.querySelector('.ro-price-unit')||{}).value||'per'
+  })).filter(o=>o.name||o.note||o.price);
 }
 
 function editProduction(id) {
@@ -3203,6 +3329,11 @@ function editProduction(id) {
     document.getElementById('rf-price').value = p.price || '';
     document.getElementById('rf-mat-price').value = p.matPrice || '';
     document.getElementById('rf-worker').value = p.worker || '';
+    document.getElementById('rf-due').value = p.due || '';
+    document.getElementById('rec-material-rows').innerHTML = '';
+    (p.materials||[]).forEach(m=>addRecMaterialRow(m));
+    document.getElementById('rec-outsource-rows').innerHTML = '';
+    (p.outsourceInfo||[]).forEach(o=>addRecOutsourceRow(o));
     // 工程ステップを既存件数で再構築して値をセット
     const steps = p.steps || [];
     processStepCount = 0;
@@ -3358,6 +3489,9 @@ function copyLastSteps() {
 
 function clearProductionForm() {
   window._editingProdId = null;
+  document.getElementById('rf-due').value = '';
+  document.getElementById('rec-material-rows').innerHTML = '';
+  document.getElementById('rec-outsource-rows').innerHTML = '';
   document.getElementById('rf-fignum').value = '';
   document.getElementById('rf-name').value = '';
   document.getElementById('rf-client').value = '';
@@ -3390,16 +3524,29 @@ function saveProduction() {
   }
 
   const editingId = window._editingProdId || null;
+  const _qty = parseInt(document.getElementById('rf-qty').value)||1;
+  const _mats = getRecMaterials();
+  const _os = getRecOutsource();
+  let _matPrice = parseFloat(document.getElementById('rf-mat-price').value)||0;
+  if (_mats.length) {
+    const _matCost = _mats.reduce((s,m)=>s+(m.price||0)*(m.qty||0),0);
+    _matPrice = _qty ? Math.round(_matCost/_qty*100)/100 : 0;
+  }
+  const _osCost = _os.reduce((s,o)=>s+(o.price||0)*(o.priceUnit==='total'?1:_qty),0);
   const p = {
     id: editingId || genId(),
     date, machine, fignum,
     name: document.getElementById('rf-name').value.trim(),
     client: document.getElementById('rf-client').value.trim(),
     worker: document.getElementById('rf-worker').value,
-    qty: parseInt(document.getElementById('rf-qty').value)||1,
+    qty: _qty,
     price: parseFloat(document.getElementById('rf-price').value)||0,
-    matPrice: parseFloat(document.getElementById('rf-mat-price').value)||0,
-    steps
+    matPrice: _matPrice,
+    steps,
+    due: document.getElementById('rf-due').value.trim(),
+    materials: _mats,
+    outsourceInfo: _os,
+    osCost: _osCost
   };
 
   let _hBefore = null, _hAction = 'add';
