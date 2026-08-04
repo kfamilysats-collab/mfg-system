@@ -997,7 +997,7 @@
                 <th>数量</th>
                 <th class="hide-mobile">合計時間</th>
                 <th>売上</th><th class="hide-mobile">利益</th>
-                <th>状態</th><th>操作</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="prod-tbody"></tbody>
@@ -1175,22 +1175,18 @@
     <!-- ===== 納期管理 ===== -->
     <section class="section" id="sec-delivery">
       <div class="page-header">
-        <div><div class="page-title">納期管理</div><div class="page-sub">未出荷の受注を納期順に表示</div></div>
-        <label style="font-size:13px;display:flex;align-items:center;gap:6px;">
-          <input type="checkbox" id="dl-show-shipped" onchange="renderDelivery()" style="width:auto;"> 出荷済も表示
-        </label>
+        <div><div class="page-title">納期管理</div><div class="page-sub">何月何日に何があるか、納期順に表示。納期はここで直接変更できます</div></div>
       </div>
       <div class="card">
         <div id="dl-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;"></div>
         <div class="table-wrap">
           <table style="width:100%;">
             <thead><tr>
-              <th style="white-space:nowrap;">納期</th>
+              <th style="white-space:nowrap;">納期（編集可）</th>
               <th style="white-space:nowrap;">残り</th>
               <th style="white-space:nowrap;">発注先</th>
               <th style="white-space:nowrap;">図番 / 品名</th>
-              <th style="white-space:nowrap;text-align:right;">納品数</th>
-              <th style="white-space:nowrap;text-align:center;">状態</th>
+              <th style="white-space:nowrap;text-align:right;">数量</th>
               <th style="white-space:nowrap;"></th>
             </tr></thead>
             <tbody id="dl-tbody"></tbody>
@@ -2680,20 +2676,9 @@ function _prodDate(r){
 function _recSales(r){ return (r.price||0) * (r.qty||0); }
 function _recCost(r){ return (r.matPrice||0) * (r.qty||0) + (r.osCost||0); }
 
-function toggleShipped(id){
-  const r = (DB.productions||[]).find(x=>x.id===id);
-  if(!r) return;
-  r.shipped = !r.shipped;
-  save();
-  refreshAllViews();
-  showToast(r.shipped?'出荷済にしました':'未出荷に戻しました');
-}
-
 function renderDelivery(){
-  const showShipped = document.getElementById('dl-show-shipped').checked;
-  // 納期管理は作業書由来（納期がある）レコードが対象
-  let list = (DB.productions||[]).filter(r=>r.fromWorksheet);
-  if(!showShipped) list = list.filter(r=>!r.shipped);
+  // 納期があるレコード全部を納期順に（何月何日に何があるかを見る画面）
+  let list = (DB.productions||[]).filter(r=>r.due);
   list.sort((a,b)=>{
     const da=_parseDue(a.due), db_=_parseDue(b.due);
     if(!da && !db_) return 0;
@@ -2702,39 +2687,52 @@ function renderDelivery(){
     return da-db_;
   });
 
-  let over=0, soon=0, okc=0;
+  let over=0, soon=0, later=0;
   list.forEach(r=>{
-    if(r.shipped) return;
     const dl=_daysLeft(_parseDue(r.due));
     if(dl===null) return;
-    if(dl<0) over++; else if(dl<=7) soon++; else okc++;
+    if(dl<0) over++; else if(dl<=7) soon++; else later++;
   });
   document.getElementById('dl-summary').innerHTML =
     _mcard('期限切れ', over+' 件', over?'#dc2626':'') +
     _mcard('7日以内', soon+' 件', soon?'#d97706':'') +
-    _mcard('余裕あり', okc+' 件') +
-    _mcard('未出荷合計', list.filter(r=>!r.shipped).length+' 件');
+    _mcard('8日以降', later+' 件') +
+    _mcard('納期あり合計', list.length+' 件');
 
   document.getElementById('dl-tbody').innerHTML = list.length ? list.map(r=>{
     const dt=_parseDue(r.due);
     const dl=_daysLeft(dt);
     let left='—', color='';
-    if(dl!==null && !r.shipped){
+    if(dl!==null){
       if(dl<0){ left=`${-dl}日超過`; color='color:#dc2626;font-weight:700;'; }
       else if(dl===0){ left='今日'; color='color:#dc2626;font-weight:700;'; }
       else if(dl<=7){ left=`あと${dl}日`; color='color:#d97706;font-weight:700;'; }
       else left=`あと${dl}日`;
-    } else if(r.shipped) left='—';
-    return `<tr onclick="showProdDetail('${r.id}')" style="cursor:pointer;">
-      <td style="white-space:nowrap;">${escapeHtml(r.due||'未設定')}</td>
+    }
+    return `<tr>
+      <td style="white-space:nowrap;">
+        <input type="text" value="${escapeHtml(r.due||'')}" onchange="updateDue('${r.id}', this.value)" style="max-width:120px;font-size:14px;" title="納期を直接編集できます（例：2026/9/7）">
+      </td>
       <td style="white-space:nowrap;${color}">${left}</td>
       <td style="white-space:nowrap;">${escapeHtml(r.client||'—')}</td>
       <td>${r.fignum?`<span class="badge badge-blue">${escapeHtml(r.fignum)}</span> `:''}${escapeHtml(r.name||'')}</td>
       <td style="text-align:right;white-space:nowrap;">${r.qty} 個</td>
-      <td style="text-align:center;white-space:nowrap;">${r.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>'}</td>
-      <td style="white-space:nowrap;" onclick="event.stopPropagation()"><button class="btn btn-ghost btn-xs" onclick="toggleShipped('${r.id}')">${r.shipped?'戻す':'出荷'}</button></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-xs" onclick="showProdDetail('${r.id}')">詳細</button>
+        <button class="btn btn-ghost btn-xs" onclick="editProduction('${r.id}')">編集</button>
+      </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">🚚</div><div class="empty-text">未出荷の受注はありません</div></div></td></tr>';
+  }).join('') : '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🚚</div><div class="empty-text">納期が設定された実績はありません</div></div></td></tr>';
+}
+
+// 納期をインライン更新（全画面連動）
+function updateDue(id, val){
+  const r = (DB.productions||[]).find(x=>x.id===id);
+  if(!r) return;
+  r.due = (val||'').trim();
+  save();
+  refreshAllViews();
+  showToast('納期を更新しました（全画面に反映）');
 }
 
 function showProductDetail(id) {
@@ -3137,13 +3135,11 @@ function filterProduction(q) {
   // サマリー（表示中の年・絞り込み後）
   const sales = prods.reduce((s,p)=>s+_recSales(p),0);
   const cost  = prods.reduce((s,p)=>s+_recCost(p),0);
-  const unshipped = prods.filter(p=>p.fromWorksheet && !p.shipped).length;
   const sm = document.getElementById('prod-summary');
   if (sm) sm.innerHTML =
     _mcard('売上','¥'+fmt(sales)) +
     _mcard('原価','¥'+fmt(cost)) +
-    _mcard('利益','¥'+fmt(sales-cost),'#059669') +
-    _mcard('未出荷', unshipped+' 件', unshipped?'#d97706':'');
+    _mcard('利益','¥'+fmt(sales-cost),'#059669');
 
   document.getElementById('prod-tbody').innerHTML = prods.length ? prods.map(p=>`
     <tr>
@@ -3157,14 +3153,13 @@ function filterProduction(q) {
       <td class="hide-mobile" style="white-space:nowrap;">${fmtDuration(stepsToSeconds(p.steps))}</td>
       <td style="white-space:nowrap;">¥${fmt(_recSales(p))}</td>
       <td class="hide-mobile" style="white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(_recSales(p)-_recCost(p))}</td>
-      <td style="white-space:nowrap;text-align:center;">${p.fromWorksheet ? (p.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>') : '<span class="badge badge-blue">手動</span>'}</td>
       <td style="white-space:nowrap;">
         <button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button>
         <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button>
         <button class="btn btn-ghost btn-xs" onclick="deleteProd('${p.id}')" style="color:#dc2626;">削除</button>
       </td>
     </tr>
-  `).join('') : '<tr><td colspan="12"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
+  `).join('') : '<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">🔧</div><div class="empty-text">実績なし</div></div></td></tr>';
 
   // 買掛（表示中の年）
   const pay = {};
@@ -3273,7 +3268,8 @@ function showProdDetail(id) {
       ${secLabel('⏱ 工程時間','#334155')}
       <div class="process-steps">${p.steps.map((s,i)=>`<div class="step-badge">工程${i+1}: <span class="step-time">${s}</span></div>`).join('')}</div>
     `:''}
-    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+    <div style="display:flex;justify-content:space-between;margin-top:18px;">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('prod-detail-modal');editProduction('${p.id}')">✏ 編集</button>
       <button class="btn btn-primary btn-sm" onclick="reprintWorksheet('${p.id}')">🖨 作業書を印刷</button>
     </div>
   `;
