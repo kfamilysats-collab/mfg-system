@@ -2256,11 +2256,11 @@ function createWorksheet(id){
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-left:4px solid #059669;border-radius:8px;padding:11px 13px;">
           <label style="color:#166534;font-size:13px;display:block;margin-bottom:6px;">📦 材料発注数（ヶ）*</label>
-          <input type="number" class="ws-qty-input" data-idx="0" value="1" min="1">
+          <input type="number" class="ws-qty-input" data-idx="0" value="" min="1" placeholder="例：10">
         </div>
         <div style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;padding:11px 13px;">
           <label style="color:#1e40af;font-size:13px;display:block;margin-bottom:6px;">🚚 納品数（個）*</label>
-          <input type="number" id="ws-prod-qty" value="1" min="1">
+          <input type="number" id="ws-prod-qty" value="" min="1" placeholder="例：10">
         </div>
       </div>`;
   } else {
@@ -2271,7 +2271,7 @@ function createWorksheet(id){
         <td style="font-size:13px;">${escapeHtml(m.supplier||'—')}</td>
         <td style="font-size:13px;">${escapeHtml(m.name||'—')}</td>
         <td style="font-size:13px;">${escapeHtml(m.size||'—')}</td>
-        <td style="white-space:nowrap;"><input type="number" class="ws-qty-input" data-idx="${i}" value="1" min="0" style="width:78px;text-align:right;"> ヶ</td>
+        <td style="white-space:nowrap;"><input type="number" class="ws-qty-input" data-idx="${i}" value="" min="0" placeholder="0" style="width:78px;text-align:right;"> ヶ</td>
       </tr>`).join('');
     box.innerHTML = `
       <div style="font-size:12px;color:#166534;font-weight:700;margin-bottom:8px;">📦 材料発注数（材料ごとに入力）</div>
@@ -2289,7 +2289,7 @@ function createWorksheet(id){
       </div>
       <div style="background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;border-radius:8px;padding:11px 13px;margin-bottom:16px;">
         <label style="color:#1e40af;font-size:13px;display:block;margin-bottom:6px;">🚚 納品数（個）*</label>
-        <input type="number" id="ws-prod-qty" value="1" min="1" style="max-width:200px;">
+        <input type="number" id="ws-prod-qty" value="" min="1" placeholder="例：10" style="max-width:200px;">
       </div>`;
   }
   // 納期の年セレクト（今年を基準に前後を並べる。年が変われば自動で今年に）
@@ -2499,7 +2499,7 @@ function printWorksheet(p, qtys, prodQty, due){
   const html = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>作業書 ${escapeHtml(p.fignum||'')}</title>
   <style>
     @page { size: A4 portrait; margin: 12mm; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
     body { font-family: 'Hiragino Kaku Gothic ProN','Meiryo','MS PGothic',sans-serif; color:#000; margin:0; font-size:13px; }
     h1 { font-size:22px; text-align:center; margin:0 0 10px; letter-spacing:12px; font-weight:700; }
 
@@ -3159,7 +3159,6 @@ function filterProduction(q) {
       <td class="hide-mobile" style="white-space:nowrap;font-weight:700;color:#059669;">¥${fmt(_recSales(p)-_recCost(p))}</td>
       <td style="white-space:nowrap;text-align:center;">${p.fromWorksheet ? (p.shipped?'<span class="badge badge-green">出荷済</span>':'<span class="badge badge-orange">未出荷</span>') : '<span class="badge badge-blue">手動</span>'}</td>
       <td style="white-space:nowrap;">
-        ${p.fromWorksheet?`<button class="btn btn-ghost btn-xs" onclick="toggleShipped('${p.id}')">${p.shipped?'戻す':'出荷'}</button> `:''}
         <button class="btn btn-ghost btn-xs" onclick="showProdDetail('${p.id}')">詳細</button>
         <button class="btn btn-ghost btn-xs" onclick="editProduction('${p.id}')">編集</button>
         <button class="btn btn-ghost btn-xs" onclick="deleteProd('${p.id}')" style="color:#dc2626;">削除</button>
@@ -3200,63 +3199,107 @@ function filterProduction(q) {
 function showProdDetail(id) {
   const p = DB.productions.find(x=>x.id===id);
   if (!p) return;
+  const cardBase = 'padding:12px 14px;border-radius:10px;';
+  const blue   = 'border-left:4px solid #2563eb;background:#eff6ff;';
+  const green  = 'border-left:4px solid #059669;background:#f0fdf4;';
+  const orange = 'border-left:4px solid #ea580c;background:#fff7ed;';
+  const purple = 'border-left:4px solid #9333ea;background:#faf5ff;';
+  const lbl = 'font-size:11px;color:#64748b;font-weight:600;margin-bottom:5px;letter-spacing:0.5px;';
+  const val = 'font-size:15px;font-weight:700;color:#0f172a;';
+  const card = (tone,label,value) => `<div style="${cardBase}${tone}"><div style="${lbl}">${label}</div><div style="${val}">${value||'—'}</div></div>`;
+  const secLabel = (text,color) => `<div style="font-size:13px;font-weight:700;color:${color};margin:18px 0 10px;">${text}</div>`;
+  const thS = 'background:transparent;font-size:11px;color:#64748b;font-weight:600;padding:5px 10px;border-bottom:1px solid var(--border);text-align:left;';
+  const thR = thS.replace('text-align:left','text-align:right');
+  const tdS = 'padding:7px 10px;font-size:13px;';
+  const tdR = tdS+'text-align:right;white-space:nowrap;';
+
   document.getElementById('prod-detail-body').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;margin-bottom:16px;">
-      <div><div style="color:var(--text2);font-size:11px;">日付</div><div>${fmtDate(p.date)}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">機械</div><div>${p.machine}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">図番</div><div>${p.fignum}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">品名</div><div>${p.name||''}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">作業員</div><div>${p.worker||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">数量</div><div>${fmt(p.qty)}個</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">受注先</div><div>${p.client||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">納期</div><div>${p.due||'—'}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">売上</div><div style="font-weight:700;">¥${fmt(_recSales(p))}</div></div>
-      <div><div style="color:var(--text2);font-size:11px;">利益</div><div style="font-weight:700;color:#059669;">¥${fmt(_recSales(p)-_recCost(p))}</div></div>
+    ${secLabel('■ 基本情報','#1e40af')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      ${card(blue,'日付', fmtDate(p.date))}
+      ${card(blue,'納期', p.due||'—')}
+      ${card(blue,'図番', p.fignum||'—')}
+      ${card(blue,'品名', p.name||'—')}
+      ${card(blue,'受注先', p.client||'—')}
+      ${card(blue,'機械', p.machine||'—')}
+      ${card(blue,'作業員', p.worker||'—')}
+      ${card(blue,'数量', fmt(p.qty)+' 個')}
     </div>
+
+    ${secLabel('■ 金額','#6b21a8')}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      ${card(purple,'売上','¥'+fmt(_recSales(p)))}
+      ${card(purple,'原価','¥'+fmt(_recCost(p)))}
+      ${card(purple,'利益','<span style="color:#059669;">¥'+fmt(_recSales(p)-_recCost(p))+'</span>')}
+    </div>
+
     ${(p.materials&&p.materials.length)?`
-      <div style="font-size:12px;font-weight:700;color:#166534;background:#f0fdf4;border-radius:6px;padding:5px 10px;margin-bottom:6px;">🪨 材料明細</div>
-      <div style="overflow-x:auto;margin-bottom:14px;"><table style="width:100%;font-size:12px;">
+      ${secLabel('🪨 材料明細','#166534')}
+      <div style="border:1px solid #bbf7d0;border-radius:10px;overflow:hidden;background:#f7fdf9;">
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
         <thead><tr>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">発注先</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">材料名</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">寸法</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">単価</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">発注数</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">小計</th>
+          <th style="${thS}">発注先</th><th style="${thS}">材料名</th><th style="${thS}">寸法</th>
+          <th style="${thR}">単価</th><th style="${thR}">発注数</th><th style="${thR}">小計</th>
         </tr></thead>
         <tbody>${p.materials.map(m=>`<tr>
-          <td style="padding:5px 8px;">${escapeHtml(m.supplier||'—')}</td>
-          <td style="padding:5px 8px;">${escapeHtml(m.name||'—')}</td>
-          <td style="padding:5px 8px;">${escapeHtml(m.size||'—')}</td>
-          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">¥${fmt(m.price||0)}</td>
-          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">${m.qty||0} ヶ</td>
-          <td style="padding:5px 8px;text-align:right;white-space:nowrap;font-weight:700;">¥${fmt((m.price||0)*(m.qty||0))}</td>
+          <td style="${tdS}">${escapeHtml(m.supplier||'—')}</td>
+          <td style="${tdS}">${escapeHtml(m.name||'—')}</td>
+          <td style="${tdS}">${escapeHtml(m.size||'—')}</td>
+          <td style="${tdR}">¥${fmt(m.price||0)}</td>
+          <td style="${tdR}">${m.qty||0} ヶ</td>
+          <td style="${tdR}font-weight:700;">¥${fmt((m.price||0)*(m.qty||0))}</td>
         </tr>`).join('')}</tbody>
-      </table></div>
+      </table></div></div>
     `:''}
+
     ${(p.outsourceInfo&&p.outsourceInfo.length)?`
-      <div style="font-size:12px;font-weight:700;color:#9a3412;background:#fff7ed;border-radius:6px;padding:5px 10px;margin-bottom:6px;">🔧 外注先</div>
-      <div style="overflow-x:auto;margin-bottom:14px;"><table style="width:100%;font-size:12px;">
+      ${secLabel('🔧 外注先','#9a3412')}
+      <div style="border:1px solid #fed7aa;border-radius:10px;overflow:hidden;background:#fffaf5;">
+      <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;">
         <thead><tr>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">外注先名</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:left;border-bottom:1px solid var(--border);">加工内容</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">金額</th>
-          <th style="background:transparent;font-size:11px;padding:4px 8px;text-align:right;border-bottom:1px solid var(--border);">小計</th>
+          <th style="${thS}">外注先名</th><th style="${thS}">加工内容</th>
+          <th style="${thR}">金額</th><th style="${thR}">小計</th>
         </tr></thead>
         <tbody>${p.outsourceInfo.map(o=>`<tr>
-          <td style="padding:5px 8px;">${escapeHtml(o.name||'—')}</td>
-          <td style="padding:5px 8px;">${escapeHtml(o.note||'—')}</td>
-          <td style="padding:5px 8px;text-align:right;white-space:nowrap;">¥${fmt(o.price||0)}${o.priceUnit==='total'?'（1式）':'／個'}</td>
-          <td style="padding:5px 8px;text-align:right;white-space:nowrap;font-weight:700;">¥${fmt((o.price||0)*(o.priceUnit==='total'?1:(p.qty||0)))}</td>
+          <td style="${tdS}">${escapeHtml(o.name||'—')}</td>
+          <td style="${tdS}">${escapeHtml(o.note||'—')}</td>
+          <td style="${tdR}">¥${fmt(o.price||0)}${o.priceUnit==='total'?'（1式）':'／個'}</td>
+          <td style="${tdR}font-weight:700;">¥${fmt((o.price||0)*(o.priceUnit==='total'?1:(p.qty||0)))}</td>
         </tr>`).join('')}</tbody>
-      </table></div>
+      </table></div></div>
     `:''}
+
     ${p.steps&&p.steps.length?`
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">工程時間</div>
+      ${secLabel('⏱ 工程時間','#334155')}
       <div class="process-steps">${p.steps.map((s,i)=>`<div class="step-badge">工程${i+1}: <span class="step-time">${s}</span></div>`).join('')}</div>
     `:''}
+    <div style="display:flex;justify-content:flex-end;margin-top:18px;">
+      <button class="btn btn-primary btn-sm" onclick="reprintWorksheet('${p.id}')">🖨 作業書を印刷</button>
+    </div>
   `;
   openModal('prod-detail-modal');
+}
+
+// 実績レコードから作業書を再印刷（編集後の内容がそのまま反映される）
+function reprintWorksheet(recordId){
+  const r = DB.productions.find(x=>x.id===recordId);
+  if(!r){ showToast('実績が見つかりません','error'); return; }
+  const prodMaster = (DB.products||[]).find(x=>x.fignum===r.fignum);
+  const mats = (r.materials&&r.materials.length) ? r.materials : [];
+  // 実績の内容から擬似的な製品オブジェクトを組み立てる
+  const pseudo = {
+    fignum: r.fignum||'', name: r.name||'', client: r.client||'',
+    price: r.price||0,
+    workerNote: prodMaster ? (prodMaster.workerNote||'') : '',
+    matSupplier: mats[0] ? mats[0].supplier : '',
+    matName: mats[0] ? mats[0].name : '',
+    matSize: mats[0] ? mats[0].size : '',
+    matPrice: mats[0] ? (mats[0].price||0) : (r.matPrice||0),
+    extraMaterials: mats.slice(1),
+    outsource: (r.outsourceInfo||[]).map(o=>({ name:o.name||'', note:o.note||'', price:o.price||0, priceUnit:o.priceUnit||'per' }))
+  };
+  const qtys = mats.length ? mats.map(m=>m.qty||0) : [r.qty||0];
+  printWorksheet(pseudo, qtys, r.qty||0, r.due||'');
 }
 
 function deleteProd(id) {
